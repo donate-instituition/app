@@ -36,7 +36,7 @@ function LeftPanel() {
             </svg>
             <h1 className="absolute top-10 left-10 text-4xl md:text-8xl font-bold text-[#29511C] z-10">Doe</h1>
             <p className="absolute bottom-10 left-10 max-w-[60%] text-xl md:text-3xl font-semibold text-[#29511C] z-10 break-words">
-                Transforme sua generosidade em impacto real.
+                Crie campanhas, receba doações e fortaleça sua causa.
             </p>
         </div>
     );
