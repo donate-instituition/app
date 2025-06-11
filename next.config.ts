@@ -1,5 +1,4 @@
-import type { NextConfig } from "./doe/node_modules/next";
-
+import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
 };

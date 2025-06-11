@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -6,10 +5,10 @@ import React, { useState } from 'react';
 function Header() {
     return (
         <header className="w-full py-4 px-8 flex items-center border-b border-gray-200 bg-white">
-            <div className="flex items-center gap-2">
+            <a href="/" className="flex items-center gap-2">
                 <span className="w-4 h-4 rounded-full bg-lime-300 inline-block" />
                 <span className="text-lg font-bold text-gray-800">Doe</span>
-            </div>
+            </a>
         </header>
     );
 }

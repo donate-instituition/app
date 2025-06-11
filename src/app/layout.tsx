@@ -4,6 +4,8 @@ import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { StagewiseToolbar } from "@stagewise/toolbar-next";
 
+// MVP layout: includes navigation for testing and MVP features only
+
 const stagewiseConfig = {
   plugins: []
 };
