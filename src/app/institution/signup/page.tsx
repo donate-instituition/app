@@ -1,17 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-
-function Header() {
-    return (
-        <header className="w-full py-4 px-8 flex items-center border-b border-gray-200 bg-white">
-            <a href="/" className="flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full bg-lime-300 inline-block" />
-                <span className="text-lg font-bold text-gray-800">Doe</span>
-            </a>
-        </header>
-    );
-}
+import Header from "@/components/Header";
 
 function LeftPanel() {
     return (
@@ -143,7 +133,7 @@ function SignupForm() {
 export default function SignupPage() {
     return (
         <div className="min-h-screen bg-[#fafafd] flex flex-col">
-            <Header />
+            <Header showActions={false} centered={false} />
             <main className="flex flex-1 justify-center items-center px-2 sm:px-4 py-6">
                 <div className="flex flex-col lg:flex-row w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
                     <LeftPanel />
