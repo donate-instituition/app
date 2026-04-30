@@ -32,6 +32,8 @@ docs/                  Documentacao tecnica do projeto
 assets/                Imagens e assets estaticos
 ```
 
+O design system inicial esta detalhado em `docs/DESIGN_SYSTEM.md`.
+
 ## Expo Router
 
 O projeto usa Expo Router com as rotas em `src/app`.
@@ -134,7 +136,8 @@ O tema fica em `src/theme` e centraliza os tokens visuais:
 src/theme/
   colors.ts       Paleta e cores semanticas
   typography.ts   Familias, pesos, tamanhos e alturas de linha
-  spacing.ts      Espacamentos, raios e sombras
+  spacing.ts      Espacamentos e sombras
+  borders.ts      Raios e espessuras de borda
   index.ts        Exportacao publica do tema
 ```
 

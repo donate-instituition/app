@@ -1,12 +1,14 @@
-import { semanticColors } from './colors';
-import { radius, shadows, spacing } from './spacing';
-import { typography } from './typography';
+import { borderWidths, radius } from './borders';
+import { palette, semanticColors } from './colors';
+import { shadows, spacing } from './spacing';
+import { fontFamilies, typography } from './typography';
 
 export const theme = {
   colors: semanticColors,
   typography,
   spacing,
   radius,
+  borderWidths,
   shadows,
 } as const;
 
@@ -16,6 +18,8 @@ export const Fonts = typography.family;
 export type AppTheme = typeof theme;
 export type ThemeMode = keyof typeof semanticColors;
 
-export * from './colors';
-export * from './spacing';
-export * from './typography';
+export { palette, semanticColors };
+export type { AppColors, ColorSchemeName } from './colors';
+export { borderWidths, radius };
+export { shadows, spacing };
+export { fontFamilies, typography };

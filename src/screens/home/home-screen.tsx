@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   card: {
-    borderWidth: 1,
+    borderWidth: theme.borderWidths.sm,
     borderRadius: theme.radius.md,
     gap: theme.spacing.sm,
     padding: theme.spacing.lg,
