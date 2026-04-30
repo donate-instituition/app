@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
-import type { AppColors } from '@/src/theme';
-import { theme } from '@/src/theme';
+import type { AppColors } from '@/theme';
+import { theme } from '@/theme';
 
 export type CardVariant = 'elevated' | 'outlined' | 'filled';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';

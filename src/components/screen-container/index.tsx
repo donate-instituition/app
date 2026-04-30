@@ -1,8 +1,8 @@
 import { ScrollView, View, type ScrollViewProps, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useColorScheme } from '@/src/hooks/use-color-scheme';
-import { theme } from '@/src/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { theme } from '@/theme';
 
 import { styles, type ScreenContainerPadding } from './styles';
 

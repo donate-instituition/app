@@ -24,7 +24,7 @@ Use `components/` dentro da pasta do componente apenas para subcomponentes priva
 Componentes compartilhados sao exportados em `src/components/index.ts`:
 
 ```ts
-import { Button, Card, Input } from '@/src/components';
+import { Button, Card, Input } from '@/components';
 ```
 
 ## Button

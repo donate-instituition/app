@@ -1,7 +1,7 @@
 import { View, type ViewProps } from 'react-native';
 
-import { useColorScheme } from '@/src/hooks/use-color-scheme';
-import { theme } from '@/src/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { theme } from '@/theme';
 
 import { styles } from './styles';
 

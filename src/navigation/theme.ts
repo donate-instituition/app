@@ -1,7 +1,7 @@
 import type { Theme } from '@react-navigation/native';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 
-import { Colors } from '@/src/theme';
+import { Colors } from '@/theme';
 
 export const AppNavigationThemes: Record<'light' | 'dark', Theme> = {
   light: {

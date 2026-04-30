@@ -34,6 +34,7 @@ assets/                Imagens e assets estaticos
 
 O design system inicial esta detalhado em `docs/DESIGN_SYSTEM.md`.
 Os componentes reutilizaveis estao documentados em `docs/COMPONENTS.md`.
+A navegacao base esta documentada em `docs/NAVIGATION.md`.
 
 ## Expo Router
 
@@ -94,7 +95,7 @@ src/screens/
 Rotas devem importar telas pelo barrel da feature:
 
 ```ts
-import { CampaignDetailsScreen } from '@/src/screens/campaign-details';
+import { CampaignDetailsScreen } from '@/screens/campaign-details';
 ```
 
 ## Componentes
@@ -126,7 +127,7 @@ export * from './themed-view';
 Importe componentes compartilhados assim:
 
 ```ts
-import { ThemedText, ThemedView } from '@/src/components';
+import { ThemedText, ThemedView } from '@/components';
 ```
 
 ## Tema
@@ -152,7 +153,7 @@ A paleta foi pensada para uma plataforma de doacao:
 Use tokens do tema em vez de valores soltos:
 
 ```ts
-import { theme } from '@/src/theme';
+import { theme } from '@/theme';
 
 const styles = StyleSheet.create({
   card: {
@@ -185,7 +186,7 @@ src/services/api/
 Use o cliente `api` para todas as chamadas HTTP:
 
 ```ts
-import { api } from '@/src/services/api';
+import { api } from '@/services/api';
 
 type Campaign = {
   id: string;
@@ -214,7 +215,7 @@ A URL base vem de `EXPO_PUBLIC_API_URL`. Quando a variavel nao estiver definida,
 Erros de HTTP sao convertidos para `ApiError`, com `status` e `payload`:
 
 ```ts
-import { ApiError } from '@/src/services/api';
+import { ApiError } from '@/services/api';
 
 try {
   await api.get('/campaigns');
@@ -240,7 +241,7 @@ O store atual mantem:
 Exemplo:
 
 ```ts
-import { useAppStore } from '@/src/store';
+import { useAppStore } from '@/store';
 
 const authToken = useAppStore((state) => state.authToken);
 const setAuthToken = useAppStore((state) => state.setAuthToken);
@@ -270,9 +271,9 @@ O projeto usa o alias `@/*`, definido no `tsconfig.json`.
 Padrao recomendado:
 
 ```ts
-import { ThemedText } from '@/src/components';
-import { api } from '@/src/services/api';
-import { theme } from '@/src/theme';
+import { ThemedText } from '@/components';
+import { api } from '@/services/api';
+import { theme } from '@/theme';
 ```
 
 Evite imports relativos longos como:
@@ -312,7 +313,7 @@ src/services/campaigns/
 Rota:
 
 ```ts
-import { CampaignDetailsScreen } from '@/src/screens/campaign-details';
+import { CampaignDetailsScreen } from '@/screens/campaign-details';
 
 export default CampaignDetailsScreen;
 ```

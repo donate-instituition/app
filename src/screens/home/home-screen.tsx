@@ -1,8 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
-import { ThemedText, ThemedView } from '@/src/components';
-import { useColorScheme } from '@/src/hooks/use-color-scheme';
-import { theme } from '@/src/theme';
+import { ThemedText, ThemedView } from '@/components';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { theme } from '@/theme';
 
 export function HomeScreen() {
   const scheme = useColorScheme() ?? 'light';

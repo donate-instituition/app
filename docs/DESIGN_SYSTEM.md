@@ -16,7 +16,7 @@ src/theme/
 Todos os tokens devem ser consumidos a partir de `src/theme`:
 
 ```ts
-import { theme } from '@/src/theme';
+import { theme } from '@/theme';
 ```
 
 ## Cores

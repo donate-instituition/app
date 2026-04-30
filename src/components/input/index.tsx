@@ -1,8 +1,8 @@
 import { TextInput, type TextInputProps, View } from 'react-native';
 
-import { ThemedText } from '@/src/components/themed-text';
-import { useColorScheme } from '@/src/hooks/use-color-scheme';
-import { theme } from '@/src/theme';
+import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { theme } from '@/theme';
 
 import { getInputColors, styles, type InputVariant } from './styles';
 
