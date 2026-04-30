@@ -33,6 +33,7 @@ assets/                Imagens e assets estaticos
 ```
 
 O design system inicial esta detalhado em `docs/DESIGN_SYSTEM.md`.
+Os componentes reutilizaveis estao documentados em `docs/COMPONENTS.md`.
 
 ## Expo Router
 

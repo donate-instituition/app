@@ -73,4 +73,4 @@ export const semanticColors = {
 } as const;
 
 export type ColorSchemeName = keyof typeof semanticColors;
-export type AppColors = typeof semanticColors.light;
+export type AppColors = (typeof semanticColors)[ColorSchemeName];

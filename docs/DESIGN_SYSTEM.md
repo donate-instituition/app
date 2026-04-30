@@ -172,6 +172,21 @@ Use sombras com parcimonia, principalmente em cards, headers fixos ou elementos 
 O design system inicial ja possui:
 
 ```text
+src/components/avatar/
+src/components/button/
+src/components/card/
+src/components/carousel/
+src/components/checkbox/
+src/components/date-picker/
+src/components/divider/
+src/components/empty-state/
+src/components/input/
+src/components/loading/
+src/components/progress-bar/
+src/components/radio-group/
+src/components/screen-container/
+src/components/select/
+src/components/tag/
 src/components/themed-text/
 src/components/themed-view/
 ```
