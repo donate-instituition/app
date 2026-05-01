@@ -35,6 +35,7 @@ assets/                Imagens e assets estaticos
 O design system inicial esta detalhado em `docs/DESIGN_SYSTEM.md`.
 Os componentes reutilizaveis estao documentados em `docs/COMPONENTS.md`.
 A navegacao base esta documentada em `docs/NAVIGATION.md`.
+Os estados visuais de tela estao documentados em `docs/SCREEN_STATES.md`.
 
 ## Expo Router
 

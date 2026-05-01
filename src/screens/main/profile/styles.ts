@@ -10,4 +10,9 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.md,
   },
+  panel: {
+    borderRadius: theme.radius.md,
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+  },
 });

@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { Card, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useAppStore } from '@/store';
 
 import { styles } from './styles';
@@ -26,7 +26,20 @@ export function MessagesScreen() {
               {isAdmin ? 'Log de atualizacao' : 'Instituicao Esperanca'}
             </ThemedText>
             <ThemedText variant="body">Conteudo mockado para validar a navegacao principal.</ThemedText>
+            <Divider />
+            <ThemedText variant="caption">Divider padronizado separando blocos de conteudo.</ThemedText>
           </View>
+        </Card>
+
+        <Card variant="filled">
+          <Loading label={isAdmin ? 'Carregando logs' : 'Carregando conversas'} size="small" />
+        </Card>
+
+        <Card variant="outlined">
+          <EmptyState
+            title={isAdmin ? 'Nenhum log encontrado' : 'Nenhuma conversa encontrada'}
+            description="Exemplo de estado vazio em listagens."
+          />
         </Card>
       </View>
     </ScreenContainer>

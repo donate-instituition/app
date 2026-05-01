@@ -207,6 +207,33 @@ Estado vazio com titulo, descricao, ilustracao opcional e acao.
 />
 ```
 
+## FeedbackState
+
+Estado padronizado para erro, sucesso, aviso e informacao.
+
+```tsx
+<FeedbackState
+  variant="error"
+  title="Nao foi possivel carregar"
+  description="Tente novamente em instantes."
+  primaryAction={<Button>Tentar novamente</Button>}
+/>
+```
+
+## ScreenState
+
+Componente para padronizar loading, vazio, erro, sucesso e conteudo.
+
+```tsx
+<ScreenState
+  loading={isLoading}
+  empty={campaigns.length === 0}
+  error={error ? { title: 'Erro ao carregar campanhas' } : null}
+  emptyState={{ title: 'Nenhuma campanha encontrada' }}>
+  <CampaignList campaigns={campaigns} />
+</ScreenState>
+```
+
 ## Loading
 
 Indicador de carregamento padronizado.

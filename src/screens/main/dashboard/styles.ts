@@ -18,4 +18,12 @@ export const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.md,
   },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  carouselCard: {
+    marginRight: theme.spacing.md,
+  },
 });

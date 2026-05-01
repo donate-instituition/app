@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { Card, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Button, Card, FeedbackState, ScreenContainer, ScreenState, Tag, ThemedText } from '@/components';
 import { useAppStore } from '@/store';
 
 import { styles } from './styles';
@@ -26,6 +26,38 @@ export function DonationsScreen() {
             <ThemedText variant="body">Status: em transito</ThemedText>
           </View>
         </Card>
+
+        <ThemedText variant="subtitle">Estados visuais</ThemedText>
+
+        <Card>
+          <ScreenState loading loadingLabel="Carregando doacoes">
+            <ThemedText>Conteudo carregado</ThemedText>
+          </ScreenState>
+        </Card>
+
+        <Card>
+          <ScreenState
+            empty
+            emptyState={{
+              title: 'Nenhuma doacao encontrada',
+              description: 'Quando houver registros, eles aparecerao aqui.',
+            }}>
+            <ThemedText>Lista de doacoes</ThemedText>
+          </ScreenState>
+        </Card>
+
+        <FeedbackState
+          variant="error"
+          title="Erro ao carregar"
+          description="Exemplo de feedback de erro padronizado."
+          primaryAction={<Button variant="secondary">Tentar novamente</Button>}
+        />
+
+        <FeedbackState
+          variant="success"
+          title="Status atualizado"
+          description="Exemplo de feedback de sucesso apos uma acao."
+        />
       </View>
     </ScreenContainer>
   );

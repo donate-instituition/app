@@ -1,6 +1,14 @@
 import { View } from 'react-native';
 
-import { Card, ProgressBar, ScreenContainer, Tag, ThemedText } from '@/components';
+import {
+  Button,
+  Card,
+  Carousel,
+  ProgressBar,
+  ScreenContainer,
+  Tag,
+  ThemedText,
+} from '@/components';
 import { roleLabels } from '@/navigation/session';
 import { useAppStore } from '@/store';
 
@@ -8,6 +16,23 @@ import { styles } from './styles';
 
 export function DashboardScreen() {
   const user = useAppStore((state) => state.user);
+  const highlights = [
+    {
+      title: 'Campanha do Agasalho',
+      description: '64% da meta arrecadada',
+      progress: 64,
+    },
+    {
+      title: 'Alimentos para familias',
+      description: 'Entrega prevista para sexta-feira',
+      progress: 82,
+    },
+    {
+      title: 'Instituicao em destaque',
+      description: 'Perfil verificado e ativo',
+      progress: 100,
+    },
+  ];
 
   return (
     <ScreenContainer scrollable>
@@ -49,6 +74,35 @@ export function DashboardScreen() {
             </ThemedText>
           </View>
         </Card>
+
+        <View style={styles.section}>
+          <ThemedText variant="subtitle">Vitrine de botoes</ThemedText>
+          <View style={styles.actions}>
+            <Button>Primario</Button>
+            <Button variant="secondary">Secundario</Button>
+            <Button variant="ghost">Fantasma</Button>
+            <Button variant="danger">Perigo</Button>
+            <Button loading>Carregando</Button>
+            <Button disabled>Desabilitado</Button>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText variant="subtitle">Carousel</ThemedText>
+          <Carousel
+            data={highlights}
+            renderItem={({ item }) => (
+              <Card variant="filled" style={styles.carouselCard}>
+                <View style={styles.section}>
+                  <Tag label="Destaque" variant="info" />
+                  <ThemedText variant="subtitle">{item.title}</ThemedText>
+                  <ThemedText variant="body">{item.description}</ThemedText>
+                  <ProgressBar value={item.progress} />
+                </View>
+              </Card>
+            )}
+          />
+        </View>
       </View>
     </ScreenContainer>
   );
