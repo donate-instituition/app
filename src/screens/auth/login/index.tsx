@@ -3,15 +3,43 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Button, Input, ScreenContainer, ThemedText } from '@/components';
+import { Button, Divider, Input, ScreenContainer, Tag, ThemedText } from '@/components';
 import { routes } from '@/navigation/routes';
 import { authService } from '@/services/auth';
 import { ApiError } from '@/services/api';
+import type { SessionUser, UserRole } from '@/navigation/session';
 import { useAppStore } from '@/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
+
+// ─── Dev Helpers ──────────────────────────────────────────────────────────────
+// Removido em produção via __DEV__ do React Native.
+
+const DEV_USERS: { role: UserRole; label: string; user: SessionUser }[] = [
+  {
+    role: 'donor',
+    label: 'Doador',
+    user: { id: 'dev-donor-1', name: 'João Dev', email: 'joao@dev.com', role: 'donor' },
+  },
+  {
+    role: 'institution-staff',
+    label: 'Instituição',
+    user: {
+      id: 'dev-inst-1',
+      name: 'Maria Dev',
+      email: 'maria@inst.dev',
+      role: 'institution-staff',
+      institutionRole: 'admin',
+    },
+  },
+  {
+    role: 'platform-admin',
+    label: 'Admin',
+    user: { id: 'dev-admin-1', name: 'Admin Dev', email: 'admin@dev.com', role: 'platform-admin' },
+  },
+];
 
 function validate(email: string, password: string) {
   const errors: { email?: string; password?: string } = {};
@@ -146,6 +174,34 @@ export function LoginScreen() {
             </ThemedText>
           </Pressable>
         </View>
+
+        {/* Acesso rápido — só visível em desenvolvimento */}
+        {__DEV__ && (
+          <View style={[styles.devBox, { borderColor: colors.accent, backgroundColor: colors.accentSoft }]}>
+            <View style={styles.devHeader}>
+              <Ionicons name="bug-outline" size={14} color={colors.warning} />
+              <ThemedText variant="caption" color={colors.warning} style={styles.linkBold}>
+                Acesso rápido (dev)
+              </ThemedText>
+              <Tag label="DEV" variant="warning" />
+            </View>
+            <Divider />
+            <View style={styles.devButtons}>
+              {DEV_USERS.map((entry, index) => (
+                <Button
+                  key={entry.role}
+                  variant={index === 0 ? 'primary' : 'secondary'}
+                  size="sm"
+                  onPress={() => {
+                    setSession(`dev-token-${entry.role}`, entry.user);
+                    router.replace(routes.appDashboard);
+                  }}>
+                  {entry.label}
+                </Button>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
     </ScreenContainer>
   );

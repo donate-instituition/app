@@ -45,5 +45,22 @@ export const styles = StyleSheet.create({
   linkBold: {
     fontWeight: '600',
   },
+  // Dev-only
+  devBox: {
+    borderWidth: 1,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    gap: theme.spacing.md,
+  },
+  devHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  devButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    flexWrap: 'wrap',
+  },
 });
 
