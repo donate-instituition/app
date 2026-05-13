@@ -23,6 +23,9 @@ export const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
   },
+  subtitle: {
+    textAlign: 'center',
+  },
   form: {
     gap: theme.spacing.md,
   },
@@ -32,9 +35,6 @@ export const styles = StyleSheet.create({
   },
   apiError: {
     textAlign: 'center',
-  },
-  forgotLink: {
-    alignSelf: 'flex-end',
   },
   footer: {
     flexDirection: 'row',
@@ -46,4 +46,3 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

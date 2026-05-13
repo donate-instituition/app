@@ -1,82 +1,153 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 
-import { Button, Card, Input, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Button, Input, ScreenContainer, ThemedText } from '@/components';
 import { routes } from '@/navigation/routes';
-import { roleLabels, type UserRole } from '@/navigation/session';
+import { authService } from '@/services/auth';
+import { ApiError } from '@/services/api';
 import { useAppStore } from '@/store';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { theme } from '@/theme';
 
 import { styles } from './styles';
 
-const loginOptions: {
-  role: UserRole;
-  title: string;
-  description: string;
-  email: string;
-}[] = [
-  {
-    role: 'donor',
-    title: roleLabels.donor,
-    description: 'Acesso para doadores, campanhas, chat e acompanhamento de doacoes.',
-    email: 'joao@email.com',
-  },
-  {
-    role: 'institution-staff',
-    title: roleLabels['institution-staff'],
-    description: 'Acesso para campanhas, doacoes recebidas e gestao da instituicao.',
-    email: 'instituicao@email.com',
-  },
-  {
-    role: 'platform-admin',
-    title: roleLabels['platform-admin'],
-    description: 'Acesso administrativo para moderacao, usuarios e configuracoes.',
-    email: 'admin@elodoar.com',
-  },
-];
+function validate(email: string, password: string) {
+  const errors: { email?: string; password?: string } = {};
+  if (!email.trim()) errors.email = 'E-mail é obrigatório.';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+    errors.email = 'Informe um e-mail válido.';
+  if (!password) errors.password = 'Senha é obrigatória.';
+  return errors;
+}
 
 export function LoginScreen() {
-  const loginAs = useAppStore((state) => state.loginAs);
+  const setSession = useAppStore((state) => state.setSession);
   const router = useRouter();
+  const scheme = useColorScheme() ?? 'light';
+  const colors = theme.colors[scheme];
 
-  function handleLogin(role: UserRole) {
-    loginAs(role);
-    router.replace(routes.appDashboard);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [apiError, setApiError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit() {
+    setApiError('');
+    const errors = validate(email, password);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setLoading(true);
+    try {
+      const { token, user } = await authService.login({ email: email.trim(), password });
+      setSession(token, user);
+      router.replace(routes.appDashboard);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setApiError('E-mail ou senha incorretos.');
+      } else {
+        setApiError('Não foi possível conectar. Tente novamente.');
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
+        {/* Branding */}
         <View style={styles.header}>
-          <Tag label="Acesso mockado" variant="info" />
-          <ThemedText variant="title">Entrar no EloDoar</ThemedText>
-          <ThemedText variant="body">
-            Escolha um perfil para simular a autenticacao enquanto o backend ainda nao esta
-            integrado.
+          <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name="heart" size={32} color={colors.primary} />
+          </View>
+          <ThemedText variant="title" style={styles.title}>
+            Entrar no EloDoar
+          </ThemedText>
+          <ThemedText variant="body" color={colors.textMuted}>
+            Bem-vindo de volta. Informe suas credenciais para continuar.
           </ThemedText>
         </View>
 
-        <Card variant="outlined">
-          <View style={styles.form}>
-            <Input label="Email ou CPF/CNPJ" value="mock@elodoar.com" editable={false} />
-            <Input label="Senha" value="********" editable={false} secureTextEntry />
-          </View>
-        </Card>
+        {/* Form */}
+        <View style={styles.form}>
+          <Input
+            label="E-mail"
+            value={email}
+            onChangeText={(v) => {
+              setEmail(v);
+              setFieldErrors((e) => ({ ...e, email: undefined }));
+            }}
+            error={fieldErrors.email}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="seu@email.com"
+            returnKeyType="next"
+          />
 
-        <View style={styles.roleList}>
-          {loginOptions.map((option) => (
-            <Card key={option.role} variant="filled">
-              <View style={styles.form}>
-                <View>
-                  <ThemedText variant="subtitle">{option.title}</ThemedText>
-                  <ThemedText variant="caption">{option.email}</ThemedText>
-                </View>
-                <ThemedText variant="body">{option.description}</ThemedText>
-                <Button onPress={() => handleLogin(option.role)}>{`Entrar como ${option.title}`}</Button>
-              </View>
-            </Card>
-          ))}
+          <Input
+            label="Senha"
+            value={password}
+            onChangeText={(v) => {
+              setPassword(v);
+              setFieldErrors((e) => ({ ...e, password: undefined }));
+            }}
+            error={fieldErrors.password}
+            secureTextEntry={!showPassword}
+            placeholder="Sua senha"
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
+            rightSlot={
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                style={styles.eyeButton}
+                accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.icon}
+                />
+              </Pressable>
+            }
+          />
+
+          {apiError ? (
+            <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
+              {apiError}
+            </ThemedText>
+          ) : null}
+
+          <Pressable
+            onPress={() => router.push(routes.authForgotPassword)}
+            style={styles.forgotLink}>
+            <ThemedText variant="caption" color={colors.primary}>
+              Esqueci minha senha
+            </ThemedText>
+          </Pressable>
+
+          <Button fullWidth loading={loading} onPress={handleSubmit}>
+            Entrar
+          </Button>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <ThemedText variant="caption" color={colors.textMuted}>
+            Ainda não tem conta?
+          </ThemedText>
+          <Pressable onPress={() => router.push(routes.authRegister)}>
+            <ThemedText variant="caption" color={colors.primary} style={styles.linkBold}>
+              Criar conta
+            </ThemedText>
+          </Pressable>
         </View>
       </View>
     </ScreenContainer>
   );
 }
+

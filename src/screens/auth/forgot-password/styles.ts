@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
-  logoMark: {
+  iconCircle: {
     width: 64,
     height: 64,
     borderRadius: theme.radius.pill,
@@ -23,27 +23,33 @@ export const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
   },
+  subtitle: {
+    textAlign: 'center',
+  },
   form: {
     gap: theme.spacing.md,
-  },
-  eyeButton: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
   },
   apiError: {
     textAlign: 'center',
   },
-  forgotLink: {
-    alignSelf: 'flex-end',
-  },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
+    alignItems: 'center',
     paddingBottom: theme.spacing.lg,
+  },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
   },
   linkBold: {
     fontWeight: '600',
   },
+  // Success state
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xl,
+    paddingVertical: theme.spacing['2xl'],
+  },
 });
-
