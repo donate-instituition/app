@@ -16,9 +16,11 @@ export default function AppLayout() {
       {/* Tabs — tela base */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-      {/* Detalhes — empilhados sobre as tabs, sem tab bar */}
+      {/* Detalhes e fluxos — empilhados sobre as tabs, sem tab bar */}
       <Stack.Screen name="campaign/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="campaign/[id]/donate" options={{ headerShown: false }} />
       <Stack.Screen name="institution/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="chat/[conversationId]" options={{ headerShown: false }} />
     </Stack>
   );
 }

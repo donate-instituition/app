@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService, type Campaign } from '@/services/campaigns';
+import { chatService } from '@/services/chat';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -200,7 +201,14 @@ export function InstitutionDetailScreen() {
         <Button
           variant="primary"
           style={styles.actionButton}
-          leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.surface} />}>
+          leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.surface} />}
+          onPress={() => {
+            const conversationId = chatService.ensureConversation(
+              institution.id,
+              institution.name
+            );
+            router.push(routes.appChat(conversationId));
+          }}>
           Conversar com a Instituição
         </Button>
       </View>

@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService } from '@/services/campaigns';
+import { chatService } from '@/services/chat';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -197,13 +198,20 @@ export function CampaignDetailScreen() {
             variant="secondary"
             style={styles.actionButton}
             leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.primary} />}
-            onPress={() => router.push(routes.appInstitutionDetail(campaign.institutionId))}>
+            onPress={() => {
+              const conversationId = chatService.ensureConversation(
+                campaign.institutionId,
+                campaign.institution
+              );
+              router.push(routes.appChat(conversationId));
+            }}>
             Conversar
           </Button>
           <Button
             variant="primary"
             style={styles.actionButton}
-            leftSlot={<Ionicons name="heart-outline" size={16} color={colors.surface} />}>
+            leftSlot={<Ionicons name="heart-outline" size={16} color={colors.surface} />}
+            onPress={() => router.push(routes.appDonate(campaign.id))}>
             Fazer Doação
           </Button>
         </View>

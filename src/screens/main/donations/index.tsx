@@ -1,85 +1,142 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useCallback } from 'react';
 import { View } from 'react-native';
 
-import { Card, Divider, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useFetch } from '@/hooks/use-fetch';
+import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
+import { useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
 
-const donationHistory = [
-  { id: '1', campaign: 'Campanha do Agasalho', institution: 'Instituto Esperança', amount: 'R$ 50,00', date: '10 mai 2026', status: 'Entregue' },
-  { id: '2', campaign: 'Alimentação Solidária', institution: 'Casa do Pão', amount: 'R$ 30,00', date: '02 mai 2026', status: 'Em andamento' },
-  { id: '3', campaign: 'Material Escolar 2026', institution: 'Educação Viva', amount: 'R$ 80,00', date: '15 abr 2026', status: 'Entregue' },
-  { id: '4', campaign: 'Cestas de Inverno', institution: 'Lar Aconchego', amount: 'R$ 45,00', date: '01 abr 2026', status: 'Cancelada' },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getStatusVariant(status: string) {
-  if (status === 'Entregue') return 'success' as const;
-  if (status === 'Em andamento') return 'warning' as const;
-  if (status === 'Cancelada') return 'danger' as const;
-  return 'neutral' as const;
+type TagVariant = 'success' | 'warning' | 'danger' | 'neutral';
+
+function getStatusVariant(status: DonationStatus): TagVariant {
+  switch (status) {
+    case 'completed': return 'success';
+    case 'processing': return 'warning';
+    case 'pending': return 'warning';
+    case 'failed': return 'danger';
+    case 'cancelled': return 'danger';
+    default: return 'neutral';
+  }
 }
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function sumCents(donations: Donation[]): string {
+  const total = donations.reduce((acc, d) => acc + d.amountCents, 0);
+  return `R$ ${(total / 100).toFixed(2).replace('.', ',')}`;
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function DonationsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const authToken = useAppStore((state) => state.authToken);
+
+  // TODO: when backend is ready, replace donationsService.listMyDonations with a useQuery call
+  const fetcher = useCallback(
+    () => donationsService.listMyDonations(authToken),
+    [authToken]
+  );
+  const { data: donations, loading, error, refetch } = useFetch(fetcher);
+
+  const completedDonations = donations?.filter((d) => d.status === 'completed') ?? [];
+  const totalDonated = donations ? sumCents(completedDonations) : 'R$ 0,00';
+  const campaignsSupported = new Set(donations?.map((d) => d.campaignId)).size;
 
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
 
-        {/* Métricas resumidas */}
+        {/* Metrics */}
         <View style={styles.metricsGrid}>
           <Card style={styles.metricCard}>
             <Ionicons name="heart" size={24} color={colors.secondary} />
-            <ThemedText variant="title">R$ 205</ThemedText>
+            <ThemedText variant="title">{loading ? '—' : totalDonated}</ThemedText>
             <ThemedText variant="caption" color={colors.textMuted}>
               Total doado
             </ThemedText>
           </Card>
           <Card style={styles.metricCard}>
             <Ionicons name="megaphone" size={24} color={colors.primary} />
-            <ThemedText variant="title">4</ThemedText>
+            <ThemedText variant="title">{loading ? '—' : campaignsSupported}</ThemedText>
             <ThemedText variant="caption" color={colors.textMuted}>
               Campanhas apoiadas
             </ThemedText>
           </Card>
         </View>
 
-        {/* Histórico */}
+        {/* History */}
         <View style={styles.section}>
           <ThemedText variant="subtitle">Histórico</ThemedText>
-          <Card>
-            {donationHistory.map((item, index) => (
-              <View key={item.id}>
-                <View style={styles.donationItem}>
-                  <View style={styles.donationInfo}>
-                    <ThemedText variant="body" style={styles.bold}>
-                      {item.campaign}
-                    </ThemedText>
-                    <ThemedText variant="caption" color={colors.textMuted}>
-                      {item.institution}
-                    </ThemedText>
-                    <ThemedText variant="caption" color={colors.textMuted}>
-                      {item.date}
-                    </ThemedText>
+
+          {loading && <Loading label="Carregando doações..." />}
+
+          {error && (
+            <EmptyState
+              title="Não foi possível carregar"
+              description={error}
+              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+              action={
+                <Button variant="secondary" size="sm" onPress={refetch}>
+                  Tentar novamente
+                </Button>
+              }
+            />
+          )}
+
+          {!loading && !error && (!donations || donations.length === 0) && (
+            <EmptyState
+              title="Nenhuma doação ainda"
+              description="Suas doações aparecerão aqui assim que você contribuir com uma campanha."
+              illustration={<Ionicons name="heart-outline" size={56} color={colors.border} />}
+            />
+          )}
+
+          {!loading && !error && donations && donations.length > 0 && (
+            <Card>
+              {donations.map((item, index) => (
+                <View key={item.id}>
+                  <View style={styles.donationItem}>
+                    <View style={styles.donationInfo}>
+                      <ThemedText variant="body" style={styles.bold}>
+                        {item.campaignTitle}
+                      </ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>
+                        {item.institutionName}
+                      </ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>
+                        {formatDate(item.createdAt)}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.donationRight}>
+                      <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                        {item.amountFormatted}
+                      </ThemedText>
+                      <Tag
+                        label={donationStatusLabels[item.status]}
+                        variant={getStatusVariant(item.status)}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.donationRight}>
-                    <ThemedText variant="body" color={colors.primary} style={styles.bold}>
-                      {item.amount}
-                    </ThemedText>
-                    <Tag label={item.status} variant={getStatusVariant(item.status)} />
-                  </View>
+                  {index < donations.length - 1 && <Divider />}
                 </View>
-                {index < donationHistory.length - 1 && <Divider />}
-              </View>
-            ))}
-          </Card>
+              ))}
+            </Card>
+          )}
         </View>
 
       </View>
     </ScreenContainer>
   );
 }
-

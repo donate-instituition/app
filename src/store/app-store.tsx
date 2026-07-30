@@ -1,6 +1,9 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 import type { SessionUser } from '@/navigation/session';
+import { persistStorage } from '@/services/storage';
+
 
 type AppStore = {
   authToken: string | null;
@@ -18,10 +21,23 @@ const initialState = {
   selectedCampaignId: null,
 };
 
-export const useAppStore = create<AppStore>((set) => ({
-  ...initialState,
-  setSession: (token, user) => set({ authToken: token, user }),
-  logout: () => set(initialState),
-  selectCampaign: (selectedCampaignId) => set({ selectedCampaignId }),
-  reset: () => set(initialState),
-}));
+export const useAppStore = create<AppStore>()(
+  persist(
+    (set) => ({
+      ...initialState,
+      setSession: (token, user) => set({ authToken: token, user }),
+      logout: () => set(initialState),
+      selectCampaign: (selectedCampaignId) => set({ selectedCampaignId }),
+      reset: () => set(initialState),
+    }),
+    {
+      name: 'elodoar-session',
+      storage: createJSONStorage(() => persistStorage),
+      // Only persist auth data; selectedCampaignId is navigation state
+      partialize: (state) => ({
+        authToken: state.authToken,
+        user: state.user,
+      }),
+    }
+  )
+);

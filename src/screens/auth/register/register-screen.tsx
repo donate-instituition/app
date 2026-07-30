@@ -4,42 +4,60 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, Input, ScreenContainer, ThemedText } from '@/components';
-import { routes } from '@/navigation/routes';
-import { authService } from '@/services/auth';
 import { ApiError } from '@/services/api';
+import { authService } from '@/services/auth';
 import { useAppStore } from '@/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { routes } from '@/navigation/routes';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type FieldErrors = {
   name?: string;
   email?: string;
-  document?: string;
   password?: string;
   confirmPassword?: string;
 };
 
+// ─── Validation ───────────────────────────────────────────────────────────────
+
 function validate(
   name: string,
   email: string,
-  document: string,
   password: string,
   confirmPassword: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
-  if (!name.trim()) errors.name = 'Nome é obrigatório.';
-  if (!email.trim()) errors.email = 'E-mail é obrigatório.';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+
+  if (!name.trim()) {
+    errors.name = 'Nome é obrigatório.';
+  }
+
+  if (!email.trim()) {
+    errors.email = 'E-mail é obrigatório.';
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     errors.email = 'Informe um e-mail válido.';
-  if (!document.trim()) errors.document = 'CPF ou CNPJ é obrigatório.';
-  if (!password) errors.password = 'Senha é obrigatória.';
-  else if (password.length < 6) errors.password = 'Mínimo de 6 caracteres.';
-  if (!confirmPassword) errors.confirmPassword = 'Confirme sua senha.';
-  else if (confirmPassword !== password) errors.confirmPassword = 'As senhas não coincidem.';
+  }
+
+  if (!password) {
+    errors.password = 'Senha é obrigatória.';
+  } else if (password.length < 8) {
+    errors.password = 'Mínimo de 8 caracteres.';
+  }
+
+  if (!confirmPassword) {
+    errors.confirmPassword = 'Confirme sua senha.';
+  } else if (confirmPassword !== password) {
+    errors.confirmPassword = 'As senhas não coincidem.';
+  }
+
   return errors;
 }
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function RegisterScreen() {
   const setSession = useAppStore((state) => state.setSession);
@@ -49,7 +67,6 @@ export function RegisterScreen() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [document, setDocument] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -64,16 +81,16 @@ export function RegisterScreen() {
 
   async function handleSubmit() {
     setApiError('');
-    const errors = validate(name, email, document, password, confirmPassword);
+    const errors = validate(name, email, password, confirmPassword);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
     try {
+      // TODO: when backend is ready, this call is already wired — just update EXPO_PUBLIC_API_URL
       const { token, user } = await authService.register({
         name: name.trim(),
         email: email.trim(),
-        document: document.trim(),
         password,
       });
       setSession(token, user);
@@ -92,6 +109,7 @@ export function RegisterScreen() {
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
+
         {/* Header */}
         <View style={styles.header}>
           <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
@@ -110,10 +128,7 @@ export function RegisterScreen() {
           <Input
             label="Nome completo"
             value={name}
-            onChangeText={(v) => {
-              setName(v);
-              clearFieldError('name');
-            }}
+            onChangeText={(v) => { setName(v); clearFieldError('name'); }}
             error={fieldErrors.name}
             autoCapitalize="words"
             placeholder="Seu nome completo"
@@ -123,10 +138,7 @@ export function RegisterScreen() {
           <Input
             label="E-mail"
             value={email}
-            onChangeText={(v) => {
-              setEmail(v);
-              clearFieldError('email');
-            }}
+            onChangeText={(v) => { setEmail(v); clearFieldError('email'); }}
             error={fieldErrors.email}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -136,28 +148,12 @@ export function RegisterScreen() {
           />
 
           <Input
-            label="CPF / CNPJ"
-            value={document}
-            onChangeText={(v) => {
-              setDocument(v);
-              clearFieldError('document');
-            }}
-            error={fieldErrors.document}
-            keyboardType="numeric"
-            placeholder="Somente números"
-            returnKeyType="next"
-          />
-
-          <Input
             label="Senha"
             value={password}
-            onChangeText={(v) => {
-              setPassword(v);
-              clearFieldError('password');
-            }}
+            onChangeText={(v) => { setPassword(v); clearFieldError('password'); }}
             error={fieldErrors.password}
             secureTextEntry={!showPassword}
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mínimo 8 caracteres"
             returnKeyType="next"
             rightSlot={
               <Pressable
@@ -176,10 +172,7 @@ export function RegisterScreen() {
           <Input
             label="Confirmar senha"
             value={confirmPassword}
-            onChangeText={(v) => {
-              setConfirmPassword(v);
-              clearFieldError('confirmPassword');
-            }}
+            onChangeText={(v) => { setConfirmPassword(v); clearFieldError('confirmPassword'); }}
             error={fieldErrors.confirmPassword}
             secureTextEntry={!showConfirm}
             placeholder="Repita a senha"
@@ -221,6 +214,7 @@ export function RegisterScreen() {
             </ThemedText>
           </Pressable>
         </View>
+
       </View>
     </ScreenContainer>
   );

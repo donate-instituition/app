@@ -1,4 +1,6 @@
-import { Image, View, type ImageSourcePropType, type ViewProps } from 'react-native';
+import { Image, type ImageSource } from 'expo-image';
+import { View, type ViewProps } from 'react-native';
+
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -7,10 +9,11 @@ import { theme } from '@/theme';
 import { avatarSizes, styles, type AvatarSize } from './styles';
 
 type AvatarProps = ViewProps & {
-  source?: ImageSourcePropType;
+  source?: ImageSource;
   name?: string;
   size?: AvatarSize;
 };
+
 
 function getInitials(name?: string) {
   if (!name) {

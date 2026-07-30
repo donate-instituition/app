@@ -18,9 +18,9 @@ type LoginResponse = {
 type RegisterRequest = {
   name: string;
   email: string;
-  document: string;
   password: string;
 };
+
 
 type RegisterResponse = {
   token: string;

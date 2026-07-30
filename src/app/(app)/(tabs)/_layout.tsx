@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
+import { useChatUnread } from '@/hooks/use-chat-unread';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAppStore } from '@/store';
 import { theme } from '@/theme';
@@ -47,6 +48,7 @@ export default function TabsLayout() {
   const user = useAppStore((state) => state.user);
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const unreadCount = useChatUnread();
 
   const tabs =
     user?.role === 'platform-admin'
@@ -76,6 +78,8 @@ export default function TabsLayout() {
             name={name}
             options={{
               title: tab.title,
+              tabBarBadge: name === 'messages' && unreadCount > 0 ? unreadCount : undefined,
+              tabBarBadgeStyle: { backgroundColor: colors.primary },
               tabBarIcon: ({ color, size, focused }) => (
                 <Ionicons
                   name={focused ? tab.activeIcon : tab.icon}
