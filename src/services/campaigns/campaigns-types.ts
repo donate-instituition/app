@@ -45,6 +45,15 @@ export type InstitutionDetail = Institution & {
   campaigns: Campaign[];
 };
 
+export type PendingInstitution = Institution & {
+  cnpj: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  status: 'PENDING_APPROVAL' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
+  createdAt?: string;
+};
+
 export type CampaignFilters = {
   search?: string;
   category?: CampaignCategory | 'Todos';

@@ -23,7 +23,9 @@ import {
   type CampaignCategory,
   type CampaignFilters,
   type Institution,
+  type PendingInstitution,
 } from '@/services/campaigns';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -161,6 +163,8 @@ function InstitutionCard({ item, onPress }: InstitutionCardProps) {
 export function CampaignsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
 
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('campaigns');
@@ -170,19 +174,29 @@ export function CampaignsScreen() {
   // Memoised fetchers — change when filters change
   const campaignFetcher = useCallback<() => Promise<Campaign[]>>(
     () => {
+      if (activeRole === 'platform-admin') return Promise.resolve([]);
       const filters: CampaignFilters = { search, category: activeCategory };
       return campaignsService.listCampaigns(filters);
     },
-    [search, activeCategory]
+    [activeRole, search, activeCategory]
   );
 
   const institutionFetcher = useCallback(
-    () => campaignsService.listInstitutions({ search }),
-    [search]
+    () => {
+      if (activeRole === 'platform-admin') return Promise.resolve([]);
+      return campaignsService.listInstitutions({ search });
+    },
+    [activeRole, search]
   );
 
   const campaigns = useFetch(campaignFetcher);
   const institutions = useFetch(institutionFetcher);
+  const adminInstitutions = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'platform-admin') return Promise.resolve([]);
+      return campaignsService.listAdminInstitutions(authToken);
+    }, [activeRole, authToken])
+  );
 
   const active = mode === 'campaigns' ? campaigns : institutions;
   const count = active.data?.length ?? 0;
@@ -249,6 +263,85 @@ export function CampaignsScreen() {
   }
 
   // ─── JSX ──────────────────────────────────────────────────────────────────
+
+  if (activeRole === 'platform-admin') {
+    const data = adminInstitutions.data as PendingInstitution[] | null;
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <View style={styles.section}>
+            <ThemedText variant="title">Instituições</ThemedText>
+            <ThemedText variant="body" color={colors.textMuted}>
+              Cadastros, validações e status das instituições.
+            </ThemedText>
+          </View>
+
+          {adminInstitutions.loading && <Loading label="Carregando instituições..." />}
+
+          {adminInstitutions.error && (
+            <EmptyState
+              title="Não foi possível carregar"
+              description={adminInstitutions.error}
+              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+              action={<Button variant="secondary" size="sm" onPress={adminInstitutions.refetch}>Tentar novamente</Button>}
+            />
+          )}
+
+          {!adminInstitutions.loading && !adminInstitutions.error && (
+            <View style={styles.list}>
+              {(data ?? []).map((item) => (
+                <Card key={item.id} variant="outlined">
+                  <View style={styles.institutionCard}>
+                    <View style={styles.cardHeader}>
+                      <Tag
+                        label={
+                          item.status === 'ACTIVE'
+                            ? 'Aprovada'
+                            : item.status === 'REJECTED'
+                              ? 'Rejeitada'
+                              : 'Pendente'
+                        }
+                        variant={item.status === 'ACTIVE' ? 'success' : item.status === 'REJECTED' ? 'danger' : 'warning'}
+                      />
+                    </View>
+                    <ThemedText variant="subtitle">{item.name}</ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>
+                      CNPJ {item.cnpj}
+                    </ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>
+                      {item.email}
+                    </ThemedText>
+                    {item.status === 'PENDING_APPROVAL' ? (
+                      <View style={styles.adminActions}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onPress={async () => {
+                            await campaignsService.rejectInstitution(item.id, authToken);
+                            adminInstitutions.refetch();
+                          }}>
+                          Rejeitar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onPress={async () => {
+                            await campaignsService.approveInstitution(item.id, authToken);
+                            adminInstitutions.refetch();
+                          }}>
+                          Aprovar
+                        </Button>
+                      </View>
+                    ) : null}
+                  </View>
+                </Card>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer scrollable>

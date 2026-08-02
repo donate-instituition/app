@@ -93,6 +93,11 @@ export const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.md,
   },
+  adminActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'flex-end',
+    marginTop: theme.spacing.sm,
+  },
 });
-
 

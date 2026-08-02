@@ -7,4 +7,5 @@ export type {
   Institution,
   InstitutionDetail,
   InstitutionFilters,
+  PendingInstitution,
 } from './campaigns-types';
