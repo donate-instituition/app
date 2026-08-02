@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Loading, ProgressBar, ScreenContainer, ThemedText } from '@/components';
 import { useFetch } from '@/hooks/use-fetch';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { routes } from '@/navigation/routes';
+import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { campaignsService } from '@/services/campaigns';
 import { donationsService } from '@/services/donations';
-import { useAppStore } from '@/store';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { PRESET_AMOUNTS, styles } from './styles';
@@ -37,6 +37,7 @@ export function DonateScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
 
   // ─── Campaign data ───────────────────────────────────────────────────────
   const fetcher = useCallback(() => campaignsService.getCampaignById(id), [id]);
@@ -127,7 +128,7 @@ export function DonateScreen() {
             <Button
               fullWidth
               variant="secondary"
-              onPress={() => router.replace(routes.appDashboard)}>
+              onPress={() => router.replace(getHomeRouteForRole(activeRole))}>
               Ir para o início
             </Button>
           </View>

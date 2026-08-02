@@ -13,10 +13,15 @@ export default function AppLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Tabs — tela base */}
+      {/* Rotas legadas: mantidas só para redirecionar pelo perfil logado. */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-      {/* Detalhes e fluxos — empilhados sobre as tabs, sem tab bar */}
+      {/* Áreas autenticadas por tipo de usuário. */}
+      <Stack.Screen name="donor" options={{ headerShown: false }} />
+      <Stack.Screen name="institution" options={{ headerShown: false }} />
+      <Stack.Screen name="admin" options={{ headerShown: false }} />
+
+      {/* Detalhes e fluxos compartilhados — empilhados sobre as tabs, sem tab bar. */}
       <Stack.Screen name="campaign/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="campaign/[id]/donate" options={{ headerShown: false }} />
       <Stack.Screen name="institution/[id]" options={{ headerShown: false }} />

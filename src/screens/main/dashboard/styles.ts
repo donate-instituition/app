@@ -78,6 +78,17 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.xs,
   },
+  adminInstitution: {
+    gap: theme.spacing.md,
+  },
+  adminInstitutionInfo: {
+    gap: theme.spacing.xxs,
+  },
+  adminActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'flex-end',
+  },
   bold: {
     fontWeight: '600',
   },
@@ -95,4 +106,3 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
 });
-

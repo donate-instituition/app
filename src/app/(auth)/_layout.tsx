@@ -1,13 +1,14 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { routes } from '@/navigation/routes';
-import { useAppStore } from '@/store';
+import { getHomeRouteForRole } from '@/navigation/routes';
+import { useActiveRole, useAppStore } from '@/store';
 
 export default function AuthLayout() {
   const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
 
   if (authToken) {
-    return <Redirect href={routes.appDashboard} />;
+    return <Redirect href={getHomeRouteForRole(activeRole)} />;
   }
 
   return (
@@ -18,4 +19,3 @@ export default function AuthLayout() {
     </Stack>
   );
 }
-

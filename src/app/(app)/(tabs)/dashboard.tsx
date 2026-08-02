@@ -1,3 +1,10 @@
-import { DashboardScreen } from '@/screens/main/dashboard/index';
+import { Redirect } from 'expo-router';
 
-export default DashboardScreen;
+import { getHomeRouteForRole } from '@/navigation/routes';
+import { useActiveRole } from '@/store';
+
+export default function LegacyDashboardRoute() {
+  const activeRole = useActiveRole();
+
+  return <Redirect href={getHomeRouteForRole(activeRole)} />;
+}

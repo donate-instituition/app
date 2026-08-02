@@ -21,6 +21,23 @@ export const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.md,
   },
+  roleSwitcher: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  roleOption: {
+    alignItems: 'center',
+    borderRadius: theme.radius.md,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    minHeight: 38,
+    paddingHorizontal: theme.spacing.md,
+  },
+  settingsError: {
+    marginTop: theme.spacing.sm,
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -32,4 +49,3 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

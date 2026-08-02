@@ -10,6 +10,7 @@ import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService } from '@/services/campaigns';
 import { chatService } from '@/services/chat';
+import { useActiveRole } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -26,6 +27,7 @@ export function CampaignDetailScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const insets = useSafeAreaInsets();
+  const activeRole = useActiveRole();
 
   const fetcher = useCallback(() => campaignsService.getCampaignById(id), [id]);
   const { data: campaign, loading, error, refetch } = useFetch(fetcher);
@@ -189,7 +191,7 @@ export function CampaignDetailScreen() {
       </ScrollView>
 
       {/* Action bar fixa */}
-      {campaign.active && (
+      {campaign.active && activeRole === 'donor' && (
         <View style={[
           styles.actionBar,
           { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 16) }

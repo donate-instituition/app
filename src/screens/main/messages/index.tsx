@@ -8,7 +8,9 @@ import { Avatar, Button, Divider, EmptyState, Loading, ScreenContainer, ThemedTe
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
+import { adminService, type AuditLog } from '@/services/admin';
 import { chatService } from '@/services/chat';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -28,21 +30,98 @@ function formatRelativeTime(iso: string): string {
   return date.toLocaleDateString('pt-BR', { weekday: 'short' });
 }
 
+function formatAuditAction(action: string) {
+  const labels: Record<string, string> = {
+    'institution.approve': 'Instituição aprovada',
+    'institution.reject': 'Instituição rejeitada',
+  };
+
+  return labels[action] ?? action;
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function MessagesScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const router = useRouter();
+  const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
 
-  const fetcher = useCallback(() => chatService.listConversations(), []);
+  const fetcher = useCallback(() => {
+    if (activeRole === 'platform-admin') return Promise.resolve([]);
+    return chatService.listConversations();
+  }, [activeRole]);
   const { data: conversations, loading, error, refetch } = useFetch(fetcher);
+  const auditLogs = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'platform-admin') return Promise.resolve([]);
+      return adminService.listAuditLogs(authToken);
+    }, [activeRole, authToken])
+  );
 
   useFocusEffect(
     useCallback(() => {
       void refetch();
     }, [refetch])
   );
+
+  if (activeRole === 'platform-admin') {
+    const logs = (auditLogs.data ?? []) as AuditLog[];
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <ThemedText variant="title">Auditoria</ThemedText>
+          <ThemedText variant="body" color={colors.textMuted}>
+            Histórico recente de ações administrativas.
+          </ThemedText>
+
+          {auditLogs.loading && <Loading label="Carregando auditoria..." />}
+
+          {auditLogs.error && (
+            <EmptyState
+              title="Não foi possível carregar"
+              description={auditLogs.error}
+              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+              action={<Button variant="secondary" onPress={auditLogs.refetch}>Tentar novamente</Button>}
+            />
+          )}
+
+          {!auditLogs.loading && !auditLogs.error && logs.length === 0 && (
+            <EmptyState
+              title="Nenhum evento ainda"
+              description="Ações administrativas aparecerão aqui."
+              illustration={<Ionicons name="shield-outline" size={56} color={colors.border} />}
+            />
+          )}
+
+          {!auditLogs.loading && !auditLogs.error && logs.length > 0 && (
+            <View>
+              {logs.map((item, index) => (
+                <View key={item.id}>
+                  <View style={styles.conversationItem}>
+                    <View style={[styles.badge, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons name="shield-checkmark-outline" size={14} color={colors.primary} />
+                    </View>
+                    <View style={styles.conversationContent}>
+                      <ThemedText variant="body" style={styles.bold}>
+                        {formatAuditAction(item.action)}
+                      </ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>
+                        {item.targetType} · {item.createdAt ? formatRelativeTime(item.createdAt) : 'Agora'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {index < logs.length - 1 && <Divider />}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>

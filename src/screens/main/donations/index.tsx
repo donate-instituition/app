@@ -5,8 +5,9 @@ import { View } from 'react-native';
 import { Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
+import { adminService, type AdminUser } from '@/services/admin';
 import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
-import { useAppStore } from '@/store';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -42,17 +43,101 @@ export function DonationsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
 
-  // TODO: when backend is ready, replace donationsService.listMyDonations with a useQuery call
   const fetcher = useCallback(
-    () => donationsService.listMyDonations(authToken),
-    [authToken]
+    () => {
+      if (activeRole === 'platform-admin') return Promise.resolve([]);
+      return donationsService.listMyDonations(authToken);
+    },
+    [activeRole, authToken]
   );
   const { data: donations, loading, error, refetch } = useFetch(fetcher);
+  const adminUsers = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'platform-admin') return Promise.resolve([]);
+      return adminService.listUsers(authToken);
+    }, [activeRole, authToken])
+  );
 
   const completedDonations = donations?.filter((d) => d.status === 'completed') ?? [];
   const totalDonated = donations ? sumCents(completedDonations) : 'R$ 0,00';
   const campaignsSupported = new Set(donations?.map((d) => d.campaignId)).size;
+
+  if (activeRole === 'platform-admin') {
+    const users = (adminUsers.data ?? []) as AdminUser[];
+    const donorsCount = users.filter((item) => item.roles?.some((role) => role.name === 'DONOR')).length;
+    const institutionStaffCount = users.filter((item) => item.roles?.some((role) => role.name === 'INSTITUTION_STAFF')).length;
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <View style={styles.metricsGrid}>
+            <Card style={styles.metricCard}>
+              <Ionicons name="people" size={24} color={colors.primary} />
+              <ThemedText variant="title">{adminUsers.loading ? '—' : users.length}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>Usuários</ThemedText>
+            </Card>
+            <Card style={styles.metricCard}>
+              <Ionicons name="business" size={24} color={colors.secondary} />
+              <ThemedText variant="title">{adminUsers.loading ? '—' : institutionStaffCount}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>Equipe instituições</ThemedText>
+            </Card>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText variant="subtitle">Usuários da plataforma</ThemedText>
+            <ThemedText variant="caption" color={colors.textMuted}>
+              {donorsCount} doadores · {institutionStaffCount} usuários institucionais
+            </ThemedText>
+
+            {adminUsers.loading && <Loading label="Carregando usuários..." />}
+
+            {adminUsers.error && (
+              <EmptyState
+                title="Não foi possível carregar"
+                description={adminUsers.error}
+                illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+                action={<Button variant="secondary" size="sm" onPress={adminUsers.refetch}>Tentar novamente</Button>}
+              />
+            )}
+
+            {!adminUsers.loading && !adminUsers.error && (
+              <Card>
+                {users.map((item, index) => {
+                  const primaryRole = item.roles?.some((role) => role.name === 'PLATFORM_ADMIN')
+                    ? 'PLATFORM_ADMIN'
+                    : item.roles?.some((role) => role.name === 'INSTITUTION_STAFF')
+                      ? 'INSTITUTION_STAFF'
+                      : 'DONOR';
+
+                  return (
+                    <View key={item.id ?? item._id ?? item.email}>
+                    <View style={styles.donationItem}>
+                      <View style={styles.donationInfo}>
+                        <ThemedText variant="body" style={styles.bold}>
+                          {item.fullName}
+                        </ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          {item.email}
+                        </ThemedText>
+                      </View>
+                      <Tag
+                        label={primaryRole === 'DONOR' ? 'Doador' : primaryRole === 'INSTITUTION_STAFF' ? 'Instituição' : 'Admin'}
+                        variant={primaryRole === 'PLATFORM_ADMIN' ? 'warning' : 'neutral'}
+                      />
+                    </View>
+                    {index < users.length - 1 && <Divider />}
+                  </View>
+                  );
+                })}
+              </Card>
+            )}
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer scrollable>

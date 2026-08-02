@@ -19,14 +19,14 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
-import { campaignsService, type Campaign } from '@/services/campaigns';
+import { campaignsService, type Campaign, type PendingInstitution } from '@/services/campaigns';
 import {
   donationStatusLabels,
   donationsService,
   type Donation,
   type DonationStatus,
 } from '@/services/donations';
-import { useAppStore } from '@/store';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -71,6 +71,7 @@ function pickSuggestedCampaigns(campaigns: Campaign[], featuredId?: string): Cam
 type DashboardData = {
   donations: Donation[];
   campaigns: Campaign[];
+  pendingInstitutions: PendingInstitution[];
 };
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -78,17 +79,32 @@ type DashboardData = {
 export function DashboardScreen() {
   const router = useRouter();
   const user = useAppStore((state) => state.user);
+  const activeRole = useActiveRole();
   const authToken = useAppStore((state) => state.authToken);
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
 
   const fetcher = useCallback(async (): Promise<DashboardData> => {
+    if (activeRole === 'platform-admin') {
+      const [campaigns, pendingInstitutions] = await Promise.all([
+        campaignsService.listCampaigns(),
+        campaignsService.listPendingInstitutions(authToken),
+      ]);
+
+      return { donations: [], campaigns, pendingInstitutions };
+    }
+
+    if (activeRole === 'institution-staff') {
+      const campaigns = await campaignsService.listCampaigns();
+      return { donations: [], campaigns, pendingInstitutions: [] };
+    }
+
     const [donations, campaigns] = await Promise.all([
       donationsService.listMyDonations(authToken),
       campaignsService.listCampaigns(),
     ]);
-    return { donations, campaigns };
-  }, [authToken]);
+    return { donations, campaigns, pendingInstitutions: [] };
+  }, [activeRole, authToken]);
 
   const { data, loading, error, refetch } = useFetch(fetcher);
 
@@ -104,6 +120,19 @@ export function DashboardScreen() {
   const suggestedCampaigns = data
     ? pickSuggestedCampaigns(data.campaigns, featuredCampaign?.id)
     : [];
+  const pendingInstitutions = data?.pendingInstitutions ?? [];
+  const institutionCampaigns = data?.campaigns ?? [];
+  const activeInstitutionCampaigns = institutionCampaigns.filter((campaign) => campaign.active);
+
+  async function handleApproveInstitution(id: string) {
+    await campaignsService.approveInstitution(id, authToken);
+    void refetch();
+  }
+
+  async function handleRejectInstitution(id: string) {
+    await campaignsService.rejectInstitution(id, authToken);
+    void refetch();
+  }
 
   return (
     <ScreenContainer scrollable>
@@ -132,7 +161,97 @@ export function DashboardScreen() {
           />
         )}
 
-        {!loading && !error && featuredCampaign && (
+        {!loading && !error && activeRole === 'platform-admin' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText variant="subtitle">Instituições em análise</ThemedText>
+              <Tag label={String(pendingInstitutions.length)} variant="warning" />
+            </View>
+
+            {pendingInstitutions.length === 0 ? (
+              <EmptyState
+                title="Sem cadastros pendentes"
+                description="Novas instituições aparecerão aqui para validação."
+                illustration={<Ionicons name="shield-checkmark-outline" size={40} color={colors.border} />}
+              />
+            ) : (
+              <View style={styles.list}>
+                {pendingInstitutions.map((institution) => (
+                  <Card key={institution.id} variant="outlined">
+                    <View style={styles.adminInstitution}>
+                      <View style={styles.adminInstitutionInfo}>
+                        <ThemedText variant="body" style={styles.bold}>
+                          {institution.name}
+                        </ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          CNPJ {institution.cnpj}
+                        </ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          {institution.email}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.adminActions}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onPress={() => handleRejectInstitution(institution.id)}>
+                          Rejeitar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onPress={() => handleApproveInstitution(institution.id)}>
+                          Aprovar
+                        </Button>
+                      </View>
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {!loading && !error && activeRole === 'platform-admin' && (
+          <View style={styles.section}>
+            <View style={styles.grid}>
+              <Card style={styles.metric}>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Instituições pendentes
+                </ThemedText>
+                <ThemedText variant="title">{pendingInstitutions.length}</ThemedText>
+              </Card>
+              <Card style={styles.metric}>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Campanhas na plataforma
+                </ThemedText>
+                <ThemedText variant="title">{institutionCampaigns.length}</ThemedText>
+              </Card>
+            </View>
+          </View>
+        )}
+
+        {!loading && !error && activeRole === 'institution-staff' && (
+          <View style={styles.section}>
+            <View style={styles.grid}>
+              <Card style={styles.metric}>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Campanhas ativas
+                </ThemedText>
+                <ThemedText variant="title">{activeInstitutionCampaigns.length}</ThemedText>
+              </Card>
+              <Card style={styles.metric}>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Total arrecadado
+                </ThemedText>
+                <ThemedText variant="title">
+                  R$ {(institutionCampaigns.reduce((sum, campaign) => sum + campaign.raisedCents, 0) / 100).toFixed(0)}
+                </ThemedText>
+              </Card>
+            </View>
+          </View>
+        )}
+
+        {!loading && !error && activeRole === 'donor' && featuredCampaign && (
           <Pressable onPress={() => router.push(routes.appCampaignDetail(featuredCampaign.id))}>
             <Card style={[styles.banner, { backgroundColor: colors.primary }]} padding="lg">
               <View style={styles.bannerContent}>
@@ -158,11 +277,11 @@ export function DashboardScreen() {
           </Pressable>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && activeRole === 'donor' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText variant="subtitle">Minhas doações</ThemedText>
-              <Pressable onPress={() => router.push('/donations')}>
+              <Pressable onPress={() => router.push(routes.donorDonations)}>
                 <ThemedText variant="caption" color={colors.primary}>
                   Ver todas
                 </ThemedText>
@@ -214,11 +333,57 @@ export function DashboardScreen() {
           </View>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && activeRole === 'institution-staff' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText variant="subtitle">Campanhas da instituição</ThemedText>
+              <Pressable onPress={() => router.push(routes.institutionCampaigns)}>
+                <ThemedText variant="caption" color={colors.primary}>
+                  Gerenciar
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            {institutionCampaigns.length === 0 ? (
+              <EmptyState
+                title="Nenhuma campanha criada"
+                description="As campanhas da instituição aparecerão aqui."
+                illustration={<Ionicons name="megaphone-outline" size={40} color={colors.border} />}
+              />
+            ) : (
+              <View style={styles.list}>
+                {institutionCampaigns.slice(0, 3).map((item) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => router.push(routes.appCampaignDetail(item.id))}>
+                    <Card variant="outlined">
+                      <View style={styles.campaignCard}>
+                        <View style={styles.campaignHeader}>
+                          <View style={styles.campaignInfo}>
+                            <ThemedText variant="body" style={styles.bold}>
+                              {item.title}
+                            </ThemedText>
+                            <ThemedText variant="caption" color={colors.textMuted}>
+                              {item.active ? 'Ativa' : 'Inativa'} · {item.progress}% da meta
+                            </ThemedText>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                        </View>
+                        <ProgressBar value={item.progress} />
+                      </View>
+                    </Card>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {!loading && !error && activeRole === 'donor' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText variant="subtitle">Campanhas para você</ThemedText>
-              <Pressable onPress={() => router.push('/campaigns')}>
+              <Pressable onPress={() => router.push(routes.donorCampaigns)}>
                 <ThemedText variant="caption" color={colors.primary}>
                   Explorar
                 </ThemedText>
