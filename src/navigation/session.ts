@@ -2,11 +2,22 @@ export type UserRole = 'platform-admin' | 'donor' | 'institution-staff';
 
 export type InstitutionStaffRole = 'staff' | 'admin';
 
+export type UserRoleGrant = {
+  name: UserRole;
+  grantedAt?: string;
+  grantedBy?: {
+    source: 'SYSTEM' | 'USER';
+    label: string;
+    userId?: string;
+  };
+};
+
 export type SessionUser = {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  roles: UserRoleGrant[];
+  preferredRole?: UserRole;
   institutionRole?: InstitutionStaffRole;
 };
 
@@ -21,3 +32,43 @@ export const roleHomeLabels: Record<UserRole, string> = {
   donor: 'Inicio',
   'institution-staff': 'Dashboard instituicao',
 };
+
+export function getSessionRoles(user?: SessionUser | null): UserRole[] {
+  if (!user) return [];
+
+  const roles: UserRole[] = user.roles?.length ? user.roles.map((role) => role.name) : ['donor'];
+  return Array.from(new Set(roles));
+}
+
+export function getActiveRole(user?: SessionUser | null, activeRole?: UserRole | null): UserRole {
+  const roles = getSessionRoles(user);
+  if (activeRole && roles.includes(activeRole)) return activeRole;
+  return getPreferredInitialRole(user);
+}
+
+export function userCanUseRole(user: SessionUser | null | undefined, role: UserRole) {
+  return getSessionRoles(user).includes(role);
+}
+
+export function getPreferredInitialRole(user?: SessionUser | null): UserRole {
+  const roles = getSessionRoles(user);
+  if (user?.preferredRole && roles.includes(user.preferredRole)) return user.preferredRole;
+  return getDefaultActiveRole(roles);
+}
+
+export function normalizeSessionUser(user: SessionUser): SessionUser {
+  const roles = getSessionRoles(user);
+
+  return {
+    ...user,
+    roles: user.roles?.length
+      ? user.roles
+      : [{ name: getDefaultActiveRole(roles), grantedBy: { source: 'SYSTEM', label: 'sistema' } }],
+  };
+}
+
+export function getDefaultActiveRole(roles: UserRole[]): UserRole {
+  if (roles.includes('platform-admin')) return 'platform-admin';
+  if (roles.includes('institution-staff')) return 'institution-staff';
+  return 'donor';
+}

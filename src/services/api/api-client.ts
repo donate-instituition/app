@@ -1,3 +1,5 @@
+import { useAppStore } from '@/store/app-store';
+
 import { API_BASE_URL, API_TIMEOUT_MS } from './config';
 import { ApiError } from './errors';
 
@@ -16,9 +18,42 @@ async function parseResponse(response: Response) {
   return response.text();
 }
 
+async function refreshAccessToken() {
+  const { refreshToken, setTokens } = useAppStore.getState();
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const payload = await parseResponse(response);
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const nextAccessToken = payload?.accessToken ?? payload?.token;
+
+  if (nextAccessToken) {
+    setTokens(nextAccessToken, refreshToken);
+    return nextAccessToken;
+  }
+
+  return null;
+}
+
 export async function apiClient<TResponse>(
   path: string,
-  { body, headers, token, ...options }: RequestOptions = {}
+  { body, headers, token, ...options }: RequestOptions = {},
+  attempt = 0,
 ): Promise<TResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
@@ -38,6 +73,14 @@ export async function apiClient<TResponse>(
     });
 
     const payload = await parseResponse(response);
+
+    if (!response.ok && response.status === 401 && attempt === 0 && !path.includes('/auth/refresh')) {
+      const nextAccessToken = await refreshAccessToken();
+
+      if (nextAccessToken) {
+        return apiClient<TResponse>(path, { body, headers, token: nextAccessToken, ...options }, 1);
+      }
+    }
 
     if (!response.ok) {
       throw new ApiError('Falha ao consumir a API.', response.status, payload);
