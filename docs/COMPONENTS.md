@@ -58,6 +58,7 @@ Campo de texto com label, ajuda, erro e variacao visual.
 <Input label="Valor" helperText="Informe o valor da doacao" keyboardType="numeric" />
 <Input label="Email" error="Email invalido" />
 <Input variant="filled" />
+<Input success successText="Campo preenchido corretamente" />
 ```
 
 Props principais:

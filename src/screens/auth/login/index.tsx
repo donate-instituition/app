@@ -1,7 +1,10 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { Button, Card, Input, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Button, Card, FeedbackState, Input, ScreenContainer, Tag, ThemedText } from '@/components';
+import { maskCpfOrCnpj } from '@/forms/masks/index';
+import { useForm } from '@/forms/use-form/index';
+import { composeValidators, cpfOrCnpj, minLength, required } from '@/forms/validators/index';
 import { routes } from '@/navigation/routes';
 import { roleLabels, type UserRole } from '@/navigation/session';
 import { useAppStore } from '@/store';
@@ -37,8 +40,25 @@ const loginOptions: {
 export function LoginScreen() {
   const loginAs = useAppStore((state) => state.loginAs);
   const router = useRouter();
+  const form = useForm({
+    initialValues: {
+      document: '',
+      password: '',
+    },
+    masks: {
+      document: maskCpfOrCnpj,
+    },
+    validators: {
+      document: composeValidators(required(), cpfOrCnpj()),
+      password: composeValidators(required(), minLength(6)),
+    },
+  });
 
   function handleLogin(role: UserRole) {
+    if (!form.validate()) {
+      return;
+    }
+
     loginAs(role);
     router.replace(routes.appDashboard);
   }
@@ -57,8 +77,28 @@ export function LoginScreen() {
 
         <Card variant="outlined">
           <View style={styles.form}>
-            <Input label="Email ou CPF/CNPJ" value="mock@elodoar.com" editable={false} />
-            <Input label="Senha" value="********" editable={false} secureTextEntry />
+            <Input
+              label="CPF ou CNPJ"
+              placeholder="000.000.000-00"
+              keyboardType="numeric"
+              helperText="Use 123.456.789-00 para testar o fluxo mockado."
+              successText="Documento pronto para validacao"
+              {...form.fieldProps('document')}
+            />
+            <Input
+              label="Senha"
+              placeholder="Digite pelo menos 6 caracteres"
+              secureTextEntry
+              successText="Senha preenchida corretamente"
+              {...form.fieldProps('password')}
+            />
+            {form.submitted && Object.keys(form.errors).length === 0 ? (
+              <FeedbackState
+                variant="success"
+                title="Formulario valido"
+                description="Escolha um perfil abaixo para entrar no mock."
+              />
+            ) : null}
           </View>
         </Card>
 

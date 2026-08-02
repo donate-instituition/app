@@ -8,7 +8,6 @@ import { styles } from './styles';
 export function DonationsScreen() {
   const user = useAppStore((state) => state.user);
   const title = user?.role === 'platform-admin' ? 'Usuarios' : 'Doacoes';
-
   return (
     <ScreenContainer scrollable>
       <View style={styles.section}>

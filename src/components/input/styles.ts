@@ -5,12 +5,32 @@ import { theme } from '@/theme';
 
 export type InputVariant = 'outline' | 'filled';
 
-export function getInputColors(colors: AppColors, variant: InputVariant, hasError?: boolean) {
+export function getInputColors(
+  colors: AppColors,
+  variant: InputVariant,
+  state: { focused?: boolean; hasError?: boolean; success?: boolean }
+) {
+  const borderColor = (() => {
+    if (state.hasError) {
+      return colors.danger;
+    }
+
+    if (state.success) {
+      return colors.success;
+    }
+
+    if (state.focused) {
+      return colors.primary;
+    }
+
+    return colors.border;
+  })();
+
   return {
     backgroundColor: variant === 'filled' ? colors.surfaceMuted : colors.surface,
-    borderColor: hasError ? colors.danger : colors.border,
-    labelColor: colors.text,
-    helperColor: hasError ? colors.danger : colors.textMuted,
+    borderColor,
+    labelColor: state.focused ? colors.primary : colors.text,
+    helperColor: state.hasError ? colors.danger : state.success ? colors.success : colors.textMuted,
     placeholderColor: colors.textMuted,
     textColor: colors.text,
   };

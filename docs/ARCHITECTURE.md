@@ -21,6 +21,7 @@ Este documento define a arquitetura base para que novas funcionalidades sejam cr
 src/
   app/                 Rotas do Expo Router e layouts de navegacao
   components/          Componentes compartilhados
+  forms/               Mascaras, validacoes e hook de formularios
   hooks/               Hooks reutilizaveis
   navigation/          Configuracoes de navegacao
   screens/             Telas organizadas por funcionalidade
@@ -36,6 +37,7 @@ O design system inicial esta detalhado em `docs/DESIGN_SYSTEM.md`.
 Os componentes reutilizaveis estao documentados em `docs/COMPONENTS.md`.
 A navegacao base esta documentada em `docs/NAVIGATION.md`.
 Os estados visuais de tela estao documentados em `docs/SCREEN_STATES.md`.
+O padrao de formularios e validacoes esta documentado em `docs/FORMS.md`.
 
 ## Expo Router
 
