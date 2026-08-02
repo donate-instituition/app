@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Modal, Pressable, View, type ViewProps } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Modal, Pressable, TextInput, View, type ViewProps } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
@@ -56,11 +57,12 @@ function getCalendarDays(monthDate: Date) {
   const firstDay = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const blankDays = firstDay.getDay();
-
-  return [
+  const days = [
     ...Array.from({ length: blankDays }, () => null),
     ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1)),
   ];
+
+  return [...days, ...Array.from({ length: 42 - days.length }, () => null)];
 }
 
 function formatDate(date?: Date | null) {
@@ -69,6 +71,36 @@ function formatDate(date?: Date | null) {
   }
 
   return new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, '');
+}
+
+function formatTypedDate(value: string) {
+  return onlyDigits(value)
+    .slice(0, 8)
+    .replace(/(\d{2})(\d)/, '$1/$2')
+    .replace(/(\d{2})(\d)/, '$1/$2');
+}
+
+function parseTypedDate(value: string) {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    return null;
+  }
+
+  const [day, month, year] = value.split('/').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
 }
 
 function formatMonth(date: Date) {
@@ -93,9 +125,14 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(value ?? new Date());
+  const [typedValue, setTypedValue] = useState(formatDate(value));
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const days = getCalendarDays(visibleMonth);
+
+  useEffect(() => {
+    setTypedValue(formatDate(value));
+  }, [value]);
 
   function handleSelect(date: Date) {
     if (isDateDisabled(date, minDate, maxDate)) {
@@ -103,11 +140,28 @@ export function DatePicker({
     }
 
     onChange?.(date);
+    setTypedValue(formatDate(date));
     setOpen(false);
+  }
+
+  function handleTypedChange(nextValue: string) {
+    const formatted = formatTypedDate(nextValue);
+    const parsedDate = parseTypedDate(formatted);
+
+    setTypedValue(formatted);
+
+    if (parsedDate && !isDateDisabled(parsedDate, minDate, maxDate)) {
+      setVisibleMonth(parsedDate);
+      onChange?.(parsedDate);
+    }
   }
 
   function changeMonth(amount: number) {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+  }
+
+  function changeYear(amount: number) {
+    setVisibleMonth((current) => new Date(current.getFullYear() + amount, current.getMonth(), 1));
   }
 
   return (
@@ -115,9 +169,7 @@ export function DatePicker({
       {label ? <ThemedText variant="caption">{label}</ThemedText> : null}
 
       <Pressable
-        accessibilityRole="button"
         disabled={disabled}
-        onPress={() => setOpen(true)}
         style={[
           styles.trigger,
           {
@@ -125,9 +177,24 @@ export function DatePicker({
             borderColor: error ? colors.danger : colors.border,
           },
         ]}>
-        <ThemedText variant="body" color={value ? colors.text : colors.textMuted}>
-          {formatDate(value) || placeholder}
-        </ThemedText>
+        <TextInput
+          editable={!disabled}
+          keyboardType="number-pad"
+          maxLength={10}
+          onChangeText={handleTypedChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          style={[styles.input, { color: colors.text }]}
+          value={typedValue}
+        />
+        <Pressable
+          accessibilityLabel="Abrir calendário"
+          accessibilityRole="button"
+          disabled={disabled}
+          onPress={() => setOpen(true)}
+          style={[styles.calendarButton, { backgroundColor: colors.primarySoft }]}>
+          <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+        </Pressable>
       </Pressable>
 
       {error || helperText ? (
@@ -142,17 +209,39 @@ export function DatePicker({
           onPress={() => setOpen(false)}>
           <Pressable style={[styles.panel, { backgroundColor: colors.surface }]}>
             <View style={styles.header}>
-              <Pressable style={styles.headerButton} onPress={() => changeMonth(-1)}>
-                <ThemedText variant="body" color={colors.primary}>
-                  Anterior
-                </ThemedText>
-              </Pressable>
-              <ThemedText variant="subtitle">{formatMonth(visibleMonth)}</ThemedText>
-              <Pressable style={styles.headerButton} onPress={() => changeMonth(1)}>
-                <ThemedText variant="body" color={colors.primary}>
-                  Proximo
-                </ThemedText>
-              </Pressable>
+              <View style={styles.headerControls}>
+                <Pressable
+                  accessibilityLabel="Ano anterior"
+                  style={[styles.headerButton, { backgroundColor: colors.primarySoft }]}
+                  onPress={() => changeYear(-1)}>
+                  <Ionicons name="play-skip-back" size={16} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Mês anterior"
+                  style={[styles.headerButton, { backgroundColor: colors.surfaceMuted }]}
+                  onPress={() => changeMonth(-1)}>
+                  <Ionicons name="chevron-back" size={18} color={colors.primary} />
+                </Pressable>
+              </View>
+
+              <ThemedText variant="subtitle" style={styles.monthLabel}>
+                {formatMonth(visibleMonth)}
+              </ThemedText>
+
+              <View style={styles.headerControls}>
+                <Pressable
+                  accessibilityLabel="Próximo mês"
+                  style={[styles.headerButton, { backgroundColor: colors.surfaceMuted }]}
+                  onPress={() => changeMonth(1)}>
+                  <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Próximo ano"
+                  style={[styles.headerButton, { backgroundColor: colors.primarySoft }]}
+                  onPress={() => changeYear(1)}>
+                  <Ionicons name="play-skip-forward" size={16} color={colors.primary} />
+                </Pressable>
+              </View>
             </View>
 
             <View style={styles.week}>

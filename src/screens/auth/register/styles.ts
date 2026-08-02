@@ -12,6 +12,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
+  pendingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoMark: {
     width: 64,
     height: 64,
@@ -28,6 +32,13 @@ export const styles = StyleSheet.create({
   },
   form: {
     gap: theme.spacing.md,
+  },
+  group: {
+    gap: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+  },
+  multilineInput: {
+    minHeight: 88,
   },
   eyeButton: {
     paddingHorizontal: theme.spacing.sm,

@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, Divider, Input, ScreenContainer, Tag, ThemedText } from '@/components';
-import { routes } from '@/navigation/routes';
+import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { authService } from '@/services/auth';
 import { ApiError } from '@/services/api';
-import type { SessionUser, UserRole } from '@/navigation/session';
+import { getActiveRole, type UserRole } from '@/navigation/session';
 import { useAppStore } from '@/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { theme } from '@/theme';
@@ -17,27 +17,24 @@ import { styles } from './styles';
 // ─── Dev Helpers ──────────────────────────────────────────────────────────────
 // Removido em produção via __DEV__ do React Native.
 
-const DEV_USERS: { role: UserRole; label: string; user: SessionUser }[] = [
+const DEV_USERS: { role: UserRole; label: string; email?: string; password?: string }[] = [
   {
     role: 'donor',
     label: 'Doador',
-    user: { id: 'dev-donor-1', name: 'João Dev', email: 'joao@dev.com', role: 'donor' },
+    email: process.env.EXPO_PUBLIC_DEV_DONOR_EMAIL ?? 'dev.doador@elodoar.local',
+    password: process.env.EXPO_PUBLIC_DEV_DONOR_PASSWORD ?? '12345678',
   },
   {
     role: 'institution-staff',
     label: 'Instituição',
-    user: {
-      id: 'dev-inst-1',
-      name: 'Maria Dev',
-      email: 'maria@inst.dev',
-      role: 'institution-staff',
-      institutionRole: 'admin',
-    },
+    email: process.env.EXPO_PUBLIC_DEV_INSTITUTION_EMAIL ?? 'dev.instituicao@elodoar.local',
+    password: process.env.EXPO_PUBLIC_DEV_INSTITUTION_PASSWORD ?? '12345678',
   },
   {
     role: 'platform-admin',
     label: 'Admin',
-    user: { id: 'dev-admin-1', name: 'Admin Dev', email: 'admin@dev.com', role: 'platform-admin' },
+    email: process.env.EXPO_PUBLIC_DEV_ADMIN_EMAIL ?? 'dev.admin@elodoar.local',
+    password: process.env.EXPO_PUBLIC_DEV_ADMIN_PASSWORD ?? '12345678',
   },
 ];
 
@@ -62,6 +59,7 @@ export function LoginScreen() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [devLoadingRole, setDevLoadingRole] = useState<UserRole | null>(null);
 
   async function handleSubmit() {
     setApiError('');
@@ -71,17 +69,57 @@ export function LoginScreen() {
 
     setLoading(true);
     try {
-      const { token, user } = await authService.login({ email: email.trim(), password });
-      setSession(token, user);
-      router.replace(routes.appDashboard);
+      const { accessToken, refreshToken, user } = await authService.login({ email: email.trim(), password });
+      setSession(accessToken, user, refreshToken);
+      router.replace(getHomeRouteForRole(getActiveRole(user)));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        setApiError('E-mail ou senha incorretos.');
+        const message =
+          error.payload &&
+          typeof error.payload === 'object' &&
+          'message' in error.payload &&
+          typeof error.payload.message === 'string'
+            ? error.payload.message
+            : '';
+
+        if (message.includes('pending approval')) {
+          setApiError('Sua instituição ainda está em análise pela plataforma.');
+        } else {
+          setApiError('E-mail ou senha incorretos.');
+        }
       } else {
         setApiError('Não foi possível conectar. Tente novamente.');
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDevLogin(entry: (typeof DEV_USERS)[number]) {
+    if (!entry.email || !entry.password) {
+      setApiError('Credenciais dev não configuradas.');
+      return;
+    }
+
+    setApiError('');
+    setLoading(false);
+    setDevLoadingRole(entry.role);
+
+    try {
+      const { accessToken, refreshToken, user } = await authService.login({
+        email: entry.email.trim(),
+        password: entry.password,
+      });
+      setSession(accessToken, user, refreshToken);
+      router.replace(getHomeRouteForRole(getActiveRole(user)));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setApiError('Usuário dev sem acesso ativo ou credenciais inválidas.');
+      } else {
+        setApiError('Não foi possível conectar. Tente novamente.');
+      }
+    } finally {
+      setDevLoadingRole(null);
     }
   }
 
@@ -158,7 +196,7 @@ export function LoginScreen() {
             </ThemedText>
           </Pressable>
 
-          <Button fullWidth loading={loading} onPress={handleSubmit}>
+          <Button fullWidth disabled={Boolean(devLoadingRole)} loading={loading} onPress={handleSubmit}>
             Entrar
           </Button>
         </View>
@@ -187,18 +225,21 @@ export function LoginScreen() {
             </View>
             <Divider />
             <View style={styles.devButtons}>
-              {DEV_USERS.map((entry, index) => (
-                <Button
-                  key={entry.role}
-                  variant={index === 0 ? 'primary' : 'secondary'}
-                  size="sm"
-                  onPress={() => {
-                    setSession(`dev-token-${entry.role}`, entry.user);
-                    router.replace(routes.appDashboard);
-                  }}>
-                  {entry.label}
-                </Button>
-              ))}
+              {DEV_USERS.map((entry, index) => {
+                const configured = Boolean(entry.email && entry.password);
+
+                return (
+                  <Button
+                    key={entry.role}
+                    variant={index === 0 ? 'primary' : 'secondary'}
+                    size="sm"
+                    disabled={!configured || loading || Boolean(devLoadingRole)}
+                    loading={devLoadingRole === entry.role}
+                    onPress={() => handleDevLogin(entry)}>
+                    {entry.label}
+                  </Button>
+                );
+              })}
             </View>
           </View>
         )}
@@ -206,4 +247,3 @@ export function LoginScreen() {
     </ScreenContainer>
   );
 }
-
