@@ -3,6 +3,9 @@ import { api } from '@/services/api';
 import type {
   CreateDonationRequest,
   CreateDonationResponse,
+  CreateStripePaymentIntentRequest,
+  CreateStripePaymentIntentResponse,
+  ConfirmStripePaymentIntentResponse,
   Donation,
 } from './donations-types';
 
@@ -17,7 +20,31 @@ async function createDonation(
   return api.post<CreateDonationResponse, CreateDonationRequest>('/donations', body, { token });
 }
 
+async function createStripePaymentIntent(
+  body: CreateStripePaymentIntentRequest,
+  token: string | null,
+): Promise<CreateStripePaymentIntentResponse> {
+  return api.post<CreateStripePaymentIntentResponse, CreateStripePaymentIntentRequest>(
+    '/payments/stripe/payment-intents',
+    body,
+    { token },
+  );
+}
+
+async function confirmStripePaymentIntent(
+  paymentIntentId: string,
+  token: string | null,
+): Promise<ConfirmStripePaymentIntentResponse> {
+  return api.post<ConfirmStripePaymentIntentResponse>(
+    `/payments/stripe/payment-intents/${paymentIntentId}/confirm`,
+    undefined,
+    { token },
+  );
+}
+
 export const donationsService = {
   listMyDonations,
   createDonation,
+  createStripePaymentIntent,
+  confirmStripePaymentIntent,
 };

@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@react-navigation/native';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   Inter_400Regular,
@@ -16,6 +17,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppNavigationThemes } from '@/navigation/theme';
 import { useAppStore } from '@/store';
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 // Warnings gerados por dependências internas do Expo/React Navigation que ainda
 // referenciam SafeAreaView do react-native. Nosso código já usa o correto
@@ -65,17 +68,21 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <ThemeProvider value={AppNavigationThemes[themeMode]}>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="terms" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(app)" options={{ headerShown: false }} />
-          </Stack>
-          <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
-        </ThemeProvider>
-      </SafeAreaProvider>
+      <StripeProvider
+        publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'}
+        urlScheme="elodoar">
+        <SafeAreaProvider>
+          <ThemeProvider value={AppNavigationThemes[themeMode]}>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="terms" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(app)" options={{ headerShown: false }} />
+            </Stack>
+            <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </StripeProvider>
     </QueryClientProvider>
   );
 }

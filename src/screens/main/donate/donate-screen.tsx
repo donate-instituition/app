@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useStripe } from '@stripe/stripe-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
@@ -18,6 +19,8 @@ import { PRESET_AMOUNTS, styles } from './styles';
 type DonationStep = 'amount' | 'payment' | 'success';
 type PaymentMethod = 'card' | 'pix';
 type DonationKind = 'single' | 'monthly';
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 function formatCents(cents: number): string {
   return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
@@ -49,6 +52,7 @@ export function DonateScreen() {
   const colors = theme.colors[scheme];
   const authToken = useAppStore((state) => state.authToken);
   const user = useAppStore((state) => state.user);
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const fetcher = useCallback(() => campaignsService.getCampaignById(id), [id]);
   const { data: campaign, loading: campaignLoading } = useFetch(fetcher);
@@ -69,6 +73,7 @@ export function DonateScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [donatedAmount, setDonatedAmount] = useState(0);
+  const [receiptPaymentIntentId, setReceiptPaymentIntentId] = useState('');
 
   const amountCents = selectedPreset !== null ? selectedPreset : parseBRL(customRaw);
   const receiptCode = '#INV2026-9F7A2B';
@@ -102,14 +107,65 @@ export function DonateScreen() {
 
   async function handleDonate() {
     setApiError('');
+
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      setApiError('Configure EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY para ativar o pagamento com Stripe.');
+      return;
+    }
+
+    if (donationKind === 'monthly') {
+      setApiError('Doações mensais via Stripe serão ativadas no próximo passo.');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      await donationsService.createDonation({ campaignId: id, amountCents }, authToken);
+      const intent = await donationsService.createStripePaymentIntent(
+        {
+          amountCents,
+          campaignId: id,
+          paymentMethod,
+          receiptEmail,
+          savePaymentMethod: savePaymentData,
+        },
+        authToken,
+      );
+
+      const initResult = await initPaymentSheet({
+        merchantDisplayName: 'EloDoar',
+        paymentIntentClientSecret: intent.clientSecret,
+        returnURL: 'elodoar://stripe-redirect',
+        defaultBillingDetails: {
+          email: receiptEmail,
+          name: cardName || user?.name,
+        },
+      });
+
+      if (initResult.error) {
+        throw new Error(initResult.error.message);
+      }
+
+      const paymentResult = await presentPaymentSheet();
+
+      if (paymentResult.error) {
+        throw new Error(paymentResult.error.message);
+      }
+
+      const confirmed = await donationsService.confirmStripePaymentIntent(
+        intent.payment.paymentIntentId,
+        authToken,
+      );
+
+      if (confirmed.donation.status !== 'completed') {
+        throw new Error('Pagamento ainda não foi confirmado pelo Stripe.');
+      }
+
       setDonatedAmount(amountCents);
+      setReceiptPaymentIntentId(confirmed.payment.paymentIntentId);
       setStep('success');
-    } catch {
-      setApiError('Não foi possível processar sua doação. Tente novamente.');
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : 'Não foi possível processar sua doação. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -171,7 +227,7 @@ export function DonateScreen() {
                 ['Data', '30/09/2026 · 09:41'],
                 ['Status', 'Pago'],
                 ['Processado com', 'stripe'],
-                ['ID da transação', 'pi_3Nf8Q2eZvKYo2C9X0aB7'],
+                ['ID da transação', receiptPaymentIntentId || 'Aguardando Stripe'],
               ].map(([label, value]) => (
                 <View key={label} style={styles.receiptRow}>
                   <ThemedText variant="body" color={colors.textMuted}>{label}</ThemedText>
