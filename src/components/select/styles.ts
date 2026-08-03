@@ -18,6 +18,11 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.sm,
     justifyContent: 'space-between',
+    minWidth: 0,
+  },
+  triggerLabel: {
+    flex: 1,
+    minWidth: 0,
   },
   modalBackdrop: {
     flex: 1,

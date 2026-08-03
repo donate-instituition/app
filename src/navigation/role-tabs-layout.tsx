@@ -38,9 +38,33 @@ export function RoleTabsLayout({ tabs, expectedRole }: RoleTabsLayoutProps) {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: {
+          fontFamily: theme.typography.font.inter.semibold,
+          fontSize: 11,
+          fontWeight: '600',
+        },
+        tabBarAllowFontScaling: false,
+        tabBarItemStyle: {
+          borderRadius: theme.radius.pill,
+          marginVertical: 10,
+        },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          borderTopWidth: 0,
+          borderRadius: theme.radius.pill,
+          bottom: 18,
+          height: 78,
+          left: 18,
+          paddingBottom: 12,
+          paddingTop: 10,
+          position: 'absolute',
+          right: 18,
+          shadowColor: colors.primaryStrong,
+          shadowOffset: { width: 0, height: 14 },
+          shadowOpacity: 0.18,
+          shadowRadius: 28,
+          elevation: 12,
         },
       }}>
       {tabs.map((tab) => (
@@ -73,9 +97,9 @@ export function DonorTabsLayout() {
       expectedRole="donor"
       tabs={[
         { name: 'dashboard', title: 'Início', icon: 'home-outline', activeIcon: 'home' },
-        { name: 'campaigns', title: 'Busca', icon: 'search-outline', activeIcon: 'search' },
-        { name: 'donations', title: 'Doações', icon: 'heart-outline', activeIcon: 'heart' },
-        { name: 'messages', title: 'Chat', icon: 'chatbubble-outline', activeIcon: 'chatbubble', badge: unreadCount },
+        { name: 'campaigns', title: 'Explorar', icon: 'compass-outline', activeIcon: 'compass' },
+        { name: 'donations', title: 'Doar', icon: 'heart-outline', activeIcon: 'heart' },
+        { name: 'messages', title: 'Conversas', icon: 'chatbubble-outline', activeIcon: 'chatbubble', badge: unreadCount },
         { name: 'profile', title: 'Perfil', icon: 'person-outline', activeIcon: 'person' },
       ]}
     />
@@ -93,7 +117,7 @@ export function InstitutionTabsLayout() {
         { name: 'campaigns', title: 'Campanhas', icon: 'megaphone-outline', activeIcon: 'megaphone' },
         { name: 'donations', title: 'Doações', icon: 'heart-outline', activeIcon: 'heart' },
         { name: 'team', title: 'Equipe', icon: 'people-outline', activeIcon: 'people' },
-        { name: 'messages', title: 'Chat', icon: 'chatbubble-outline', activeIcon: 'chatbubble', badge: unreadCount },
+        { name: 'messages', title: 'Conversas', icon: 'chatbubble-outline', activeIcon: 'chatbubble', badge: unreadCount },
         { name: 'profile', title: 'Perfil', icon: 'person-outline', activeIcon: 'person' },
       ]}
     />

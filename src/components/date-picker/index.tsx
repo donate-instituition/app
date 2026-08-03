@@ -178,6 +178,7 @@ export function DatePicker({
           },
         ]}>
         <TextInput
+          allowFontScaling={false}
           editable={!disabled}
           keyboardType="number-pad"
           maxLength={10}

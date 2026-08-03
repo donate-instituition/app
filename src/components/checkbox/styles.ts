@@ -7,6 +7,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: theme.spacing.sm,
+    minWidth: 0,
   },
   box: {
     alignItems: 'center',
@@ -20,6 +21,10 @@ export const styles = StyleSheet.create({
     borderRadius: theme.radius.xs,
     height: 10,
     width: 10,
+  },
+  content: {
+    flex: 1,
+    minWidth: 0,
   },
   disabled: {
     opacity: 0.56,

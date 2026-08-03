@@ -39,6 +39,10 @@ export function RadioGroup({ label, onValueChange, options, style, value, ...pro
             onPress={() => onValueChange?.(option.value)}
             style={({ pressed }) => [
               styles.option,
+              {
+                backgroundColor: selected ? colors.primarySoft : colors.surface,
+                borderColor: selected ? colors.primary : colors.border,
+              },
               option.disabled ? styles.disabled : undefined,
               pressed ? { opacity: 0.84 } : undefined,
             ]}>
@@ -53,10 +57,12 @@ export function RadioGroup({ label, onValueChange, options, style, value, ...pro
                 <View style={[styles.indicatorDot, { backgroundColor: colors.primary }]} />
               ) : null}
             </View>
-            <View>
-              <ThemedText variant="body">{option.label}</ThemedText>
+            <View style={styles.optionContent}>
+              <ThemedText variant="body" numberOfLines={1}>
+                {option.label}
+              </ThemedText>
               {option.description ? (
-                <ThemedText variant="caption" color={colors.textMuted}>
+                <ThemedText variant="caption" color={colors.textMuted} numberOfLines={3}>
                   {option.description}
                 </ThemedText>
               ) : null}

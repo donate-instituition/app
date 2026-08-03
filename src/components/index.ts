@@ -6,6 +6,7 @@ export * from './checkbox';
 export * from './date-picker';
 export * from './divider';
 export * from './empty-state';
+export * from './floating-tab-bar';
 export * from './input';
 export * from './loading';
 export * from './progress-bar';

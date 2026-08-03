@@ -26,12 +26,16 @@ export const styles = StyleSheet.create({
     borderWidth: theme.borderWidths.sm,
     flexDirection: 'row',
     minHeight: 48,
+    minWidth: 0,
     paddingHorizontal: theme.spacing.md,
   },
   input: {
     flex: 1,
+    fontFamily: theme.typography.font.inter.regular,
     fontSize: theme.typography.size.md,
+    includeFontPadding: false,
     lineHeight: theme.typography.lineHeight.md,
+    minWidth: 0,
     paddingVertical: theme.spacing.sm,
   },
   disabled: {

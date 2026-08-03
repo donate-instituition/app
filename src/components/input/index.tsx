@@ -1,4 +1,4 @@
-import { TextInput, type TextInputProps, View } from 'react-native';
+import { TextInput, type StyleProp, type TextInputProps, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,6 +10,7 @@ type InputProps = TextInputProps & {
   label?: string;
   helperText?: string;
   error?: string;
+  fieldStyle?: StyleProp<ViewStyle>;
   variant?: InputVariant;
   leftSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
@@ -23,6 +24,7 @@ type WebTextInputStyle = {
 export function Input({
   editable = true,
   error,
+  fieldStyle,
   helperText,
   label,
   leftSlot,
@@ -50,6 +52,7 @@ export function Input({
       <View
         style={[
           styles.field,
+          fieldStyle,
           {
             backgroundColor: inputColors.backgroundColor,
             borderColor: inputColors.borderColor,
@@ -57,6 +60,7 @@ export function Input({
         ]}>
         {leftSlot}
         <TextInput
+          allowFontScaling={false}
           editable={editable}
           placeholderTextColor={inputColors.placeholderColor}
           selectionColor={colors.primary}

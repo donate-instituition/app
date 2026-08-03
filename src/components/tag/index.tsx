@@ -17,7 +17,7 @@ export function Tag({ label, style, variant = 'neutral', ...props }: TagProps) {
 
   return (
     <View style={[styles.root, { backgroundColor: tagColors.backgroundColor }, style]} {...props}>
-      <ThemedText variant="caption" color={tagColors.textColor}>
+      <ThemedText variant="caption" color={tagColors.textColor} numberOfLines={1}>
         {label}
       </ThemedText>
     </View>

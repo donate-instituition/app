@@ -63,7 +63,11 @@ export function Select({
           },
         ]}>
         <View style={styles.triggerContent}>
-          <ThemedText variant="body" color={selectedOption ? colors.text : colors.textMuted}>
+          <ThemedText
+            variant="body"
+            color={selectedOption ? colors.text : colors.textMuted}
+            numberOfLines={1}
+            style={styles.triggerLabel}>
             {selectedOption?.label ?? placeholder}
           </ThemedText>
           <Ionicons

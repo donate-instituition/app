@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     flexGrow: 1,
   },
   keyboardPadding: {
-    paddingBottom: theme.spacing['3xl'],
+    paddingBottom: theme.spacing.lg,
   },
   paddingNone: {
     padding: theme.spacing.none,
