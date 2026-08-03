@@ -15,6 +15,11 @@ type InputProps = TextInputProps & {
   rightSlot?: React.ReactNode;
 };
 
+type WebTextInputStyle = {
+  caretColor?: string;
+  outlineColor?: string;
+};
+
 export function Input({
   editable = true,
   error,
@@ -29,6 +34,10 @@ export function Input({
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const inputColors = getInputColors(colors, variant, Boolean(error));
+  const webInputStyle: WebTextInputStyle = {
+    caretColor: inputColors.textColor,
+    outlineColor: 'transparent',
+  };
 
   return (
     <View style={[styles.root, editable ? undefined : styles.disabled]}>
@@ -50,7 +59,16 @@ export function Input({
         <TextInput
           editable={editable}
           placeholderTextColor={inputColors.placeholderColor}
-          style={[styles.input, { color: inputColors.textColor }, style]}
+          selectionColor={colors.primary}
+          style={[
+            styles.input,
+            {
+              backgroundColor: inputColors.backgroundColor,
+              color: inputColors.textColor,
+            },
+            webInputStyle,
+            style,
+          ]}
           {...props}
         />
         {rightSlot}

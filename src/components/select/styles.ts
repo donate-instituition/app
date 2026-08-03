@@ -13,6 +13,12 @@ export const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: theme.spacing.md,
   },
+  triggerContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-between',
+  },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
