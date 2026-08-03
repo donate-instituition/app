@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import {
   Button,
@@ -25,6 +27,7 @@ import {
   type Institution,
   type PendingInstitution,
 } from '@/services/campaigns';
+import { logger } from '@/services/logger';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -42,6 +45,48 @@ const CAMPAIGN_CATEGORIES: (CampaignCategory | 'Todos')[] = [
 ];
 
 type Mode = 'campaigns' | 'institutions';
+
+const exploreLogger = logger.child('Explore');
+
+const campaignImages: Partial<Record<CampaignCategory, string>> = {
+  Alimentação:
+    'https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=360&q=80',
+  Educação:
+    'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=360&q=80',
+  Moradia:
+    'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=360&q=80',
+  Saúde:
+    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=360&q=80',
+  'Meio Ambiente':
+    'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=360&q=80',
+  Outros:
+    'https://images.unsplash.com/photo-1600180758890-6b94519a8ba6?auto=format&fit=crop&w=360&q=80',
+};
+
+function getCampaignImage(item: Campaign) {
+  if (item.title.toLowerCase().includes('inverno')) {
+    return 'https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=360&q=80';
+  }
+
+  if (item.title.toLowerCase().includes('escolar')) {
+    return 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=360&q=80';
+  }
+
+  return campaignImages[item.category] ?? campaignImages.Outros;
+}
+
+function getInstitutionIcon(category: CampaignCategory) {
+  const icons: Record<CampaignCategory, keyof typeof Ionicons.glyphMap> = {
+    Alimentação: 'restaurant-outline',
+    Educação: 'school-outline',
+    'Meio Ambiente': 'leaf-outline',
+    Moradia: 'home-outline',
+    Outros: 'business-outline',
+    Saúde: 'medkit-outline',
+  };
+
+  return icons[category];
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -63,13 +108,20 @@ function ModeToggle({ mode, onChange }: ModeToggleProps) {
             key={m}
             style={[
               styles.modeButton,
-              active && { backgroundColor: colors.surface },
+              active && [
+                styles.modeButtonActive,
+                {
+                  backgroundColor: colors.surface,
+                  shadowColor: colors.primaryStrong,
+                },
+              ],
             ]}
             onPress={() => onChange(m)}>
-            <ThemedText
-              variant="caption"
-              style={[styles.modeButtonText, active && styles.modeButtonTextActive]}
-              color={active ? colors.primary : colors.textMuted}>
+              <ThemedText
+                variant="caption"
+                style={[styles.modeButtonText, active && styles.modeButtonTextActive]}
+                color={active ? colors.primary : colors.textMuted}
+                numberOfLines={1}>
               {m === 'campaigns' ? 'Campanhas' : 'Instituições'}
             </ThemedText>
           </Pressable>
@@ -87,25 +139,44 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
 
   return (
     <Pressable onPress={onPress}>
-      <Card variant="outlined">
+      <Card variant="elevated" style={styles.exploreCard}>
         <View style={styles.campaignCard}>
-          <View style={styles.cardHeader}>
-            <Tag label={item.category} variant="info" />
-            {!item.active && <Tag label="Encerrada" variant="neutral" />}
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <View style={[styles.campaignThumb, { backgroundColor: colors.primarySoft }]}>
+            <Image
+              source={getCampaignImage(item)}
+              style={styles.campaignImage}
+              contentFit="cover"
+              transition={150}
+            />
           </View>
-          <ThemedText variant="subtitle">{item.title}</ThemedText>
-          <ThemedText variant="caption" color={colors.textMuted}>
-            {item.institution}
-          </ThemedText>
-          <ProgressBar value={item.progress} />
-          <View style={styles.goalRow}>
-            <ThemedText variant="caption" color={colors.primary}>
-              {item.raisedFormatted}
-            </ThemedText>
-            <ThemedText variant="caption" color={colors.textMuted}>
-              de {item.goalFormatted} · {item.progress}%
-            </ThemedText>
+          <View style={styles.campaignInfo}>
+            <View style={styles.cardHeader}>
+              <ThemedText variant="subtitle" style={styles.cardTitle} numberOfLines={2}>
+                {item.title}
+              </ThemedText>
+              {!item.active ? <Tag label="Encerrada" variant="neutral" /> : null}
+            </View>
+            <View style={styles.metaLine}>
+              <View style={[styles.metaIcon, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="business-outline" size={14} color={colors.textMuted} />
+              </View>
+              <ThemedText variant="body" color={colors.textMuted} numberOfLines={1} style={styles.metaText}>
+                {item.institution}
+              </ThemedText>
+            </View>
+            <ProgressBar value={item.progress} />
+            <View style={styles.goalRow}>
+              <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                {item.progress}%
+              </ThemedText>
+              <ThemedText
+                variant="caption"
+                color={colors.textMuted}
+                style={styles.goalText}
+                numberOfLines={1}>
+                meta {item.goalFormatted}
+              </ThemedText>
+            </View>
           </View>
         </View>
       </Card>
@@ -121,36 +192,44 @@ function InstitutionCard({ item, onPress }: InstitutionCardProps) {
 
   return (
     <Pressable onPress={onPress}>
-      <Card variant="outlined">
+      <Card variant="elevated" style={styles.exploreCard}>
         <View style={styles.institutionCard}>
-          <View style={styles.cardHeader}>
-            <Tag label={item.category} variant="info" />
-            {item.verified && (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <ThemedText variant="caption" color={colors.success}>
-                  Verificada
-                </ThemedText>
-              </View>
-            )}
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <View style={[styles.institutionAvatar, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name={getInstitutionIcon(item.category)} size={34} color={colors.primary} />
           </View>
-          <ThemedText variant="subtitle">{item.name}</ThemedText>
-          <View style={styles.institutionMeta}>
-            <Ionicons name="location-outline" size={13} color={colors.textMuted} />
-            <ThemedText variant="caption" color={colors.textMuted}>
-              {item.city}, {item.state}
+          <View style={styles.institutionInfo}>
+            <View style={styles.institutionTopRow}>
+              <Tag label={item.category} variant="info" />
+              {item.verified ? (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                  <ThemedText variant="body" color={colors.success} numberOfLines={1}>
+                    Verificada
+                  </ThemedText>
+                </View>
+              ) : null}
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </View>
+            <ThemedText variant="subtitle" numberOfLines={2}>
+              {item.name}
             </ThemedText>
-          </View>
-          <ThemedText variant="caption" color={colors.textMuted} numberOfLines={2}>
-            {item.description}
-          </ThemedText>
-          <View style={styles.institutionFooter}>
-            <Ionicons name="megaphone-outline" size={13} color={colors.primary} />
-            <ThemedText variant="caption" color={colors.primary}>
-              {item.activeCampaigns}{' '}
-              {item.activeCampaigns === 1 ? 'campanha ativa' : 'campanhas ativas'}
+            <View style={styles.institutionMeta}>
+              <Ionicons name="location-outline" size={15} color={colors.textMuted} />
+              <ThemedText variant="body" color={colors.textMuted} numberOfLines={1}>
+                {item.city}, {item.state}
+              </ThemedText>
+            </View>
+            <ThemedText variant="body" color={colors.textMuted} numberOfLines={2}>
+              {item.description}
             </ThemedText>
+            <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.institutionFooter}>
+              <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
+              <ThemedText variant="body" color={colors.primary} numberOfLines={1}>
+                {item.activeCampaigns}{' '}
+                {item.activeCampaigns === 1 ? 'campanha ativa' : 'campanhas ativas'}
+              </ThemedText>
+            </View>
           </View>
         </View>
       </Card>
@@ -170,23 +249,34 @@ export function CampaignsScreen() {
   const [mode, setMode] = useState<Mode>('campaigns');
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<CampaignCategory | 'Todos'>('Todos');
+  const [nearMeEnabled, setNearMeEnabled] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Memoised fetchers — change when filters change
   const campaignFetcher = useCallback<() => Promise<Campaign[]>>(
     () => {
       if (activeRole === 'platform-admin') return Promise.resolve([]);
-      const filters: CampaignFilters = { search, category: activeCategory };
+      const filters: CampaignFilters = {
+        search,
+        category: activeCategory,
+        nearMe: nearMeEnabled && userLocation ? userLocation : undefined,
+      };
       return campaignsService.listCampaigns(filters);
     },
-    [activeRole, search, activeCategory]
+    [activeRole, search, activeCategory, nearMeEnabled, userLocation]
   );
 
   const institutionFetcher = useCallback(
     () => {
       if (activeRole === 'platform-admin') return Promise.resolve([]);
-      return campaignsService.listInstitutions({ search });
+      return campaignsService.listInstitutions({
+        search,
+        nearMe: nearMeEnabled && userLocation ? userLocation : undefined,
+      });
     },
-    [activeRole, search]
+    [activeRole, search, nearMeEnabled, userLocation]
   );
 
   const campaigns = useFetch(campaignFetcher);
@@ -200,6 +290,64 @@ export function CampaignsScreen() {
 
   const active = mode === 'campaigns' ? campaigns : institutions;
   const count = active.data?.length ?? 0;
+
+  async function handleNearMePress() {
+    if (locationLoading) return;
+
+    if (nearMeEnabled) {
+      setNearMeEnabled(false);
+      setUserLocation(null);
+      setLocationError(null);
+      exploreLogger.debug('Near me disabled');
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+
+    try {
+      exploreLogger.debug('Requesting foreground location permission');
+      const permission = await Location.requestForegroundPermissionsAsync();
+
+      if (permission.status !== 'granted') {
+        setNearMeEnabled(false);
+        setUserLocation(null);
+        setLocationError('Permita o acesso à localização para usar o filtro perto de mim.');
+        exploreLogger.warn('Foreground location permission denied', {
+          canAskAgain: permission.canAskAgain,
+          status: permission.status,
+        });
+        Alert.alert(
+          'Permissão de localização',
+          'Para encontrar campanhas e instituições próximas, permita o acesso à localização nas configurações do aparelho.',
+        );
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      setActiveCategory('Todos');
+      setUserLocation(coords);
+      setNearMeEnabled(true);
+      exploreLogger.info('Near me location captured', coords);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido';
+      setNearMeEnabled(false);
+      setUserLocation(null);
+      setLocationError('Não foi possível obter sua localização agora.');
+      exploreLogger.error('Failed to capture near me location', { message });
+      Alert.alert('Localização indisponível', 'Não foi possível obter sua localização agora. Tente novamente.');
+    } finally {
+      setLocationLoading(false);
+    }
+  }
 
   // ─── Render helpers ───────────────────────────────────────────────────────
 
@@ -343,14 +491,103 @@ export function CampaignsScreen() {
     );
   }
 
+  if (activeRole === 'institution-staff') {
+    const institutionCampaigns = campaigns.data ?? [];
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <ThemedText variant="title">Campanhas</ThemedText>
+            <ThemedText variant="caption" color={colors.textMuted}>
+              Gerencie campanhas, metas e prestação de contas.
+            </ThemedText>
+          </View>
+
+          <Card variant="elevated">
+            <View style={styles.newCampaignCard}>
+              <View style={styles.stepper}>
+                <View style={[styles.stepDot, { backgroundColor: colors.primary }]}>
+                  <ThemedText variant="caption" color={colors.surface}>1</ThemedText>
+                </View>
+                <View style={[styles.stepLine, { backgroundColor: colors.primarySoft }]} />
+                <View style={[styles.stepDot, { backgroundColor: colors.surfaceMuted }]}>
+                  <ThemedText variant="caption" color={colors.textMuted}>2</ThemedText>
+                </View>
+                <View style={[styles.stepLine, { backgroundColor: colors.primarySoft }]} />
+                <View style={[styles.stepDot, { backgroundColor: colors.surfaceMuted }]}>
+                  <ThemedText variant="caption" color={colors.textMuted}>3</ThemedText>
+                </View>
+              </View>
+              <View style={[styles.uploadBox, { borderColor: colors.border }]}>
+                <Ionicons name="image-outline" size={26} color={colors.icon} />
+                <ThemedText variant="body">Adicionar imagem de capa</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Formatos: JPG, PNG · Máx. 5MB
+                </ThemedText>
+              </View>
+              <View style={styles.mockField}>
+                <ThemedText variant="caption" color={colors.textMuted}>Título da campanha</ThemedText>
+                <View style={[styles.fakeInput, { borderColor: colors.border }]}>
+                  <ThemedText variant="body">Inverno Solidário 2026</ThemedText>
+                </View>
+              </View>
+              <View style={styles.categories}>
+                {['Crianças', 'Inverno', 'Urgente', 'Educação'].map((label, index) => (
+                  <Tag key={label} label={label} variant={index === 0 ? 'success' : 'neutral'} />
+                ))}
+              </View>
+              <Button fullWidth>Continuar</Button>
+            </View>
+          </Card>
+
+          {campaigns.loading && <Loading label="Carregando campanhas..." />}
+
+          {campaigns.error && (
+            <EmptyState
+              title="Não foi possível carregar"
+              description={campaigns.error}
+              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+              action={<Button variant="secondary" size="sm" onPress={campaigns.refetch}>Tentar novamente</Button>}
+            />
+          )}
+
+          {!campaigns.loading && !campaigns.error && (
+            <View style={styles.section}>
+              <ThemedText variant="subtitle">Campanhas ativas</ThemedText>
+              <View style={styles.list}>
+                {institutionCampaigns.map((item) => (
+                  <CampaignCard
+                    key={item.id}
+                    item={item}
+                    onPress={() => router.push(routes.appCampaignDetail(item.id))}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
+        <View style={styles.header}>
+          <ThemedText variant="title">
+            Explorar
+          </ThemedText>
+          <ThemedText variant="caption" color={colors.textMuted}>
+            Busque por campanhas, instituições ou causas perto de você.
+          </ThemedText>
+        </View>
 
         {/* Busca */}
         <Input
           value={search}
           onChangeText={setSearch}
+          fieldStyle={styles.searchField}
           placeholder={
             mode === 'campaigns'
               ? 'Buscar campanhas ou instituições...'
@@ -371,26 +608,57 @@ export function CampaignsScreen() {
 
         {/* Filtros de categoria — apenas em campanhas */}
         {mode === 'campaigns' && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categories}>
-            {CAMPAIGN_CATEGORIES.map((cat) => (
-              <Pressable key={cat} onPress={() => setActiveCategory(cat)}>
-                <Tag
-                  label={cat}
-                  variant={activeCategory === cat ? 'success' : 'neutral'}
-                />
+          <View style={styles.filterBlock}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categories}>
+              <Pressable onPress={handleNearMePress}>
+                <View
+                  style={[
+                    styles.nearbyChip,
+                    { backgroundColor: nearMeEnabled ? colors.primary : colors.surfaceMuted },
+                    locationLoading ? styles.nearbyChipLoading : undefined,
+                  ]}>
+                  <Ionicons
+                    name={locationLoading ? 'navigate-circle-outline' : 'location-outline'}
+                    size={14}
+                    color={nearMeEnabled ? colors.surface : colors.text}
+                  />
+                  <ThemedText
+                    variant="caption"
+                    color={nearMeEnabled ? colors.surface : colors.text}>
+                    {locationLoading ? 'Localizando' : 'Perto de mim'}
+                  </ThemedText>
+                </View>
               </Pressable>
-            ))}
-          </ScrollView>
+              {CAMPAIGN_CATEGORIES.map((cat) => (
+                cat === 'Todos' ? null : <Pressable key={cat} onPress={() => { setNearMeEnabled(false); setActiveCategory(cat); }}>
+                  <Tag
+                    label={cat}
+                    variant={activeCategory === cat ? 'success' : 'neutral'}
+                  />
+                </Pressable>
+              ))}
+            </ScrollView>
+            {locationError ? (
+              <ThemedText variant="caption" color={colors.danger}>
+                {locationError}
+              </ThemedText>
+            ) : null}
+          </View>
         )}
 
         {/* Contagem de resultados */}
         {!active.loading && !active.error && (
-          <ThemedText variant="caption" color={colors.textMuted}>
-            {count} {count === 1 ? 'resultado' : 'resultados'}
-          </ThemedText>
+          <View style={styles.resultsHeader}>
+            <ThemedText variant="subtitle" style={styles.resultsTitle} numberOfLines={2}>
+              {mode === 'campaigns' ? 'Campanhas em destaque' : 'Instituições'}
+            </ThemedText>
+            <ThemedText variant="caption" color={colors.textMuted} style={styles.resultsCount} numberOfLines={2}>
+              {count} {count === 1 ? 'resultado' : 'resultados'}
+            </ThemedText>
+          </View>
         )}
 
         {/* Conteúdo principal */}

@@ -22,45 +22,65 @@ export const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
+    minWidth: 0,
     textAlign: 'center',
   },
 
   // Scroll
   scroll: {
-    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
     gap: theme.spacing.xl,
   },
 
   // Identity card
   identity: {
+    gap: theme.spacing.sm,
+  },
+  cover: {
     alignItems: 'center',
-    gap: theme.spacing.md,
+    height: 148,
+    justifyContent: 'center',
+  },
+  identityAvatar: {
+    borderWidth: 4,
+    marginLeft: theme.spacing.lg,
+    marginTop: -36,
   },
   identityInfo: {
-    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
     gap: theme.spacing.sm,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
+    minWidth: 0,
   },
-  textCentered: {
-    textAlign: 'center',
-  },
-  locationRow: {
+  profileStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
+    flexWrap: 'wrap',
+    gap: theme.spacing['2xl'],
+    paddingVertical: theme.spacing.xs,
   },
-  tagRow: {
+  profileActions: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  profileButton: {
+    flex: 1,
   },
 
   // Sections
   section: {
     gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
   },
   bold: {
     fontWeight: '600',
@@ -83,13 +103,19 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
   },
+  campaignList: {
+    borderRadius: theme.radius.lg,
+    overflow: 'hidden',
+  },
   campaignRowInfo: {
     flex: 1,
     gap: theme.spacing.xs,
+    minWidth: 0,
   },
   campaignRowMeta: {
     flexDirection: 'row',
     gap: theme.spacing.xs,
+    flexWrap: 'wrap',
   },
 
   // Action bar

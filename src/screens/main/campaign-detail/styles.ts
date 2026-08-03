@@ -22,41 +22,48 @@ export const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
+    minWidth: 0,
     textAlign: 'center',
   },
 
   // Scroll content
   scroll: {
     padding: theme.spacing.lg,
-    gap: theme.spacing.xl,
+    gap: theme.spacing.lg,
   },
 
-  // Banner
-  banner: {
+  cover: {
+    alignItems: 'center',
+    aspectRatio: 16 / 9,
     borderRadius: theme.radius.lg,
+    justifyContent: 'center',
   },
-  bannerBody: {
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
-  bannerAmount: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: theme.spacing.xs,
-  },
-  bannerStats: {
-    flexDirection: 'row',
+  organizerInline: {
     alignItems: 'center',
-    marginTop: theme.spacing.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  progressMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: theme.spacing.md,
   },
-  stat: {
-    alignItems: 'center',
-    gap: 2,
+  statsGrid: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
   },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  statPill: {
+    alignItems: 'center',
+    borderRadius: theme.radius.lg,
+    flex: 1,
+    padding: theme.spacing.md,
   },
 
   // Sections
@@ -76,6 +83,7 @@ export const styles = StyleSheet.create({
   institutionInfo: {
     flex: 1,
     gap: theme.spacing.xxs,
+    minWidth: 0,
   },
 
   // Items needed
@@ -101,6 +109,7 @@ export const styles = StyleSheet.create({
   actionBar: {
     flexDirection: 'row',
     gap: theme.spacing.md,
+    minWidth: 0,
     paddingTop: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,

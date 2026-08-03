@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Avatar, Button, Divider, EmptyState, Loading, ScreenContainer, ThemedText } from '@/components';
+import { Avatar, Button, Divider, EmptyState, Input, Loading, ScreenContainer, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
@@ -126,7 +126,22 @@ export function MessagesScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <ThemedText variant="title">Chat</ThemedText>
+        <View style={styles.headerRow}>
+          <ThemedText variant="title">Conversas</ThemedText>
+          <Pressable style={styles.iconButton} accessibilityLabel="Nova conversa">
+            <Ionicons name="add" size={22} color={colors.primary} />
+          </Pressable>
+        </View>
+
+        <Input
+          editable={false}
+          placeholder="Buscar campanhas"
+          leftSlot={
+            <View style={styles.searchIcon}>
+              <Ionicons name="search-outline" size={16} color={colors.icon} />
+            </View>
+          }
+        />
 
         {loading && <Loading label="Carregando conversas..." />}
 
@@ -174,6 +189,9 @@ export function MessagesScreen() {
                         numberOfLines={1}>
                         {item.lastMessage}
                       </ThemedText>
+                      {item.unreadCount === 0 ? (
+                        <Ionicons name="checkmark-done" size={14} color={colors.primary} />
+                      ) : null}
                       {item.unreadCount > 0 && (
                         <View style={[styles.badge, { backgroundColor: colors.primary }]}>
                           <ThemedText

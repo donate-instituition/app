@@ -2,42 +2,70 @@ import { StyleSheet } from 'react-native';
 
 import { theme } from '@/theme';
 
-export const PRESET_AMOUNTS = [1000, 2500, 5000, 10000, 25000]; // in cents
+export const PRESET_AMOUNTS = [2000, 5000, 10000, 20000]; // in cents
 
 export const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: {
-    gap: theme.spacing.xl,
-    paddingVertical: theme.spacing.lg,
+    gap: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
-
-  // ─── Back bar ─────────────────────────────────────────────────────────────
   backBar: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
+    flexDirection: 'row',
     paddingBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
   },
   backButton: {
-    padding: theme.spacing.sm,
-    marginRight: theme.spacing.sm,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
-
-  // ─── Campaign summary card ─────────────────────────────────────────────────
-  summaryCard: {
-    gap: theme.spacing.sm,
+  headerTitle: {
+    flex: 1,
   },
-  progressRow: {
-    gap: theme.spacing.xs,
+  headerIcon: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
-  metaRow: {
+  campaignCover: {
+    alignItems: 'center',
+    aspectRatio: 16 / 5,
+    borderRadius: 18,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  coverTag: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    top: theme.spacing.md,
+  },
+  campaignIdentity: {
+    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: theme.spacing.md,
   },
-
-  // ─── Amount section ───────────────────────────────────────────────────────
+  campaignIdentityText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  verifiedLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    minWidth: 0,
+  },
   section: {
     gap: theme.spacing.md,
+  },
+  progressHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   presetGrid: {
     flexDirection: 'row',
@@ -45,56 +73,206 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   presetChip: {
-    flex: 1,
-    minWidth: '30%',
+    alignItems: 'center',
+    borderRadius: 14,
     borderWidth: theme.borderWidths.sm,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
+    flexBasis: '30%',
+    flexGrow: 1,
     justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: theme.spacing.md,
   },
-  customRow: {
-    flexDirection: 'row',
+  customAmountBox: {
+    borderRadius: 16,
+    borderWidth: theme.borderWidths.sm,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  customAmountRow: {
     alignItems: 'center',
+    flexDirection: 'row',
     gap: theme.spacing.sm,
   },
-  customPrefix: {
-    minWidth: 28,
+  currencyBadge: {
+    alignItems: 'center',
+    borderRadius: theme.radius.sm,
+    height: 24,
+    justifyContent: 'center',
+    width: 32,
   },
-  customInput: {
+  customAmountInput: {
+    flex: 1,
+    fontFamily: theme.typography.font.inter.semibold,
+    fontSize: 18,
+    fontWeight: '600',
+    includeFontPadding: false,
+    minWidth: 0,
+    padding: 0,
+  },
+  impactMessage: {
+    alignItems: 'center',
+    borderRadius: 18,
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    padding: theme.spacing.md,
+  },
+  impactIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  impactCopy: {
     flex: 1,
   },
-
-  // ─── Total display ────────────────────────────────────────────────────────
-  totalCard: {
+  methodGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  methodButton: {
     alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: theme.borderWidths.sm,
+    flex: 1,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+    minHeight: 52,
+    minWidth: 0,
+    paddingHorizontal: theme.spacing.md,
+  },
+  paymentSummary: {
+    alignItems: 'center',
+    flexDirection: 'row',
     gap: theme.spacing.md,
   },
-
-  // ─── Success state ────────────────────────────────────────────────────────
-  successContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  summaryThumb: {
     alignItems: 'center',
-    gap: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.xl,
+    borderRadius: 12,
+    height: 58,
+    justifyContent: 'center',
+    width: 72,
+  },
+  summaryText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  summaryAmount: {
+    alignItems: 'flex-end',
+    gap: theme.spacing.xxs,
+    flexShrink: 0,
+  },
+  textField: {
+    borderRadius: 14,
+    borderWidth: theme.borderWidths.sm,
+    fontFamily: theme.typography.font.inter.regular,
+    fontSize: 16,
+    includeFontPadding: false,
+    minHeight: 48,
+    paddingHorizontal: theme.spacing.md,
+  },
+  cardMetaGrid: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  cardMetaField: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  feeBox: {
+    alignItems: 'center',
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+  },
+  secureRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  saveRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+  },
+  successScreen: {
+    alignItems: 'center',
+    gap: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
   },
   successIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 88,
+    justifyContent: 'center',
+    width: 88,
   },
   successText: {
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
-  successActions: {
+  receiptCard: {
+    borderRadius: 18,
     width: '100%',
+    shadowColor: '#102A24',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  receiptHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  receiptRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.xs,
+  },
+  receiptValue: {
+    flex: 1,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  receiptActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    width: '100%',
+  },
+  receiptActionButton: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: theme.borderWidths.sm,
+    flex: 1,
+    gap: theme.spacing.xs,
+    minHeight: 72,
+    justifyContent: 'center',
+    padding: theme.spacing.sm,
+  },
+  volunteerCard: {
+    alignItems: 'center',
+    borderRadius: 18,
+    flexDirection: 'row',
     gap: theme.spacing.md,
+    padding: theme.spacing.md,
+    width: '100%',
+  },
+  volunteerText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+  },
+  tabSpacer: {
+    height: 96,
+  },
+  bold: {
+    fontWeight: '700',
   },
   centered: {
     textAlign: 'center',

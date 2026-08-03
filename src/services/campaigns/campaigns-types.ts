@@ -6,6 +6,11 @@ export type CampaignCategory =
   | 'Meio Ambiente'
   | 'Outros';
 
+export type GeoLocation = {
+  latitude: number;
+  longitude: number;
+};
+
 export type Campaign = {
   id: string;
   title: string;
@@ -19,6 +24,7 @@ export type Campaign = {
   progress: number; // 0–100
   active: boolean;
   endsAt?: string; // ISO date string
+  location?: GeoLocation;
 };
 
 export type CampaignDetail = Campaign & {
@@ -36,6 +42,7 @@ export type Institution = {
   activeCampaigns: number;
   verified: boolean;
   description: string;
+  location?: GeoLocation;
 };
 
 export type InstitutionDetail = Institution & {
@@ -57,8 +64,10 @@ export type PendingInstitution = Institution & {
 export type CampaignFilters = {
   search?: string;
   category?: CampaignCategory | 'Todos';
+  nearMe?: GeoLocation;
 };
 
 export type InstitutionFilters = {
   search?: string;
+  nearMe?: GeoLocation;
 };

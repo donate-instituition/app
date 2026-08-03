@@ -17,6 +17,8 @@ export const styles = StyleSheet.create({
   },
   greetingText: {
     gap: theme.spacing.xxs,
+    flex: 1,
+    minWidth: 0,
   },
   banner: {
     borderRadius: theme.radius.lg,
@@ -35,6 +37,19 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  sectionTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionAction: {
+    flexShrink: 0,
+  },
+  institutionPanelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   list: {
     gap: theme.spacing.sm,
@@ -56,11 +71,16 @@ export const styles = StyleSheet.create({
   donationInfo: {
     flex: 1,
     gap: theme.spacing.xxs,
+    minWidth: 0,
   },
   donationMeta: {
     flexDirection: 'row',
     gap: theme.spacing.xs,
     alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  donationStatus: {
+    maxWidth: 96,
   },
   campaignCard: {
     gap: theme.spacing.sm,
@@ -73,10 +93,12 @@ export const styles = StyleSheet.create({
   campaignInfo: {
     gap: theme.spacing.xxs,
     flex: 1,
+    minWidth: 0,
   },
   campaignMeta: {
     flexDirection: 'row',
     gap: theme.spacing.xs,
+    flexWrap: 'wrap',
   },
   adminInstitution: {
     gap: theme.spacing.md,
@@ -101,6 +123,26 @@ export const styles = StyleSheet.create({
   metric: {
     flexBasis: '47%',
     gap: theme.spacing.xs,
+  },
+  chartCard: {
+    gap: theme.spacing.lg,
+  },
+  chartBars: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    height: 112,
+  },
+  chartBar: {
+    borderTopLeftRadius: theme.radius.md,
+    borderTopRightRadius: theme.radius.md,
+    flex: 1,
+  },
+  accountabilityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
   },
   header: {
     gap: theme.spacing.sm,

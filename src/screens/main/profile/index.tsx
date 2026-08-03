@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Avatar, Button, Card, Divider, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Card, Divider, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getHomeRouteForRole } from '@/navigation/routes';
+import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { getPreferredInitialRole, getSessionRoles, roleLabels, type UserRole } from '@/navigation/session';
 import { ApiError } from '@/services/api';
 import { authService } from '@/services/auth';
@@ -94,18 +94,18 @@ export function ProfileScreen() {
       <View style={styles.container}>
 
         {/* Identidade */}
-        <Card>
+        <Card style={styles.identityCard}>
           <View style={styles.identity}>
             <Avatar name={user?.name} size="lg" />
             <View style={styles.identityInfo}>
-              <ThemedText variant="title" style={styles.centered}>
+              <ThemedText variant="subtitle" style={styles.name} numberOfLines={2}>
                 {user?.name}
               </ThemedText>
-              <ThemedText variant="body" color={colors.textMuted} style={styles.centered}>
+              <ThemedText variant="caption" color={colors.textMuted} style={styles.centered} numberOfLines={1}>
                 {user?.email}
               </ThemedText>
               {user && (
-                <Tag label={roleLabels[activeRole]} variant="success" />
+                <Tag label={roleLabels[activeRole]} variant="success" style={styles.identityBadge} />
               )}
             </View>
           </View>
@@ -199,22 +199,35 @@ export function ProfileScreen() {
 
         {/* Conta */}
         <View style={styles.section}>
-          <ThemedText variant="subtitle">Conta</ThemedText>
-          <Card padding="none">
-            <MenuItem icon="person-outline" label="Meus dados" />
+          <ThemedText variant="body" style={styles.sectionTitle}>Conta</ThemedText>
+          <Card padding="none" style={styles.menuCard}>
+            <MenuItem icon="person-outline" label="Meus dados" onPress={() => router.push(routes.profileMe)} />
             <Divider />
-            <MenuItem icon="notifications-outline" label="Notificações" />
+            <MenuItem icon="notifications-outline" label="Notificações" onPress={() => router.push(routes.profileNotifications)} />
             <Divider />
-            <MenuItem icon="lock-closed-outline" label="Privacidade e segurança" />
+            <MenuItem icon="lock-closed-outline" label="Privacidade e segurança" onPress={() => router.push(routes.profilePrivacy)} />
             <Divider />
-            <MenuItem icon="help-circle-outline" label="Ajuda e suporte" />
+            <MenuItem icon="help-circle-outline" label="Ajuda e suporte" onPress={() => router.push(routes.profileHelp)} />
           </Card>
         </View>
 
         {/* Sair */}
-        <Button variant="danger" onPress={handleLogout}>
-          Sair da conta
-        </Button>
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleLogout}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            {
+              backgroundColor: colors.secondarySoft,
+              borderColor: colors.danger,
+              opacity: pressed ? 0.84 : 1,
+            },
+          ]}>
+          <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+          <ThemedText variant="caption" color={colors.danger} style={styles.logoutText}>
+            Sair da conta
+          </ThemedText>
+        </Pressable>
 
       </View>
     </ScreenContainer>

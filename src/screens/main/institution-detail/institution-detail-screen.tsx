@@ -111,38 +111,52 @@ export function InstitutionDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Identidade */}
-        <Card>
-          <View style={styles.identity}>
-            <Avatar name={institution.name} size="lg" />
-            <View style={styles.identityInfo}>
-              <View style={styles.nameRow}>
-                <ThemedText variant="title" style={styles.textCentered}>
-                  {institution.name}
-                </ThemedText>
-                {institution.verified && (
-                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                )}
+        <View style={styles.identity}>
+          <View style={[styles.cover, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name="image-outline" size={32} color={colors.primary} />
+          </View>
+          <Avatar
+            name={institution.name}
+            size="lg"
+            style={[styles.identityAvatar, { borderColor: colors.surface }]}
+          />
+          <View style={styles.identityInfo}>
+            <View style={styles.nameRow}>
+              <ThemedText variant="subtitle">
+                {institution.name}
+              </ThemedText>
+              {institution.verified ? (
+                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              ) : null}
+            </View>
+            <ThemedText variant="caption" color={colors.textMuted}>
+              ONG · {institution.city}, {institution.state} · {institution.category}
+            </ThemedText>
+            <View style={styles.profileStats}>
+              <View>
+                <ThemedText variant="body" style={styles.bold}>1.204</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>seguidores</ThemedText>
               </View>
-              <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  {institution.city}, {institution.state}
-                </ThemedText>
-              </View>
-              <View style={styles.tagRow}>
-                <Tag label={institution.category} variant="info" />
-                {institution.verified && <Tag label="Verificada" variant="success" />}
+              <View>
+                <ThemedText variant="body" style={styles.bold}>{institution.campaigns.length}</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>campanhas</ThemedText>
               </View>
             </View>
+            <View style={styles.profileActions}>
+              <Button size="sm" style={styles.profileButton}>Seguir</Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                style={styles.profileButton}
+                leftSlot={<Ionicons name="mail-outline" size={15} color={colors.primary} />}
+                onPress={() => {
+                  const conversationId = chatService.ensureConversation(institution.id, institution.name);
+                  router.push(routes.appChat(conversationId));
+                }}>
+                Mensagem
+              </Button>
+            </View>
           </View>
-        </Card>
-
-        {/* Sobre */}
-        <View style={styles.section}>
-          <ThemedText variant="subtitle">Sobre a instituição</ThemedText>
-          <ThemedText variant="body" color={colors.textMuted}>
-            {institution.description}
-          </ThemedText>
         </View>
 
         {/* Informações */}
@@ -173,10 +187,11 @@ export function InstitutionDetailScreen() {
         {/* Campanhas ativas */}
         {activeCampaigns.length > 0 && (
           <View style={styles.section}>
-            <ThemedText variant="subtitle">
-              Campanhas ativas ({activeCampaigns.length})
-            </ThemedText>
-            <Card padding="none">
+            <View style={styles.sectionHeader}>
+              <ThemedText variant="subtitle">Campanhas ativas</ThemedText>
+              <ThemedText variant="caption" color={colors.primary}>Ver todas</ThemedText>
+            </View>
+            <View style={styles.campaignList}>
               {activeCampaigns.map((c, index) => (
                 <View key={c.id}>
                   <CampaignRow
@@ -186,7 +201,7 @@ export function InstitutionDetailScreen() {
                   {index < activeCampaigns.length - 1 && <Divider />}
                 </View>
               ))}
-            </Card>
+            </View>
           </View>
         )}
 

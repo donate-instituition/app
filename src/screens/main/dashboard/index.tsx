@@ -144,7 +144,9 @@ export function DashboardScreen() {
               <ThemedText variant="caption" color={colors.textMuted}>
                 Bem-vindo de volta 👋
               </ThemedText>
-              <ThemedText variant="title">{firstName}</ThemedText>
+              <ThemedText variant="title" numberOfLines={1}>
+                {firstName}
+              </ThemedText>
             </View>
             <Avatar name={user?.name} size="md" />
           </View>
@@ -232,22 +234,85 @@ export function DashboardScreen() {
 
         {!loading && !error && activeRole === 'institution-staff' && (
           <View style={styles.section}>
-            <View style={styles.grid}>
-              <Card style={styles.metric}>
+            <View style={styles.institutionPanelHeader}>
+              <View>
                 <ThemedText variant="caption" color={colors.textMuted}>
-                  Campanhas ativas
+                  Últimos 30 dias
                 </ThemedText>
-                <ThemedText variant="title">{activeInstitutionCampaigns.length}</ThemedText>
-              </Card>
-              <Card style={styles.metric}>
+                <ThemedText variant="title">
+                  {user?.name ?? 'Casa Lar Esperança'}
+                </ThemedText>
+              </View>
+              <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            </View>
+            <View style={styles.grid}>
+              <Card style={styles.metric} variant="elevated">
+                <Ionicons name="trending-up-outline" size={18} color={colors.primary} />
                 <ThemedText variant="caption" color={colors.textMuted}>
-                  Total arrecadado
+                  arrecadados no mês
                 </ThemedText>
                 <ThemedText variant="title">
                   R$ {(institutionCampaigns.reduce((sum, campaign) => sum + campaign.raisedCents, 0) / 100).toFixed(0)}
                 </ThemedText>
               </Card>
+              <Card style={styles.metric} variant="elevated">
+                <Ionicons name="people-outline" size={18} color={colors.primary} />
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  novos doadores
+                </ThemedText>
+                <ThemedText variant="title">214</ThemedText>
+              </Card>
+              <Card style={styles.metric} variant="elevated">
+                <Ionicons name="radio-button-on-outline" size={18} color={colors.primary} />
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  campanhas ativas
+                </ThemedText>
+                <ThemedText variant="title">{activeInstitutionCampaigns.length}</ThemedText>
+              </Card>
+              <Card style={styles.metric} variant="elevated">
+                <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  mensagens não lidas
+                </ThemedText>
+                <ThemedText variant="title">9</ThemedText>
+              </Card>
             </View>
+            <Card variant="elevated">
+              <View style={styles.chartCard}>
+                <ThemedText variant="body" style={styles.bold}>
+                  Desempenho das campanhas
+                </ThemedText>
+                <View style={styles.chartBars}>
+                  {[32, 58, 76, 42, 88, 64, 100].map((height, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.chartBar,
+                        {
+                          height,
+                          backgroundColor: colors.primary,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
+            </Card>
+            <Pressable onPress={() => router.push(routes.institutionCampaigns)}>
+              <Card variant="elevated">
+                <View style={styles.accountabilityRow}>
+                  <View>
+                    <ThemedText variant="body" style={styles.bold}>
+                      Prestações de contas pendentes
+                    </ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>
+                      3 comprovantes aguardando envio
+                    </ThemedText>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </View>
+              </Card>
+            </Pressable>
           </View>
         )}
 
@@ -256,10 +321,10 @@ export function DashboardScreen() {
             <Card style={[styles.banner, { backgroundColor: colors.primary }]} padding="lg">
               <View style={styles.bannerContent}>
                 <Tag label="Em destaque" variant="neutral" />
-                <ThemedText variant="subtitle" color={colors.surface}>
+                <ThemedText variant="subtitle" color={colors.surface} numberOfLines={2}>
                   {featuredCampaign.title}
                 </ThemedText>
-                <ThemedText variant="body" color={colors.primarySoft}>
+                <ThemedText variant="body" color={colors.primarySoft} numberOfLines={2}>
                   {featuredCampaign.institution} — {featuredCampaign.progress}% da meta atingida.
                 </ThemedText>
                 <View style={styles.bannerProgress}>
@@ -280,9 +345,11 @@ export function DashboardScreen() {
         {!loading && !error && activeRole === 'donor' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <ThemedText variant="subtitle">Minhas doações</ThemedText>
+              <ThemedText variant="subtitle" style={styles.sectionTitle} numberOfLines={1}>
+                Minhas doações
+              </ThemedText>
               <Pressable onPress={() => router.push(routes.donorDonations)}>
-                <ThemedText variant="caption" color={colors.primary}>
+                <ThemedText variant="caption" color={colors.primary} style={styles.sectionAction} numberOfLines={1}>
                   Ver todas
                 </ThemedText>
               </Pressable>
@@ -304,10 +371,10 @@ export function DashboardScreen() {
                           <Ionicons name="heart" size={18} color={colors.secondary} />
                         </View>
                         <View style={styles.donationInfo}>
-                          <ThemedText variant="body" style={styles.bold}>
+                          <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
                             {item.campaignTitle}
                           </ThemedText>
-                          <ThemedText variant="caption" color={colors.textMuted}>
+                          <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
                             {item.institutionName}
                           </ThemedText>
                           <View style={styles.donationMeta}>
@@ -320,6 +387,7 @@ export function DashboardScreen() {
                           </View>
                         </View>
                         <Tag
+                          style={styles.donationStatus}
                           label={donationStatusLabels[item.status]}
                           variant={getStatusVariant(item.status)}
                         />
@@ -336,9 +404,11 @@ export function DashboardScreen() {
         {!loading && !error && activeRole === 'institution-staff' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <ThemedText variant="subtitle">Campanhas da instituição</ThemedText>
+              <ThemedText variant="subtitle" style={styles.sectionTitle} numberOfLines={1}>
+                Campanhas da instituição
+              </ThemedText>
               <Pressable onPress={() => router.push(routes.institutionCampaigns)}>
-                <ThemedText variant="caption" color={colors.primary}>
+                <ThemedText variant="caption" color={colors.primary} style={styles.sectionAction} numberOfLines={1}>
                   Gerenciar
                 </ThemedText>
               </Pressable>
@@ -360,10 +430,10 @@ export function DashboardScreen() {
                       <View style={styles.campaignCard}>
                         <View style={styles.campaignHeader}>
                           <View style={styles.campaignInfo}>
-                            <ThemedText variant="body" style={styles.bold}>
+                            <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
                               {item.title}
                             </ThemedText>
-                            <ThemedText variant="caption" color={colors.textMuted}>
+                            <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
                               {item.active ? 'Ativa' : 'Inativa'} · {item.progress}% da meta
                             </ThemedText>
                           </View>
@@ -382,9 +452,11 @@ export function DashboardScreen() {
         {!loading && !error && activeRole === 'donor' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <ThemedText variant="subtitle">Campanhas para você</ThemedText>
+              <ThemedText variant="subtitle" style={styles.sectionTitle} numberOfLines={1}>
+                Campanhas para você
+              </ThemedText>
               <Pressable onPress={() => router.push(routes.donorCampaigns)}>
-                <ThemedText variant="caption" color={colors.primary}>
+                <ThemedText variant="caption" color={colors.primary} style={styles.sectionAction} numberOfLines={1}>
                   Explorar
                 </ThemedText>
               </Pressable>
@@ -406,10 +478,10 @@ export function DashboardScreen() {
                       <View style={styles.campaignCard}>
                         <View style={styles.campaignHeader}>
                           <View style={styles.campaignInfo}>
-                            <ThemedText variant="body" style={styles.bold}>
+                            <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
                               {item.title}
                             </ThemedText>
-                            <ThemedText variant="caption" color={colors.textMuted}>
+                            <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
                               {item.institution}
                             </ThemedText>
                           </View>

@@ -222,12 +222,22 @@ export function ChatDetailScreen() {
 
         <View style={styles.headerCenter}>
           <Avatar name={conversation?.institutionName} size="sm" />
-          <ThemedText variant="subtitle" numberOfLines={1} style={styles.headerName}>
-            {conversation?.institutionName ?? '…'}
-          </ThemedText>
+          <View style={styles.headerText}>
+            <View style={styles.nameRow}>
+              <ThemedText variant="body" numberOfLines={1} style={styles.headerName}>
+                {conversation?.institutionName ?? '…'}
+              </ThemedText>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+            </View>
+            <ThemedText variant="caption" color={colors.primary}>
+              online
+            </ThemedText>
+          </View>
         </View>
 
-        <View style={styles.headerSpacer} />
+        <Pressable style={styles.headerSpacer} accessibilityLabel="Mais opções">
+          <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
+        </Pressable>
       </View>
 
       {/* Message list */}
@@ -257,7 +267,11 @@ export function ChatDetailScreen() {
             paddingBottom: Math.max(insets.bottom, 12),
           },
         ]}>
+        <Pressable style={styles.attachmentButton} accessibilityLabel="Enviar imagem">
+          <Ionicons name="camera-outline" size={22} color={colors.icon} />
+        </Pressable>
         <TextInput
+          allowFontScaling={false}
           style={[
             styles.input,
             {

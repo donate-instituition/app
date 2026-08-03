@@ -23,14 +23,25 @@ export const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: theme.spacing.sm,
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  nameRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    minWidth: 0,
   },
   headerName: {
     fontWeight: '600',
     maxWidth: 180,
   },
   headerSpacer: {
+    alignItems: 'center',
+    justifyContent: 'center',
     width: 40,
   },
 
@@ -132,15 +143,24 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  attachmentButton: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 32,
+  },
   input: {
     flex: 1,
+    fontFamily: theme.typography.font.inter.regular,
     maxHeight: 120,
     borderWidth: theme.borderWidths.sm,
     borderRadius: theme.radius.pill,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 15,
+    includeFontPadding: false,
     lineHeight: 20,
+    minWidth: 0,
   },
   sendButton: {
     width: 40,

@@ -8,18 +8,36 @@ export const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     flex: 1,
   },
+  headerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  iconButton: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  searchIcon: {
+    paddingLeft: theme.spacing.md,
+  },
   conversationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
+    minWidth: 0,
     paddingVertical: theme.spacing.md,
   },
   conversationContent: {
     flex: 1,
     gap: theme.spacing.xxs,
+    minWidth: 0,
   },
   conversationHeader: {
     flexDirection: 'row',
+    gap: theme.spacing.sm,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -31,6 +49,7 @@ export const styles = StyleSheet.create({
   },
   preview: {
     flex: 1,
+    minWidth: 0,
   },
   badge: {
     minWidth: 20,
@@ -39,6 +58,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xs,
+    flexShrink: 0,
   },
   badgeText: {
     fontSize: 11,
@@ -51,4 +71,3 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
 });
-

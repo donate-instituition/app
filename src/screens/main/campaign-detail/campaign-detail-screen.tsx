@@ -88,60 +88,52 @@ export function CampaignDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Banner de progresso */}
-        <Card style={[styles.banner, { backgroundColor: colors.primary }]} padding="lg">
-          <View style={styles.bannerBody}>
-            <Tag label={campaign.category} variant="neutral" />
-            {!campaign.active && <Tag label="Encerrada" variant="neutral" />}
-            <ThemedText variant="title" color={colors.surface} style={styles.bannerAmount}>
-              {campaign.raisedFormatted}
+        <View style={[styles.cover, { backgroundColor: colors.primarySoft }]}>
+          <Ionicons name="image-outline" size={36} color={colors.primary} />
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.tagsRow}>
+            <Tag label={campaign.category} variant="info" />
+            {endsAt ? <Tag label={`Encerra em ${endsAt}`} variant="warning" /> : null}
+            {!campaign.active ? <Tag label="Encerrada" variant="neutral" /> : null}
+          </View>
+          <ThemedText variant="title">
+            {campaign.title}
+          </ThemedText>
+          <Pressable
+            style={styles.organizerInline}
+            onPress={() => router.push(routes.appInstitutionDetail(campaign.institutionId))}>
+            <Avatar name={campaign.institution} size="sm" />
+            <ThemedText variant="body" style={styles.bold}>
+              {campaign.institution}
             </ThemedText>
-            <ThemedText variant="caption" color={colors.primarySoft}>
-              arrecadados de {campaign.goalFormatted}
+            <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+          </Pressable>
+          <ProgressBar value={campaign.progress} />
+          <View style={styles.progressMeta}>
+            <ThemedText variant="caption" color={colors.primary} style={styles.bold}>
+              {campaign.raisedFormatted} arrecadados
             </ThemedText>
-            <ProgressBar
-              value={campaign.progress}
-              trackColor="rgba(255,255,255,0.25)"
-              fillColor="rgba(255,255,255,0.9)"
-            />
-            <View style={styles.bannerStats}>
-              <View style={styles.stat}>
-                <ThemedText variant="subtitle" color={colors.surface}>
-                  {campaign.progress}%
-                </ThemedText>
-                <ThemedText variant="caption" color={colors.primarySoft}>
-                  concluído
-                </ThemedText>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.stat}>
-                <ThemedText variant="subtitle" color={colors.surface}>
-                  {campaign.donorsCount}
-                </ThemedText>
-                <ThemedText variant="caption" color={colors.primarySoft}>
-                  doadores
-                </ThemedText>
-              </View>
-              {endsAt && (
-                <>
-                  <View style={styles.statDivider} />
-                  <View style={styles.stat}>
-                    <ThemedText variant="subtitle" color={colors.surface}>
-                      {endsAt}
-                    </ThemedText>
-                    <ThemedText variant="caption" color={colors.primarySoft}>
-                      encerra
-                    </ThemedText>
-                  </View>
-                </>
-              )}
+            <ThemedText variant="caption" color={colors.textMuted}>
+              meta {campaign.goalFormatted}
+            </ThemedText>
+          </View>
+          <View style={styles.statsGrid}>
+            <View style={[styles.statPill, { backgroundColor: colors.surfaceMuted }]}>
+              <ThemedText variant="subtitle">{campaign.donorsCount}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>doadores</ThemedText>
+            </View>
+            <View style={[styles.statPill, { backgroundColor: colors.surfaceMuted }]}>
+              <ThemedText variant="subtitle">{campaign.progress}%</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>da meta</ThemedText>
             </View>
           </View>
-        </Card>
+        </View>
 
         {/* Sobre a campanha */}
         <View style={styles.section}>
-          <ThemedText variant="subtitle">Sobre a campanha</ThemedText>
+          <ThemedText variant="subtitle">Prestação e propósito</ThemedText>
           <ThemedText variant="body" color={colors.textMuted}>
             {campaign.description}
           </ThemedText>
@@ -214,7 +206,7 @@ export function CampaignDetailScreen() {
             style={styles.actionButton}
             leftSlot={<Ionicons name="heart-outline" size={16} color={colors.surface} />}
             onPress={() => router.push(routes.appDonate(campaign.id))}>
-            Fazer Doação
+            Quero doar
           </Button>
         </View>
       )}

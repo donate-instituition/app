@@ -9,6 +9,7 @@ export const styles = StyleSheet.create({
   },
   metricsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.md,
   },
   metricCard: {
@@ -24,18 +25,20 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: theme.spacing.md,
+    minWidth: 0,
     paddingVertical: theme.spacing.sm,
   },
   donationInfo: {
     flex: 1,
     gap: theme.spacing.xxs,
+    minWidth: 0,
   },
   donationRight: {
     alignItems: 'flex-end',
+    flexShrink: 0,
     gap: theme.spacing.xs,
   },
   bold: {
     fontWeight: '600',
   },
 });
-

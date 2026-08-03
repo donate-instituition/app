@@ -5,6 +5,7 @@ import type {
   CampaignCategory,
   CampaignDetail,
   CampaignFilters,
+  GeoLocation,
   Institution,
   InstitutionDetail,
   InstitutionFilters,
@@ -17,10 +18,44 @@ function matchSearch(fields: string[], query: string) {
   return fields.some((field) => field.toLowerCase().includes(q));
 }
 
-function filterCampaigns(campaigns: Campaign[], filters: CampaignFilters = {}) {
-  const { search = '', category = 'Todos' } = filters;
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
 
-  return campaigns.filter((campaign) => {
+function distanceInKm(from: GeoLocation, to: GeoLocation) {
+  const earthRadiusKm = 6371;
+  const deltaLatitude = toRadians(to.latitude - from.latitude);
+  const deltaLongitude = toRadians(to.longitude - from.longitude);
+  const originLatitude = toRadians(from.latitude);
+  const destinationLatitude = toRadians(to.latitude);
+
+  const haversine =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(originLatitude) *
+      Math.cos(destinationLatitude) *
+      Math.sin(deltaLongitude / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function sortByDistance<TItem extends { location?: GeoLocation }>(items: TItem[], nearMe?: GeoLocation) {
+  if (!nearMe) {
+    return items;
+  }
+
+  return [...items].sort((a, b) => {
+    if (!a.location && !b.location) return 0;
+    if (!a.location) return 1;
+    if (!b.location) return -1;
+
+    return distanceInKm(nearMe, a.location) - distanceInKm(nearMe, b.location);
+  });
+}
+
+function filterCampaigns(campaigns: Campaign[], filters: CampaignFilters = {}) {
+  const { search = '', category = 'Todos', nearMe } = filters;
+
+  const filtered = campaigns.filter((campaign) => {
     const matchesCategory =
       category === 'Todos' || (campaign.category as CampaignCategory | 'Todos') === category;
     const matchesSearch = matchSearch(
@@ -30,17 +65,21 @@ function filterCampaigns(campaigns: Campaign[], filters: CampaignFilters = {}) {
 
     return matchesCategory && matchesSearch;
   });
+
+  return sortByDistance(filtered, nearMe);
 }
 
 function filterInstitutions(institutions: Institution[], filters: InstitutionFilters = {}) {
-  const { search = '' } = filters;
+  const { search = '', nearMe } = filters;
 
-  return institutions.filter((institution) =>
+  const filtered = institutions.filter((institution) =>
     matchSearch(
       [institution.name, institution.category, institution.city, institution.description],
       search,
     ),
   );
+
+  return sortByDistance(filtered, nearMe);
 }
 
 async function listCampaigns(filters: CampaignFilters = {}): Promise<Campaign[]> {
