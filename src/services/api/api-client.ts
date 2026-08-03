@@ -5,8 +5,101 @@ import { ApiError } from './errors';
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
+  idempotencyKey?: string;
+  idempotencyScope?: string;
   token?: string | null;
 };
+
+type IdempotencyCacheEntry = {
+  expiresAt: number;
+  key: string;
+};
+
+const IDEMPOTENT_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const IDEMPOTENCY_RETRY_WINDOW_MS = Math.max(API_TIMEOUT_MS * 4, 60_000);
+const idempotencyKeys = new Map<string, IdempotencyCacheEntry>();
+
+function createIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const randomPart = Math.random().toString(36).slice(2);
+  const timePart = Date.now().toString(36);
+
+  return `${timePart}-${randomPart}`;
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`)
+    .join(',')}}`;
+}
+
+function getIdempotencyFingerprint(path: string, method: string, body: unknown) {
+  return `${method.toUpperCase()}:${path}:${stableStringify(body ?? {})}`;
+}
+
+function getCachedIdempotencyKey(fingerprint: string) {
+  const cachedEntry = idempotencyKeys.get(fingerprint);
+
+  if (!cachedEntry) {
+    return undefined;
+  }
+
+  if (cachedEntry.expiresAt <= Date.now()) {
+    idempotencyKeys.delete(fingerprint);
+    return undefined;
+  }
+
+  return cachedEntry.key;
+}
+
+function setCachedIdempotencyKey(fingerprint: string, key: string) {
+  idempotencyKeys.set(fingerprint, {
+    expiresAt: Date.now() + IDEMPOTENCY_RETRY_WINDOW_MS,
+    key,
+  });
+}
+
+function getIdempotencyHeaders(
+  path: string,
+  method: string | undefined,
+  body: unknown,
+  idempotencyKey?: string,
+  idempotencyScope?: string,
+) {
+  const normalizedMethod = method?.toUpperCase();
+
+  if (!normalizedMethod || !IDEMPOTENT_METHODS.has(normalizedMethod)) {
+    return undefined;
+  }
+
+  const fingerprint = getIdempotencyFingerprint(path, normalizedMethod, body);
+  const nextIdempotencyKey =
+    idempotencyKey ??
+    getCachedIdempotencyKey(fingerprint) ??
+    createIdempotencyKey();
+
+  setCachedIdempotencyKey(fingerprint, nextIdempotencyKey);
+
+  return {
+    fingerprint,
+    headers: {
+      'Idempotency-Key': nextIdempotencyKey,
+      ...(idempotencyScope ? { 'X-Idempotency-Scope': idempotencyScope } : {}),
+    },
+  };
+}
 
 async function parseResponse(response: Response) {
   const contentType = response.headers.get('content-type');
@@ -52,12 +145,28 @@ async function refreshAccessToken() {
 
 export async function apiClient<TResponse>(
   path: string,
-  { body, headers, token, ...options }: RequestOptions = {},
+  {
+    body,
+    headers,
+    idempotencyKey,
+    idempotencyScope,
+    token,
+    ...options
+  }: RequestOptions = {},
   attempt = 0,
 ): Promise<TResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  const idempotency = getIdempotencyHeaders(
+    path,
+    options.method,
+    body,
+    idempotencyKey,
+    idempotencyScope,
+  );
+  let keepIdempotencyKeyForRetry = false;
+  let delegatedIdempotencyCleanup = false;
 
   try {
     const response = await fetch(url, {
@@ -67,6 +176,7 @@ export async function apiClient<TResponse>(
         Accept: 'application/json',
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(idempotency ? idempotency.headers : {}),
         ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -78,7 +188,19 @@ export async function apiClient<TResponse>(
       const nextAccessToken = await refreshAccessToken();
 
       if (nextAccessToken) {
-        return apiClient<TResponse>(path, { body, headers, token: nextAccessToken, ...options }, 1);
+        delegatedIdempotencyCleanup = true;
+        return await apiClient<TResponse>(
+          path,
+          {
+            body,
+            headers,
+            idempotencyKey: idempotency?.headers['Idempotency-Key'],
+            idempotencyScope,
+            token: nextAccessToken,
+            ...options,
+          },
+          1,
+        );
       }
     }
 
@@ -92,8 +214,17 @@ export async function apiClient<TResponse>(
       throw error;
     }
 
+    keepIdempotencyKeyForRetry = true;
     throw new ApiError('Nao foi possivel conectar com a API.', undefined, error);
   } finally {
+    if (
+      idempotency?.fingerprint &&
+      !keepIdempotencyKeyForRetry &&
+      !delegatedIdempotencyCleanup
+    ) {
+      idempotencyKeys.delete(idempotency.fingerprint);
+    }
+
     clearTimeout(timeout);
   }
 }
