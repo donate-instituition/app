@@ -92,6 +92,7 @@ export function InstitutionTabsLayout() {
         { name: 'dashboard', title: 'Painel', icon: 'grid-outline', activeIcon: 'grid' },
         { name: 'campaigns', title: 'Campanhas', icon: 'megaphone-outline', activeIcon: 'megaphone' },
         { name: 'donations', title: 'Doações', icon: 'heart-outline', activeIcon: 'heart' },
+        { name: 'team', title: 'Equipe', icon: 'people-outline', activeIcon: 'people' },
         { name: 'messages', title: 'Chat', icon: 'chatbubble-outline', activeIcon: 'chatbubble', badge: unreadCount },
         { name: 'profile', title: 'Perfil', icon: 'person-outline', activeIcon: 'person' },
       ]}
