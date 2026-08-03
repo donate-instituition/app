@@ -7,5 +7,5 @@ export default function IndexRoute() {
   const authToken = useAppStore((state) => state.authToken);
   const activeRole = useActiveRole();
 
-  return <Redirect href={authToken ? getHomeRouteForRole(activeRole) : routes.authLogin} />;
+  return <Redirect href={authToken ? getHomeRouteForRole(activeRole) : routes.authAccess} />;
 }

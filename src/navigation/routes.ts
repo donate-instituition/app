@@ -2,10 +2,13 @@ import type { Href } from 'expo-router';
 import type { UserRole } from './session';
 
 export const routes = {
+  authAccess: '/access' as Href,
   authLogin: '/login' as Href,
   authRegister: '/register' as Href,
   authForgotPassword: '/forgot-password' as Href,
   authActivateAccount: '/activate-account' as Href,
+  authTerms: '/terms' as Href,
+  authTermsAccept: '/terms?mode=accept' as Href,
   appDashboard: '/donor/dashboard' as Href,
   donorDashboard: '/donor/dashboard' as Href,
   institutionDashboard: '/institution/dashboard' as Href,
@@ -22,6 +25,10 @@ export const routes = {
   donorProfile: '/donor/profile' as Href,
   institutionProfile: '/institution/profile' as Href,
   adminProfile: '/admin/profile' as Href,
+  profileMe: '/profile/me' as Href,
+  profileNotifications: '/profile/notifications' as Href,
+  profilePrivacy: '/profile/privacy' as Href,
+  profileHelp: '/profile/help' as Href,
   appCampaignDetail: (id: string) => `/campaign/${id}` as Href,
   appDonate: (id: string) => `/campaign/${id}/donate` as Href,
   appInstitutionDetail: (id: string) => `/institution/${id}` as Href,

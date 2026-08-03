@@ -235,21 +235,20 @@ export function LoginScreen() {
     return (
       <ScreenContainer scrollable>
         <View style={styles.container}>
-          <View style={styles.header}>
-            <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
-              <Ionicons name="shield-checkmark-outline" size={32} color={colors.primary} />
+          <View style={[styles.activationCard, { backgroundColor: colors.primarySoft }]}>
+            <View style={[styles.logoMark, { backgroundColor: colors.surface }]}>
+              <Ionicons name="shield-checkmark-outline" size={30} color={colors.primary} />
             </View>
-            <ThemedText variant="title" style={styles.title}>
-              Troque sua senha
+            <ThemedText variant="subtitle" style={styles.title}>
+              Conta verificada
             </ThemedText>
             <ThemedText variant="body" color={colors.textMuted} style={styles.centerText}>
-              Você entrou com uma senha temporária. Crie uma nova senha para continuar.
+              Confirmamos o acesso. Agora crie uma senha nova para substituir a senha inicial recebida por e-mail.
             </ThemedText>
           </View>
 
           <View style={styles.form}>
             <Input
-              label="Nova senha"
               value={newPassword}
               onChangeText={(v) => {
                 setNewPassword(v);
@@ -261,7 +260,6 @@ export function LoginScreen() {
             />
 
             <Input
-              label="Confirmar nova senha"
               value={newPasswordConfirmation}
               onChangeText={(v) => {
                 setNewPasswordConfirmation(v);
@@ -274,14 +272,23 @@ export function LoginScreen() {
             />
 
             {changePasswordError ? (
-              <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
-                {changePasswordError}
-              </ThemedText>
+              <View style={[styles.securityBox, { backgroundColor: colors.secondarySoft, borderColor: colors.secondary }]}>
+                <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
+                <ThemedText variant="caption" color={colors.text}>
+                  {changePasswordError}
+                </ThemedText>
+              </View>
             ) : null}
 
             <Button fullWidth loading={changePasswordLoading} onPress={handleChangePassword}>
-              Salvar nova senha
+              Salvar e entrar
             </Button>
+            <View style={[styles.securityBox, { backgroundColor: colors.secondarySoft, borderColor: colors.secondary }]}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.secondary} />
+              <ThemedText variant="caption" color={colors.text}>
+                Segurança: nunca compartilhe seus dados de acesso. O EloDoar não solicita sua senha por e-mail.
+              </ThemedText>
+            </View>
           </View>
         </View>
       </ScreenContainer>
@@ -292,22 +299,21 @@ export function LoginScreen() {
     <ScreenContainer scrollable>
       <View style={styles.container}>
         {/* Branding */}
-        <View style={styles.header}>
-          <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons name="heart" size={32} color={colors.primary} />
+        <View style={styles.loginHero}>
+          <View style={[styles.logoMark, { backgroundColor: colors.primary }]}>
+            <Ionicons name="heart-outline" size={32} color={colors.surface} />
           </View>
           <ThemedText variant="title" style={styles.title}>
-            Entrar no EloDoar
+            Bem-vindo de volta
           </ThemedText>
           <ThemedText variant="body" color={colors.textMuted}>
-            Bem-vindo de volta. Informe suas credenciais para continuar.
+            Entre para continuar doando.
           </ThemedText>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           <Input
-            label="E-mail"
             value={email}
             onChangeText={(v) => {
               setEmail(v);
@@ -319,10 +325,14 @@ export function LoginScreen() {
             autoCorrect={false}
             placeholder="seu@email.com"
             returnKeyType="next"
+            leftSlot={
+              <View style={styles.inputIcon}>
+                <Ionicons name="mail-outline" size={18} color={colors.icon} />
+              </View>
+            }
           />
 
           <Input
-            label="Senha"
             value={password}
             onChangeText={(v) => {
               setPassword(v);
@@ -333,6 +343,11 @@ export function LoginScreen() {
             placeholder="Sua senha"
             returnKeyType="done"
             onSubmitEditing={handleSubmit}
+            leftSlot={
+              <View style={styles.inputIcon}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.icon} />
+              </View>
+            }
             rightSlot={
               <Pressable
                 onPress={() => setShowPassword((v) => !v)}
@@ -380,6 +395,22 @@ export function LoginScreen() {
           <Button fullWidth disabled={Boolean(devLoadingRole)} loading={loading} onPress={handleSubmit}>
             Entrar
           </Button>
+
+          <View style={styles.orRow}>
+            <Divider style={styles.orLine} />
+            <ThemedText variant="caption" color={colors.textMuted}>
+              ou
+            </ThemedText>
+            <Divider style={styles.orLine} />
+          </View>
+
+          <Button
+            fullWidth
+            variant="secondary"
+            leftSlot={<Ionicons name="logo-google" size={18} color={colors.text} />}
+            onPress={() => setApiError('Login com Google ainda não está configurado neste ambiente.')}>
+            Continuar com Google
+          </Button>
         </View>
 
         {/* Footer */}
@@ -387,7 +418,7 @@ export function LoginScreen() {
           <ThemedText variant="caption" color={colors.textMuted}>
             Ainda não tem conta?
           </ThemedText>
-          <Pressable onPress={() => router.push(routes.authRegister)}>
+          <Pressable onPress={() => router.push(routes.authAccess)}>
             <ThemedText variant="caption" color={colors.primary} style={styles.linkBold}>
               Criar conta
             </ThemedText>

@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Button, DatePicker, Input, RadioGroup, ScreenContainer, ThemedText } from '@/components';
+import { Button, Checkbox, DatePicker, Input, ScreenContainer, ThemedText } from '@/components';
 import { ApiError } from '@/services/api';
 import {
   authService,
@@ -36,6 +36,7 @@ type FieldErrors = {
   institutionPhone?: string;
   password?: string;
   confirmPassword?: string;
+  terms?: string;
 };
 
 type AccountType = 'DONOR' | 'INSTITUTION';
@@ -262,6 +263,7 @@ export function RegisterScreen() {
   const setSession = useAppStore((state) => state.setSession);
   const logout = useAppStore((state) => state.logout);
   const router = useRouter();
+  const params = useLocalSearchParams<{ accountType?: string | string[] }>();
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
 
@@ -282,6 +284,8 @@ export function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState('');
   const [pendingInstitutionName, setPendingInstitutionName] = useState('');
@@ -290,12 +294,21 @@ export function RegisterScreen() {
   const [resendMessage, setResendMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const accountTypeParam = Array.isArray(params.accountType)
+      ? params.accountType[0]
+      : params.accountType;
+
+    if (accountTypeParam === 'DONOR' || accountTypeParam === 'INSTITUTION') {
+      setAccountType(accountTypeParam);
+    }
+  }, [params.accountType]);
+
   function clearFieldError(field: keyof FieldErrors) {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  async function handleSubmit() {
-    setApiError('');
+  function getValidationErrors() {
     const errors = validate(
       accountType,
       name,
@@ -311,6 +324,45 @@ export function RegisterScreen() {
       password,
       confirmPassword,
     );
+
+    if (!acceptedTerms) {
+      errors.terms = 'Aceite os termos para continuar.';
+    }
+
+    return errors;
+  }
+
+  function getAccountStepErrors() {
+    const allErrors = getValidationErrors();
+    const accountFields: (keyof FieldErrors)[] = [
+      'name',
+      'cpf',
+      'birthDate',
+      'phone',
+      'email',
+      'password',
+      'confirmPassword',
+    ];
+
+    return accountFields.reduce<FieldErrors>((acc, field) => {
+      if (allErrors[field]) acc[field] = allErrors[field];
+      return acc;
+    }, {});
+  }
+
+  function handleContinueInstitution() {
+    const errors = getAccountStepErrors();
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setApiError('');
+    setStep(2);
+  }
+
+  async function handleSubmit() {
+    setApiError('');
+    const errors = getValidationErrors();
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -432,43 +484,203 @@ export function RegisterScreen() {
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
+        <Pressable
+          onPress={() => (step === 2 ? setStep(1) : router.push(routes.authAccess))}
+          style={styles.backButton}
+          accessibilityLabel={step === 2 ? 'Voltar para dados da conta' : 'Voltar para escolha de perfil'}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </Pressable>
 
         {/* Header */}
-        <View style={styles.header}>
-          <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons name="person-add" size={28} color={colors.primary} />
-          </View>
-          <ThemedText variant="title" style={styles.title}>
-            Criar conta
+        <View style={[styles.headerBlock, accountType === 'DONOR' && styles.donorHeader]}>
+          {accountType === 'DONOR' ? (
+            <View style={[styles.heroIcon, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]}>
+              <Ionicons name="person-add" size={30} color={colors.primary} />
+            </View>
+          ) : null}
+          {accountType === 'INSTITUTION' ? (
+            <View style={[styles.stepBadge, { borderColor: colors.border }]}>
+              <ThemedText variant="caption" color={colors.primary} style={styles.linkBold}>
+                Etapa {step} de 2
+              </ThemedText>
+            </View>
+          ) : null}
+          <ThemedText variant="title">
+            {accountType === 'INSTITUTION' && step === 2 ? 'Dados da instituição' : 'Criar conta'}
           </ThemedText>
-          <ThemedText variant="body" color={colors.textMuted} style={styles.subtitle}>
-            Preencha os dados abaixo para começar a usar o EloDoar.
+          <ThemedText variant="body" color={colors.textMuted}>
+            {accountType === 'INSTITUTION'
+              ? step === 1
+                ? 'Preencha seus dados para cadastrar sua instituição.'
+                : 'Informe os dados públicos e legais da organização.'
+              : 'Preencha os dados para começar a doar.'}
           </ThemedText>
+          {accountType === 'INSTITUTION' ? (
+            <View style={styles.stepper}>
+              <View style={[styles.stepDot, { backgroundColor: step === 1 ? colors.primary : colors.success }]}>
+                <ThemedText variant="caption" color={colors.surface} style={styles.linkBold}>
+                  {step === 1 ? '1' : '✓'}
+                </ThemedText>
+              </View>
+              <View style={[styles.stepLine, { backgroundColor: colors.primary }]} />
+              <View
+                style={[
+                  styles.stepDot,
+                  {
+                    backgroundColor: step === 2 ? colors.primary : colors.background,
+                    borderColor: step === 2 ? colors.primary : colors.border,
+                  },
+                ]}>
+                <ThemedText
+                  variant="caption"
+                  color={step === 2 ? colors.surface : colors.textMuted}
+                  style={styles.linkBold}>
+                  2
+                </ThemedText>
+              </View>
+            </View>
+          ) : null}
         </View>
+
+        {accountType === 'INSTITUTION' && step === 2 ? (
+          <View style={styles.form}>
+            <View style={styles.sectionTitle}>
+              <View style={[styles.sectionIcon, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="business" size={18} color={colors.primary} />
+              </View>
+              <ThemedText variant="subtitle">Informações da instituição</ThemedText>
+            </View>
+
+            <Input
+              label="Razão social"
+              value={institutionLegalName}
+              onChangeText={(v) => { setInstitutionLegalName(v); clearFieldError('institutionLegalName'); }}
+              error={fieldErrors.institutionLegalName}
+              placeholder="Nome legal da instituição"
+              returnKeyType="next"
+              leftSlot={<Ionicons name="business-outline" size={18} color={colors.icon} />}
+            />
+
+            <Input
+              label="Nome fantasia"
+              value={institutionDisplayName}
+              onChangeText={(v) => { setInstitutionDisplayName(v); clearFieldError('institutionDisplayName'); }}
+              error={fieldErrors.institutionDisplayName}
+              placeholder="Nome público"
+              returnKeyType="next"
+              leftSlot={<Ionicons name="pricetag-outline" size={18} color={colors.icon} />}
+            />
+
+            <Input
+              label="CNPJ"
+              value={institutionCnpj}
+              onChangeText={(v) => { setInstitutionCnpj(formatCnpj(v)); clearFieldError('institutionCnpj'); }}
+              error={fieldErrors.institutionCnpj}
+              keyboardType="number-pad"
+              placeholder="00.000.000/0000-00"
+              returnKeyType="next"
+              leftSlot={<Ionicons name="document-text-outline" size={18} color={colors.icon} />}
+            />
+
+            <Input
+              label="E-mail institucional"
+              value={institutionEmail}
+              onChangeText={(v) => { setInstitutionEmail(v); clearFieldError('institutionEmail'); }}
+              error={fieldErrors.institutionEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="contato@instituicao.org.br"
+              returnKeyType="next"
+              leftSlot={<Ionicons name="mail-outline" size={18} color={colors.icon} />}
+            />
+
+            <Input
+              label="Telefone institucional"
+              value={institutionPhone}
+              onChangeText={(v) => { setInstitutionPhone(formatPhone(v)); clearFieldError('institutionPhone'); }}
+              error={fieldErrors.institutionPhone}
+              keyboardType="phone-pad"
+              placeholder="(00) 00000-0000"
+              returnKeyType="next"
+              leftSlot={<Ionicons name="call-outline" size={18} color={colors.icon} />}
+            />
+
+            <Input
+              label="Site"
+              value={institutionWebsite}
+              onChangeText={setInstitutionWebsite}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="https://instituicao.org.br"
+              returnKeyType="next"
+              leftSlot={<Ionicons name="globe-outline" size={18} color={colors.icon} />}
+            />
+
+            <Input
+              label="Descrição"
+              value={institutionDescription}
+              onChangeText={setInstitutionDescription}
+              multiline
+              placeholder="Resumo da atuação da instituição"
+              style={styles.multilineInput}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.termsBlock}>
+              <View style={styles.termsRow}>
+                <Checkbox
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => {
+                    setAcceptedTerms(checked);
+                    clearFieldError('terms');
+                  }}
+                />
+                <ThemedText variant="body" color={colors.text}>
+                  Aceito os{' '}
+                  <ThemedText
+                    variant="body"
+                    color={colors.primary}
+                    style={styles.linkBold}
+                    onPress={() => router.push(routes.authTerms)}>
+                    Termos e a Política de Privacidade
+                  </ThemedText>
+                </ThemedText>
+              </View>
+              {fieldErrors.terms ? (
+                <ThemedText variant="caption" color={colors.danger}>
+                  {fieldErrors.terms}
+                </ThemedText>
+              ) : null}
+            </View>
+
+            {apiError ? (
+              <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
+                {apiError}
+              </ThemedText>
+            ) : null}
+
+            <Button
+              fullWidth
+              loading={loading}
+              rightSlot={<Ionicons name="checkmark-circle-outline" size={18} color={colors.surface} />}
+              onPress={handleSubmit}>
+              Criar conta
+            </Button>
+          </View>
+        ) : (
+          <>
+            <View style={styles.sectionTitle}>
+              <View style={[styles.sectionIcon, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="person" size={18} color={colors.primary} />
+              </View>
+              <ThemedText variant="subtitle">
+                {accountType === 'INSTITUTION' ? 'Responsável pela conta' : 'Dados da conta'}
+              </ThemedText>
+            </View>
 
         {/* Form */}
         <View style={styles.form}>
-          <RadioGroup
-            label="Tipo de cadastro"
-            value={accountType}
-            onValueChange={(value) => {
-              setAccountType(value as AccountType);
-              clearFieldError('accountType');
-            }}
-            options={[
-              {
-                label: 'Doador',
-                value: 'DONOR',
-                description: 'Pessoa física que doa e recebe comprovantes em seu CPF.',
-              },
-              {
-                label: 'Instituição',
-                value: 'INSTITUTION',
-                description: 'Responsável por cadastrar uma instituição para análise da plataforma.',
-              },
-            ]}
-          />
-
           <Input
             label="Nome completo"
             value={name}
@@ -477,6 +689,7 @@ export function RegisterScreen() {
             autoCapitalize="words"
             placeholder="Seu nome completo"
             returnKeyType="next"
+            leftSlot={<Ionicons name="person-outline" size={18} color={colors.icon} />}
           />
 
           <DatePicker
@@ -500,6 +713,7 @@ export function RegisterScreen() {
             keyboardType="number-pad"
             placeholder="000.000.000-00"
             returnKeyType="next"
+            leftSlot={<Ionicons name="id-card-outline" size={18} color={colors.icon} />}
           />
 
           <Input
@@ -510,83 +724,8 @@ export function RegisterScreen() {
             keyboardType="phone-pad"
             placeholder="(00) 00000-0000"
             returnKeyType="next"
+            leftSlot={<Ionicons name="call-outline" size={18} color={colors.icon} />}
           />
-
-          {accountType === 'INSTITUTION' ? (
-            <View style={styles.group}>
-              <ThemedText variant="subtitle">Dados da instituição</ThemedText>
-
-              <Input
-                label="Razão social"
-                value={institutionLegalName}
-                onChangeText={(v) => { setInstitutionLegalName(v); clearFieldError('institutionLegalName'); }}
-                error={fieldErrors.institutionLegalName}
-                placeholder="Nome legal da instituição"
-                returnKeyType="next"
-              />
-
-              <Input
-                label="Nome fantasia"
-                value={institutionDisplayName}
-                onChangeText={(v) => { setInstitutionDisplayName(v); clearFieldError('institutionDisplayName'); }}
-                error={fieldErrors.institutionDisplayName}
-                placeholder="Nome público"
-                returnKeyType="next"
-              />
-
-              <Input
-                label="CNPJ"
-                value={institutionCnpj}
-                onChangeText={(v) => { setInstitutionCnpj(formatCnpj(v)); clearFieldError('institutionCnpj'); }}
-                error={fieldErrors.institutionCnpj}
-                keyboardType="number-pad"
-                placeholder="00.000.000/0000-00"
-                returnKeyType="next"
-              />
-
-              <Input
-                label="E-mail institucional"
-                value={institutionEmail}
-                onChangeText={(v) => { setInstitutionEmail(v); clearFieldError('institutionEmail'); }}
-                error={fieldErrors.institutionEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="contato@instituicao.org.br"
-                returnKeyType="next"
-              />
-
-              <Input
-                label="Telefone institucional"
-                value={institutionPhone}
-                onChangeText={(v) => { setInstitutionPhone(formatPhone(v)); clearFieldError('institutionPhone'); }}
-                error={fieldErrors.institutionPhone}
-                keyboardType="phone-pad"
-                placeholder="(00) 00000-0000"
-                returnKeyType="next"
-              />
-
-              <Input
-                label="Site"
-                value={institutionWebsite}
-                onChangeText={setInstitutionWebsite}
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="https://instituicao.org.br"
-                returnKeyType="next"
-              />
-
-              <Input
-                label="Descrição"
-                value={institutionDescription}
-                onChangeText={setInstitutionDescription}
-                multiline
-                placeholder="Resumo da atuação da instituição"
-                style={styles.multilineInput}
-                textAlignVertical="top"
-              />
-            </View>
-          ) : null}
 
           <Input
             label="E-mail"
@@ -598,6 +737,7 @@ export function RegisterScreen() {
             autoCorrect={false}
             placeholder="seu@email.com"
             returnKeyType="next"
+            leftSlot={<Ionicons name="mail-outline" size={18} color={colors.icon} />}
           />
 
           <Input
@@ -608,6 +748,7 @@ export function RegisterScreen() {
             secureTextEntry={!showPassword}
             placeholder="Mínimo 8 caracteres"
             returnKeyType="next"
+            leftSlot={<Ionicons name="lock-closed-outline" size={18} color={colors.icon} />}
             rightSlot={
               <Pressable
                 onPress={() => setShowPassword((v) => !v)}
@@ -631,6 +772,7 @@ export function RegisterScreen() {
             placeholder="Repita a senha"
             returnKeyType="done"
             onSubmitEditing={handleSubmit}
+            leftSlot={<Ionicons name="lock-closed-outline" size={18} color={colors.icon} />}
             rightSlot={
               <Pressable
                 onPress={() => setShowConfirm((v) => !v)}
@@ -645,23 +787,62 @@ export function RegisterScreen() {
             }
           />
 
+          {accountType === 'DONOR' ? (
+            <View style={styles.termsBlock}>
+              <View style={styles.termsRow}>
+                <Checkbox
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => {
+                    setAcceptedTerms(checked);
+                    clearFieldError('terms');
+                  }}
+                />
+                <ThemedText variant="body" color={colors.text}>
+                  Aceito os{' '}
+                  <ThemedText
+                    variant="body"
+                    color={colors.primary}
+                    style={styles.linkBold}
+                    onPress={() => router.push(routes.authTerms)}>
+                    Termos e a Política de Privacidade
+                  </ThemedText>
+                </ThemedText>
+              </View>
+              {fieldErrors.terms ? (
+                <ThemedText variant="caption" color={colors.danger}>
+                  {fieldErrors.terms}
+                </ThemedText>
+              ) : null}
+            </View>
+          ) : null}
+
           {apiError ? (
             <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
               {apiError}
             </ThemedText>
           ) : null}
 
-          <Button fullWidth loading={loading} onPress={handleSubmit}>
-            Criar conta
+          <Button
+            fullWidth
+            loading={loading}
+            rightSlot={
+              accountType === 'INSTITUTION'
+                ? <Ionicons name="arrow-forward" size={18} color={colors.surface} />
+                : undefined
+            }
+            onPress={accountType === 'INSTITUTION' ? handleContinueInstitution : handleSubmit}>
+            {accountType === 'INSTITUTION' ? 'Continuar' : 'Criar conta'}
           </Button>
         </View>
+          </>
+        )}
 
         {/* Footer */}
         <View style={styles.footer}>
           <ThemedText variant="caption" color={colors.textMuted}>
             Já tem uma conta?
           </ThemedText>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => router.replace(routes.authLogin)}>
             <ThemedText variant="caption" color={colors.primary} style={styles.linkBold}>
               Entrar
             </ThemedText>

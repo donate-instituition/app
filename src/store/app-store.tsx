@@ -22,6 +22,7 @@ type AppStore = {
   setTokens: (accessToken: string, refreshToken?: string | null) => void;
   setActiveRole: (role: UserRole) => void;
   setPreferredRole: (role: UserRole) => void;
+  setTermsAccepted: (version: string, acceptedAt?: string) => void;
   logout: () => void;
   selectCampaign: (campaignId: string | null) => void;
   reset: () => void;
@@ -65,6 +66,19 @@ export const useAppStore = create<AppStore>()(
           }
 
           return { user: { ...state.user, preferredRole: role } };
+        }),
+      setTermsAccepted: (version, acceptedAt) =>
+        set((state) => {
+          if (!state.user) return state;
+
+          return {
+            user: {
+              ...state.user,
+              acceptedTermsVersion: version,
+              termsAccepted: true,
+              termsAcceptedAt: acceptedAt ?? new Date().toISOString(),
+            },
+          };
         }),
       logout: () => set(initialState),
       selectCampaign: (selectedCampaignId) => set({ selectedCampaignId }),

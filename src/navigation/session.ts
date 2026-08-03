@@ -20,6 +20,9 @@ export type SessionUser = {
   preferredRole?: UserRole;
   institutionRole?: InstitutionStaffRole;
   passwordChangeRequired?: boolean;
+  termsAccepted?: boolean;
+  acceptedTermsVersion?: string;
+  termsAcceptedAt?: string;
 };
 
 export const roleLabels: Record<UserRole, string> = {
