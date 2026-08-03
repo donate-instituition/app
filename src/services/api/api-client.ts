@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/app-store';
+import { logger } from '@/services/logger';
 
 import { API_BASE_URL, API_TIMEOUT_MS } from './config';
 import { ApiError } from './errors';
@@ -18,6 +19,12 @@ type IdempotencyCacheEntry = {
 const IDEMPOTENT_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const IDEMPOTENCY_RETRY_WINDOW_MS = Math.max(API_TIMEOUT_MS * 4, 60_000);
 const idempotencyKeys = new Map<string, IdempotencyCacheEntry>();
+const apiLogger = logger.child('API');
+
+apiLogger.info('API client configured', {
+  baseUrl: API_BASE_URL,
+  timeoutMs: API_TIMEOUT_MS,
+});
 
 function createIdempotencyKey() {
   if (globalThis.crypto?.randomUUID) {
@@ -115,8 +122,12 @@ async function refreshAccessToken() {
   const { refreshToken, setTokens } = useAppStore.getState();
 
   if (!refreshToken) {
+    apiLogger.debug('Token refresh skipped; no refresh token');
     return null;
   }
+
+  const startedAt = Date.now();
+  apiLogger.debug('POST /auth/refresh started');
 
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: 'POST',
@@ -128,6 +139,11 @@ async function refreshAccessToken() {
   });
 
   const payload = await parseResponse(response);
+  const durationMs = Date.now() - startedAt;
+
+  apiLogger[response.ok ? 'info' : 'warn'](`POST /auth/refresh ${response.status} ${durationMs}ms`, {
+    requestId: response.headers.get('x-request-id') ?? undefined,
+  });
 
   if (!response.ok) {
     return null;
@@ -158,9 +174,11 @@ export async function apiClient<TResponse>(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  const method = options.method?.toUpperCase() ?? 'GET';
+  const startedAt = Date.now();
   const idempotency = getIdempotencyHeaders(
     path,
-    options.method,
+    method,
     body,
     idempotencyKey,
     idempotencyScope,
@@ -169,6 +187,13 @@ export async function apiClient<TResponse>(
   let delegatedIdempotencyCleanup = false;
 
   try {
+    apiLogger.debug(`${method} ${url} started`, {
+      attempt,
+      hasBody: body !== undefined,
+      idempotencyKey: idempotency?.headers['Idempotency-Key'],
+      idempotencyScope,
+    });
+
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -183,8 +208,18 @@ export async function apiClient<TResponse>(
     });
 
     const payload = await parseResponse(response);
+    const durationMs = Date.now() - startedAt;
+
+    apiLogger[response.ok ? 'info' : 'warn'](`${method} ${path} ${response.status} ${durationMs}ms`, {
+      attempt,
+      idempotencyKey: idempotency?.headers['Idempotency-Key'],
+      requestId: response.headers.get('x-request-id') ?? undefined,
+    });
 
     if (!response.ok && response.status === 401 && attempt === 0 && !path.includes('/auth/refresh')) {
+      apiLogger.debug(`${method} ${path} trying token refresh`, {
+        idempotencyKey: idempotency?.headers['Idempotency-Key'],
+      });
       const nextAccessToken = await refreshAccessToken();
 
       if (nextAccessToken) {
@@ -211,10 +246,20 @@ export async function apiClient<TResponse>(
     return payload as TResponse;
   } catch (error) {
     if (error instanceof ApiError) {
+      apiLogger.error(`${method} ${path} failed`, {
+        idempotencyKey: idempotency?.headers['Idempotency-Key'],
+        message: error.message,
+        status: error.status,
+      });
       throw error;
     }
 
     keepIdempotencyKeyForRetry = true;
+    apiLogger.error(`${method} ${path} network error`, {
+      idempotencyKey: idempotency?.headers['Idempotency-Key'],
+      message: error instanceof Error ? error.message : String(error),
+      url,
+    });
     throw new ApiError('Nao foi possivel conectar com a API.', undefined, error);
   } finally {
     if (
