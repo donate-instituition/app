@@ -5,6 +5,7 @@ export const routes = {
   authLogin: '/login' as Href,
   authRegister: '/register' as Href,
   authForgotPassword: '/forgot-password' as Href,
+  authActivateAccount: '/activate-account' as Href,
   appDashboard: '/donor/dashboard' as Href,
   donorDashboard: '/donor/dashboard' as Href,
   institutionDashboard: '/institution/dashboard' as Href,

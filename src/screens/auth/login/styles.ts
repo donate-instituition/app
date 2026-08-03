@@ -23,6 +23,9 @@ export const styles = StyleSheet.create({
   title: {
     textAlign: 'center',
   },
+  centerText: {
+    textAlign: 'center',
+  },
   form: {
     gap: theme.spacing.md,
   },
@@ -63,4 +66,3 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
 });
-

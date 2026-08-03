@@ -5,12 +5,18 @@ import { Pressable, View } from 'react-native';
 
 import { Button, DatePicker, Input, RadioGroup, ScreenContainer, ThemedText } from '@/components';
 import { ApiError } from '@/services/api';
-import { authService, type RegisterPendingInstitutionResponse, type RegisterResponse } from '@/services/auth';
+import {
+  authService,
+  type RegisterPendingInstitutionResponse,
+  type RegisterPendingVerificationResponse,
+  type RegisterResponse,
+} from '@/services/auth';
 import { useAppStore } from '@/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { getActiveRole } from '@/navigation/session';
 import { theme } from '@/theme';
+import { getPasswordPolicyError } from '@/services/auth/password-policy';
 
 import { styles } from './styles';
 
@@ -144,9 +150,21 @@ function getRegisterErrorMessage(error: ApiError) {
 }
 
 function isPendingInstitutionResponse(
-  response: RegisterResponse | RegisterPendingInstitutionResponse,
+  response:
+    | RegisterResponse
+    | RegisterPendingInstitutionResponse
+    | RegisterPendingVerificationResponse,
 ): response is RegisterPendingInstitutionResponse {
   return 'status' in response && response.status === 'pending-approval';
+}
+
+function isPendingVerificationResponse(
+  response:
+    | RegisterResponse
+    | RegisterPendingInstitutionResponse
+    | RegisterPendingVerificationResponse,
+): response is RegisterPendingVerificationResponse {
+  return 'status' in response && response.status === 'pending-verification';
 }
 
 function validate(
@@ -222,8 +240,11 @@ function validate(
 
   if (!password) {
     errors.password = 'Senha é obrigatória.';
-  } else if (password.length < 8) {
-    errors.password = 'Mínimo de 8 caracteres.';
+  } else {
+    const passwordError = getPasswordPolicyError(password);
+    if (passwordError) {
+      errors.password = passwordError;
+    }
   }
 
   if (!confirmPassword) {
@@ -264,6 +285,9 @@ export function RegisterScreen() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState('');
   const [pendingInstitutionName, setPendingInstitutionName] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   function clearFieldError(field: keyof FieldErrors) {
@@ -319,6 +343,12 @@ export function RegisterScreen() {
         return;
       }
 
+      if (isPendingVerificationResponse(response)) {
+        logout();
+        setPendingVerificationEmail(response.email);
+        return;
+      }
+
       const { accessToken, refreshToken, user } = response;
       setSession(accessToken, user, refreshToken);
       router.replace(getHomeRouteForRole(getActiveRole(user)));
@@ -330,6 +360,22 @@ export function RegisterScreen() {
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendActivation() {
+    if (!pendingVerificationEmail) return;
+
+    setResendLoading(true);
+    setResendMessage('');
+
+    try {
+      await authService.resendActivation({ email: pendingVerificationEmail });
+      setResendMessage('Enviamos um novo link de ativação para seu e-mail.');
+    } catch {
+      setResendMessage('Não foi possível reenviar agora. Tente novamente pelo login.');
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -346,6 +392,35 @@ export function RegisterScreen() {
           <ThemedText variant="body" color={colors.textMuted} style={styles.subtitle}>
             Recebemos o cadastro de {pendingInstitutionName}. O admin da plataforma precisa validar a instituição antes do acesso ser liberado.
           </ThemedText>
+          <Button fullWidth onPress={() => router.replace(routes.authLogin)}>
+            Voltar para login
+          </Button>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (pendingVerificationEmail) {
+    return (
+      <ScreenContainer>
+        <View style={[styles.container, styles.pendingContainer]}>
+          <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name="mail-unread-outline" size={28} color={colors.primary} />
+          </View>
+          <ThemedText variant="title" style={styles.title}>
+            Ative sua conta
+          </ThemedText>
+          <ThemedText variant="body" color={colors.textMuted} style={styles.subtitle}>
+            Enviamos um e-mail para {pendingVerificationEmail}. Ative sua conta antes de entrar no EloDoar.
+          </ThemedText>
+          {resendMessage ? (
+            <ThemedText variant="caption" color={colors.textMuted} style={styles.subtitle}>
+              {resendMessage}
+            </ThemedText>
+          ) : null}
+          <Button fullWidth variant="secondary" loading={resendLoading} onPress={handleResendActivation}>
+            Reenviar e-mail
+          </Button>
           <Button fullWidth onPress={() => router.replace(routes.authLogin)}>
             Voltar para login
           </Button>

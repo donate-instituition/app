@@ -52,6 +52,12 @@ export type RegisterPendingInstitutionResponse = {
   };
 };
 
+export type RegisterPendingVerificationResponse = {
+  status: 'pending-verification';
+  message: string;
+  email: string;
+};
+
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 
 type ForgotPasswordRequest = {
@@ -59,6 +65,45 @@ type ForgotPasswordRequest = {
 };
 
 type ForgotPasswordResponse = {
+  message: string;
+};
+
+type ConfirmForgotPasswordRequest = {
+  email: string;
+  code: string;
+};
+
+type ConfirmForgotPasswordResponse = {
+  message: string;
+};
+
+type ChangePasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+type ChangePasswordResponse = {
+  token: string;
+  accessToken: string;
+  refreshToken: string;
+  user: SessionUser;
+};
+
+type ActivateAccountRequest = {
+  token: string;
+};
+
+type ActivateAccountResponse = {
+  email: string;
+  message: string;
+  status: 'active';
+};
+
+type ResendActivationRequest = {
+  email: string;
+};
+
+type ResendActivationResponse = {
   message: string;
 };
 
@@ -78,10 +123,19 @@ export const authService = {
   login: (body: LoginRequest) => api.post<LoginResponse, LoginRequest>('/auth/login', body),
 
   register: (body: RegisterRequest) =>
-    api.post<RegisterResponse | RegisterPendingInstitutionResponse, RegisterRequest>('/auth/register', body),
+    api.post<
+      RegisterResponse | RegisterPendingInstitutionResponse | RegisterPendingVerificationResponse,
+      RegisterRequest
+    >('/auth/register', body),
 
   refresh: (refreshToken: string) =>
     api.post<RefreshTokenResponse, { refreshToken: string }>('/auth/refresh', { refreshToken }),
+
+  activateAccount: (body: ActivateAccountRequest) =>
+    api.post<ActivateAccountResponse, ActivateAccountRequest>('/auth/activate-account', body),
+
+  resendActivation: (body: ResendActivationRequest) =>
+    api.post<ResendActivationResponse, ResendActivationRequest>('/auth/resend-activation', body),
 
   logout: (accessToken?: string | null, refreshToken?: string | null) =>
     api.post<{ message: string }, { refreshToken?: string | null }>(
@@ -99,6 +153,19 @@ export const authService = {
 
   forgotPassword: (body: ForgotPasswordRequest) =>
     api.post<ForgotPasswordResponse, ForgotPasswordRequest>('/auth/forgot-password', body),
+
+  confirmForgotPassword: (body: ConfirmForgotPasswordRequest) =>
+    api.post<ConfirmForgotPasswordResponse, ConfirmForgotPasswordRequest>(
+      '/auth/forgot-password/confirm',
+      body,
+    ),
+
+  changePassword: (body: ChangePasswordRequest, accessToken?: string | null) =>
+    api.patch<ChangePasswordResponse, ChangePasswordRequest>(
+      '/auth/me/password',
+      body,
+      { token: accessToken ?? null },
+    ),
 };
 
 function toApiRole(role: UserRole): UpdateMySettingsRequest['preferredRole'] {

@@ -7,10 +7,11 @@ import { Button, Divider, Input, ScreenContainer, Tag, ThemedText } from '@/comp
 import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { authService } from '@/services/auth';
 import { ApiError } from '@/services/api';
-import { getActiveRole, type UserRole } from '@/navigation/session';
+import { getActiveRole, type SessionUser, type UserRole } from '@/navigation/session';
 import { useAppStore } from '@/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { theme } from '@/theme';
+import { getPasswordPolicyError } from '@/services/auth/password-policy';
 
 import { styles } from './styles';
 
@@ -38,6 +39,13 @@ const DEV_USERS: { role: UserRole; label: string; email?: string; password?: str
   },
 ];
 
+type PasswordChangeSession = {
+  accessToken: string;
+  currentPassword: string;
+  refreshToken: string;
+  user: SessionUser;
+};
+
 function validate(email: string, password: string) {
   const errors: { email?: string; password?: string } = {};
   if (!email.trim()) errors.email = 'E-mail é obrigatório.';
@@ -45,6 +53,19 @@ function validate(email: string, password: string) {
     errors.email = 'Informe um e-mail válido.';
   if (!password) errors.password = 'Senha é obrigatória.';
   return errors;
+}
+
+function getApiPayloadValue(error: ApiError, key: string) {
+  if (
+    error.payload &&
+    typeof error.payload === 'object' &&
+    key in error.payload
+  ) {
+    const value = error.payload[key as keyof typeof error.payload];
+    return typeof value === 'string' ? value : '';
+  }
+
+  return '';
 }
 
 export function LoginScreen() {
@@ -58,11 +79,39 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [apiError, setApiError] = useState('');
+  const [pendingActivationEmail, setPendingActivationEmail] = useState('');
+  const [activationSentMessage, setActivationSentMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendingActivation, setResendingActivation] = useState(false);
   const [devLoadingRole, setDevLoadingRole] = useState<UserRole | null>(null);
+  const [passwordChangeSession, setPasswordChangeSession] = useState<PasswordChangeSession | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
+  const [changePasswordError, setChangePasswordError] = useState('');
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+
+  function finishLogin(accessToken: string, user: SessionUser, refreshToken: string, currentPassword: string) {
+    if (user.passwordChangeRequired) {
+      setPasswordChangeSession({
+        accessToken,
+        currentPassword,
+        refreshToken,
+        user,
+      });
+      setNewPassword('');
+      setNewPasswordConfirmation('');
+      setChangePasswordError('');
+      return;
+    }
+
+    setSession(accessToken, user, refreshToken);
+    router.replace(getHomeRouteForRole(getActiveRole(user)));
+  }
 
   async function handleSubmit() {
     setApiError('');
+    setActivationSentMessage('');
+    setPendingActivationEmail('');
     const errors = validate(email, password);
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -70,19 +119,16 @@ export function LoginScreen() {
     setLoading(true);
     try {
       const { accessToken, refreshToken, user } = await authService.login({ email: email.trim(), password });
-      setSession(accessToken, user, refreshToken);
-      router.replace(getHomeRouteForRole(getActiveRole(user)));
+      finishLogin(accessToken, user, refreshToken, password);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        const message =
-          error.payload &&
-          typeof error.payload === 'object' &&
-          'message' in error.payload &&
-          typeof error.payload.message === 'string'
-            ? error.payload.message
-            : '';
+        const code = getApiPayloadValue(error, 'code');
+        const message = getApiPayloadValue(error, 'message');
 
-        if (message.includes('pending approval')) {
+        if (code === 'ACCOUNT_PENDING_VERIFICATION') {
+          setApiError('Sua conta ainda não foi ativada. Verifique seu e-mail para liberar o acesso.');
+          setPendingActivationEmail(email.trim());
+        } else if (message.includes('pending approval')) {
           setApiError('Sua instituição ainda está em análise pela plataforma.');
         } else {
           setApiError('E-mail ou senha incorretos.');
@@ -102,6 +148,8 @@ export function LoginScreen() {
     }
 
     setApiError('');
+    setActivationSentMessage('');
+    setPendingActivationEmail('');
     setLoading(false);
     setDevLoadingRole(entry.role);
 
@@ -110,17 +158,134 @@ export function LoginScreen() {
         email: entry.email.trim(),
         password: entry.password,
       });
-      setSession(accessToken, user, refreshToken);
-      router.replace(getHomeRouteForRole(getActiveRole(user)));
+      finishLogin(accessToken, user, refreshToken, entry.password);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        setApiError('Usuário dev sem acesso ativo ou credenciais inválidas.');
+        const code = getApiPayloadValue(error, 'code');
+        setApiError(
+          code === 'ACCOUNT_PENDING_VERIFICATION'
+            ? 'Conta dev pendente de ativação.'
+            : 'Usuário dev sem acesso ativo ou credenciais inválidas.',
+        );
       } else {
         setApiError('Não foi possível conectar. Tente novamente.');
       }
     } finally {
       setDevLoadingRole(null);
     }
+  }
+
+  async function handleResendActivation() {
+    if (!pendingActivationEmail) return;
+
+    setResendingActivation(true);
+    setActivationSentMessage('');
+
+    try {
+      await authService.resendActivation({ email: pendingActivationEmail });
+      setActivationSentMessage('Enviamos um novo link de ativação para seu e-mail.');
+    } catch {
+      setApiError('Não foi possível reenviar o link agora. Tente novamente.');
+    } finally {
+      setResendingActivation(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (!passwordChangeSession) return;
+
+    setChangePasswordError('');
+
+    const passwordError = getPasswordPolicyError(newPassword);
+    if (passwordError) {
+      setChangePasswordError(passwordError);
+      return;
+    }
+
+    if (newPassword !== newPasswordConfirmation) {
+      setChangePasswordError('As senhas não conferem.');
+      return;
+    }
+
+    if (newPassword === passwordChangeSession.currentPassword) {
+      setChangePasswordError('Escolha uma senha diferente da senha temporária.');
+      return;
+    }
+
+    setChangePasswordLoading(true);
+    try {
+      const { accessToken, refreshToken, user } = await authService.changePassword(
+        {
+          currentPassword: passwordChangeSession.currentPassword,
+          newPassword,
+        },
+        passwordChangeSession.accessToken,
+      );
+      setPasswordChangeSession(null);
+      setSession(accessToken, user, refreshToken);
+      router.replace(getHomeRouteForRole(getActiveRole(user)));
+    } catch {
+      setChangePasswordError('Não foi possível trocar a senha. Entre novamente com a senha temporária.');
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  }
+
+  if (passwordChangeSession) {
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={[styles.logoMark, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons name="shield-checkmark-outline" size={32} color={colors.primary} />
+            </View>
+            <ThemedText variant="title" style={styles.title}>
+              Troque sua senha
+            </ThemedText>
+            <ThemedText variant="body" color={colors.textMuted} style={styles.centerText}>
+              Você entrou com uma senha temporária. Crie uma nova senha para continuar.
+            </ThemedText>
+          </View>
+
+          <View style={styles.form}>
+            <Input
+              label="Nova senha"
+              value={newPassword}
+              onChangeText={(v) => {
+                setNewPassword(v);
+                setChangePasswordError('');
+              }}
+              secureTextEntry
+              placeholder="Mínimo 8 caracteres"
+              returnKeyType="next"
+            />
+
+            <Input
+              label="Confirmar nova senha"
+              value={newPasswordConfirmation}
+              onChangeText={(v) => {
+                setNewPasswordConfirmation(v);
+                setChangePasswordError('');
+              }}
+              secureTextEntry
+              placeholder="Digite novamente"
+              returnKeyType="done"
+              onSubmitEditing={handleChangePassword}
+            />
+
+            {changePasswordError ? (
+              <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
+                {changePasswordError}
+              </ThemedText>
+            ) : null}
+
+            <Button fullWidth loading={changePasswordLoading} onPress={handleChangePassword}>
+              Salvar nova senha
+            </Button>
+          </View>
+        </View>
+      </ScreenContainer>
+    );
   }
 
   return (
@@ -185,6 +350,22 @@ export function LoginScreen() {
           {apiError ? (
             <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
               {apiError}
+            </ThemedText>
+          ) : null}
+
+          {pendingActivationEmail ? (
+            <Button
+              fullWidth
+              variant="secondary"
+              loading={resendingActivation}
+              onPress={handleResendActivation}>
+              Reenviar email de ativação
+            </Button>
+          ) : null}
+
+          {activationSentMessage ? (
+            <ThemedText variant="caption" color={colors.success} style={styles.apiError}>
+              {activationSentMessage}
             </ThemedText>
           ) : null}
 
