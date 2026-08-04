@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
-import { View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, View, type GestureResponderEvent } from 'react-native';
 
 import { Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
+import { routes } from '@/navigation/routes';
 import { adminService, type AdminUser } from '@/services/admin';
 import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
 import { useActiveRole, useAppStore } from '@/store';
@@ -44,6 +46,8 @@ export function DonationsScreen() {
   const colors = theme.colors[scheme];
   const authToken = useAppStore((state) => state.authToken);
   const activeRole = useActiveRole();
+  const router = useRouter();
+  const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<string | null>(null);
 
   const fetcher = useCallback(
     () => {
@@ -63,6 +67,21 @@ export function DonationsScreen() {
   const completedDonations = donations?.filter((d) => d.status === 'completed') ?? [];
   const totalDonated = donations ? sumCents(completedDonations) : 'R$ 0,00';
   const campaignsSupported = new Set(donations?.map((d) => d.campaignId)).size;
+
+  async function handleCancelSubscription(subscriptionId: string) {
+    setCancelingSubscriptionId(subscriptionId);
+    try {
+      await donationsService.cancelStripeSubscription(subscriptionId, authToken);
+      await refetch();
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível cancelar',
+        error instanceof Error ? error.message : 'Tente novamente em instantes.',
+      );
+    } finally {
+      setCancelingSubscriptionId(null);
+    }
+  }
 
   if (activeRole === 'platform-admin') {
     const users = (adminUsers.data ?? []) as AdminUser[];
@@ -192,7 +211,9 @@ export function DonationsScreen() {
             <Card>
               {donations.map((item, index) => (
                 <View key={item.id}>
-                  <View style={styles.donationItem}>
+                  <Pressable
+                    style={styles.donationItem}
+                    onPress={() => router.push(routes.appDonationDetail(item.id))}>
                     <View style={styles.donationInfo}>
                       <ThemedText variant="body" style={styles.bold}>
                         {item.campaignTitle}
@@ -203,17 +224,49 @@ export function DonationsScreen() {
                       <ThemedText variant="caption" color={colors.textMuted}>
                         {formatDate(item.createdAt)}
                       </ThemedText>
+                      {item.serviceFeeFormatted ? (
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          Taxa EloDoar: {item.serviceFeeFormatted} · Destinado: {item.netAmountFormatted}
+                        </ThemedText>
+                      ) : null}
+                      {item.receiptNumber ? (
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          Recibo {item.receiptNumber}
+                        </ThemedText>
+                      ) : null}
+                      {item.subscriptionId && item.subscriptionStatus !== 'canceled' ? (
+                        <Pressable
+                          style={[styles.cancelSubscriptionButton, { borderColor: colors.danger }]}
+                          disabled={cancelingSubscriptionId === item.subscriptionId}
+                          onPress={(event: GestureResponderEvent) => {
+                            event.stopPropagation();
+                            handleCancelSubscription(item.subscriptionId!);
+                          }}>
+                          <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                          <ThemedText variant="caption" color={colors.danger} style={styles.bold}>
+                            {cancelingSubscriptionId === item.subscriptionId
+                              ? 'Cancelando...'
+                              : 'Cancelar doação mensal'}
+                          </ThemedText>
+                        </Pressable>
+                      ) : null}
                     </View>
                     <View style={styles.donationRight}>
                       <ThemedText variant="body" color={colors.primary} style={styles.bold}>
                         {item.amountFormatted}
                       </ThemedText>
+                      {item.donationKind === 'monthly' ? (
+                        <Tag
+                          label={item.subscriptionStatus === 'canceled' ? 'Mensal cancelada' : 'Mensal'}
+                          variant={item.subscriptionStatus === 'canceled' ? 'danger' : 'success'}
+                        />
+                      ) : null}
                       <Tag
                         label={donationStatusLabels[item.status]}
                         variant={getStatusVariant(item.status)}
                       />
                     </View>
-                  </View>
+                  </Pressable>
                   {index < donations.length - 1 && <Divider />}
                 </View>
               ))}

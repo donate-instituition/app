@@ -67,6 +67,7 @@ export default function AppLayout() {
       {/* Detalhes e fluxos compartilhados — empilhados sobre as tabs, sem tab bar. */}
       <Stack.Screen name="campaign/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="campaign/[id]/donate" options={{ headerShown: false }} />
+      <Stack.Screen name="donation/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="institution/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="chat/[conversationId]" options={{ headerShown: false }} />
       <Stack.Screen name="profile/me" options={{ headerShown: false }} />

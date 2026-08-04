@@ -38,6 +38,17 @@ export const styles = StyleSheet.create({
     flexShrink: 0,
     gap: theme.spacing.xs,
   },
+  cancelSubscriptionButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+  },
   bold: {
     fontWeight: '600',
   },
