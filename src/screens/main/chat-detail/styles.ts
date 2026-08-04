@@ -69,6 +69,10 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'capitalize',
   },
+  errorText: {
+    marginTop: theme.spacing.md,
+    textAlign: 'center',
+  },
 
   // ─── Message row ─────────────────────────────────────────────────────────────
   messageRow: {

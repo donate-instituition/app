@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Avatar, Button, Divider, EmptyState, Input, Loading, ScreenContainer, ThemedText } from '@/components';
@@ -9,7 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { adminService, type AuditLog } from '@/services/admin';
-import { chatService } from '@/services/chat';
+import { chatService, subscribeConversationChanges } from '@/services/chat';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -50,8 +50,8 @@ export function MessagesScreen() {
 
   const fetcher = useCallback(() => {
     if (activeRole === 'platform-admin') return Promise.resolve([]);
-    return chatService.listConversations();
-  }, [activeRole]);
+    return chatService.listConversations(authToken);
+  }, [activeRole, authToken]);
   const { data: conversations, loading, error, refetch } = useFetch(fetcher);
   const auditLogs = useFetch(
     useCallback(() => {
@@ -65,6 +65,10 @@ export function MessagesScreen() {
       void refetch();
     }, [refetch])
   );
+
+  useEffect(() => subscribeConversationChanges(() => {
+    void refetch();
+  }), [refetch]);
 
   if (activeRole === 'platform-admin') {
     const logs = (auditLogs.data ?? []) as AuditLog[];

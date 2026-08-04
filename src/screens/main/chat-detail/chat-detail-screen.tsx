@@ -11,9 +11,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar, ThemedText } from '@/components';
+import { Avatar, Loading, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { chatService, type Conversation, type Message } from '@/services/chat';
+import {
+  chatService,
+  subscribeConversationMessages,
+  type Conversation,
+  type Message,
+} from '@/services/chat';
 import { useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -65,29 +70,6 @@ function DateSeparator({ label }: DateSeparatorProps) {
   );
 }
 
-type TypingIndicatorProps = { name: string };
-
-function TypingIndicator({ name }: TypingIndicatorProps) {
-  const scheme = useColorScheme() ?? 'light';
-  const colors = theme.colors[scheme];
-  return (
-    <View style={styles.typingRow}>
-      <View style={styles.avatarSlot}>
-        <Avatar name={name} size="sm" />
-      </View>
-      <View
-        style={[
-          styles.typingBubble,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}>
-        <View style={[styles.typingDot, { backgroundColor: colors.textMuted }]} />
-        <View style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.7 }]} />
-        <View style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.4 }]} />
-      </View>
-    </View>
-  );
-}
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function ChatDetailScreen() {
@@ -97,21 +79,70 @@ export function ChatDetailScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const user = useAppStore((state) => state.user);
+  const authToken = useAppStore((state) => state.authToken);
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
-  const [typing, setTyping] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const listRef = useRef<FlatList<Message>>(null);
 
-  // Load on mount
   useEffect(() => {
-    const conv = chatService.getConversation(conversationId);
-    if (conv) setConversation(conv);
-    setMessages(chatService.getMessages(conversationId));
-    chatService.markAsRead(conversationId);
-  }, [conversationId]);
+    let mounted = true;
+
+    async function loadConversation() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const [conv, nextMessages] = await Promise.all([
+          chatService.getConversation(conversationId, authToken),
+          chatService.getMessages(conversationId, authToken),
+        ]);
+
+        if (!mounted) return;
+        if (conv) setConversation(conv);
+        setMessages(nextMessages);
+        await chatService.markAsRead(conversationId, authToken);
+      } catch (loadError) {
+        if (!mounted) return;
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Não foi possível carregar a conversa.',
+        );
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    void loadConversation();
+
+    return () => {
+      mounted = false;
+    };
+  }, [authToken, conversationId]);
+
+  useEffect(
+    () =>
+      subscribeConversationMessages(conversationId, (message) => {
+        setMessages((prev) => {
+          if (prev.some((item) => item.id === message.id)) {
+            return prev;
+          }
+
+          return [...prev, message];
+        });
+
+        if (message.senderId !== user?.id) {
+          void chatService.markAsRead(conversationId, authToken);
+        }
+      }),
+    [authToken, conversationId, user?.id],
+  );
 
   // Auto-scroll to bottom when messages change
   const scrollToEnd = useCallback(() => {
@@ -122,22 +153,38 @@ export function ChatDetailScreen() {
     if (messages.length > 0) scrollToEnd();
   }, [messages.length, scrollToEnd]);
 
-  function handleSend() {
+  async function handleSend() {
     const text = inputText.trim();
-    if (!text || typing) return;
+    if (!text || sending) return;
 
     setInputText('');
-    const newMsg = chatService.sendMessage(conversationId, text, user?.id ?? 'me');
-    setMessages((prev) => [...prev, newMsg]);
+    setSending(true);
+    setError('');
 
-    // Show typing indicator then deliver a reply
-    setTyping(true);
-    const replyDelay = 1000 + Math.random() * 800;
-    setTimeout(() => {
-      const reply = chatService.simulateReply(conversationId);
-      setTyping(false);
-      if (reply) setMessages((prev) => [...prev, reply]);
-    }, replyDelay);
+    try {
+      const newMsg = await chatService.sendMessage(
+        conversationId,
+        text,
+        user?.id,
+        authToken,
+      );
+      setMessages((prev) => {
+        if (prev.some((item) => item.id === newMsg.id)) {
+          return prev;
+        }
+
+        return [...prev, newMsg];
+      });
+    } catch (sendError) {
+      setInputText(text);
+      setError(
+        sendError instanceof Error
+          ? sendError.message
+          : 'Não foi possível enviar a mensagem.',
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   // ─── Render helpers ───────────────────────────────────────────────────────
@@ -251,8 +298,12 @@ export function ChatDetailScreen() {
         keyboardShouldPersistTaps="handled"
         onLayout={scrollToEnd}
         ListFooterComponent={
-          typing ? (
-            <TypingIndicator name={conversation?.institutionName ?? ''} />
+          loading ? (
+            <Loading label="Carregando conversa..." />
+          ) : error ? (
+            <ThemedText variant="caption" color={colors.danger} style={styles.errorText}>
+              {error}
+            </ThemedText>
           ) : null
         }
       />
@@ -291,12 +342,12 @@ export function ChatDetailScreen() {
         />
         <Pressable
           onPress={handleSend}
-          disabled={!inputText.trim() || typing}
+          disabled={!inputText.trim() || sending}
           style={[
             styles.sendButton,
             {
               backgroundColor:
-                inputText.trim() && !typing ? colors.primary : colors.border,
+                inputText.trim() && !sending ? colors.primary : colors.border,
             },
           ]}>
           <Ionicons name="send" size={16} color={colors.surface} />
