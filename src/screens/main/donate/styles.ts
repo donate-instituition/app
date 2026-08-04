@@ -181,12 +181,32 @@ export const styles = StyleSheet.create({
     flex: 1,
     gap: theme.spacing.xs,
   },
+  stripeNotice: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  stripeNoticeIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
+  },
+  stripeNoticeText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
   feeBox: {
     alignItems: 'center',
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: theme.spacing.md,
+  },
+  feeBreakdown: {
+    gap: theme.spacing.sm,
   },
   secureRow: {
     alignItems: 'center',

@@ -205,7 +205,9 @@ export function CampaignDetailScreen() {
             variant="primary"
             style={styles.actionButton}
             leftSlot={<Ionicons name="heart-outline" size={16} color={colors.surface} />}
-            onPress={() => router.push(routes.appDonate(campaign.id))}>
+            onPress={() => {
+              router.push(routes.appDonate(campaign.id));
+            }}>
             Quero doar
           </Button>
         </View>

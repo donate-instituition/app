@@ -121,6 +121,27 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.md,
   },
+  recurringSetting: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+  },
+  recurringSettingText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  recurringToggle: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
 
   // Results counter
   results: {

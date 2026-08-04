@@ -9,7 +9,20 @@ export type Donation = {
   institutionName: string;
   amountCents: number;
   amountFormatted: string;
+  donationKind?: 'single' | 'monthly';
+  netAmountCents?: number;
+  netAmountFormatted?: string;
+  paymentId?: string;
+  receiptId?: string;
+  receiptNumber?: string;
+  receiptUrl?: string;
+  serviceFeeAmount?: number;
+  serviceFeeBps?: number;
+  serviceFeeFormatted?: string;
   status: DonationStatus;
+  subscriptionCanceledAt?: string;
+  subscriptionId?: string;
+  subscriptionStatus?: string;
   createdAt: string; // ISO date string
 };
 
@@ -25,6 +38,7 @@ export type CreateDonationResponse = {
 export type CreateStripePaymentIntentRequest = {
   amountCents: number;
   campaignId: string;
+  donationKind?: 'single' | 'monthly';
   paymentMethod?: 'card' | 'pix';
   receiptEmail?: string;
   savePaymentMethod?: boolean;
@@ -33,7 +47,10 @@ export type CreateStripePaymentIntentRequest = {
 export type StripePaymentSummary = {
   id: string;
   paymentIntentId: string;
+  serviceFeeAmount?: number;
+  serviceFeeBps?: number;
   status: string;
+  subscriptionId?: string;
 };
 
 export type CreateStripePaymentIntentResponse = {
@@ -45,6 +62,17 @@ export type CreateStripePaymentIntentResponse = {
 export type ConfirmStripePaymentIntentResponse = {
   donation: Donation;
   payment: StripePaymentSummary;
+};
+
+export type StripeConfigResponse = {
+  currency: string;
+  serviceFeeBps: number;
+};
+
+export type CancelStripeSubscriptionResponse = {
+  canceled: boolean;
+  status: string;
+  subscriptionId: string;
 };
 
 // ─── Status labels ───────────────────────────────────────────────────────────

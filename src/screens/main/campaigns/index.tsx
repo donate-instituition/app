@@ -27,6 +27,7 @@ import {
   type Institution,
   type PendingInstitution,
 } from '@/services/campaigns';
+import { institutionStaffService } from '@/services/institution-staff';
 import { logger } from '@/services/logger';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
@@ -253,6 +254,7 @@ export function CampaignsScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [updatingRecurring, setUpdatingRecurring] = useState(false);
 
   // Memoised fetchers — change when filters change
   const campaignFetcher = useCallback<() => Promise<Campaign[]>>(
@@ -286,6 +288,19 @@ export function CampaignsScreen() {
       if (activeRole !== 'platform-admin') return Promise.resolve([]);
       return campaignsService.listAdminInstitutions(authToken);
     }, [activeRole, authToken])
+  );
+  const staffMemberships = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'institution-staff') return Promise.resolve([]);
+      return institutionStaffService.listMyMemberships(authToken);
+    }, [activeRole, authToken]),
+  );
+  const currentInstitutionId = staffMemberships.data?.[0]?.institutionId;
+  const currentInstitution = useFetch(
+    useCallback(() => {
+      if (!currentInstitutionId) return Promise.resolve(null);
+      return campaignsService.getInstitutionById(currentInstitutionId);
+    }, [currentInstitutionId]),
   );
 
   const active = mode === 'campaigns' ? campaigns : institutions;
@@ -346,6 +361,36 @@ export function CampaignsScreen() {
       Alert.alert('Localização indisponível', 'Não foi possível obter sua localização agora. Tente novamente.');
     } finally {
       setLocationLoading(false);
+    }
+  }
+
+  async function handleToggleRecurringDonations() {
+    if (!currentInstitutionId || updatingRecurring) return;
+
+    const nextValue = currentInstitution.data?.acceptsRecurringDonations === false;
+    setUpdatingRecurring(true);
+
+    try {
+      await campaignsService.updateInstitutionRecurringDonations(
+        currentInstitutionId,
+        nextValue,
+        authToken,
+      );
+      currentInstitution.refetch();
+      campaigns.refetch();
+      Alert.alert(
+        'Configuração atualizada',
+        nextValue
+          ? 'A instituição agora aceita doações mensais.'
+          : 'A instituição agora aceita somente doações únicas por campanha.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível salvar',
+        error instanceof Error ? error.message : 'Tente novamente em instantes.',
+      );
+    } finally {
+      setUpdatingRecurring(false);
     }
   }
 
@@ -493,6 +538,7 @@ export function CampaignsScreen() {
 
   if (activeRole === 'institution-staff') {
     const institutionCampaigns = campaigns.data ?? [];
+    const acceptsRecurring = currentInstitution.data?.acceptsRecurringDonations !== false;
 
     return (
       <ScreenContainer scrollable>
@@ -537,6 +583,38 @@ export function CampaignsScreen() {
                   <Tag key={label} label={label} variant={index === 0 ? 'success' : 'neutral'} />
                 ))}
               </View>
+              <Pressable
+                style={[
+                  styles.recurringSetting,
+                  {
+                    backgroundColor: acceptsRecurring ? colors.primarySoft : colors.surfaceMuted,
+                    borderColor: acceptsRecurring ? colors.primary : colors.border,
+                  },
+                ]}
+                disabled={updatingRecurring || !currentInstitutionId}
+                onPress={handleToggleRecurringDonations}>
+                <View style={styles.recurringSettingText}>
+                  <ThemedText variant="body" style={styles.bold}>
+                    {acceptsRecurring ? 'Aceita doações mensais' : 'Somente doação única'}
+                  </ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    {acceptsRecurring
+                      ? 'Doadores podem escolher pagamento único ou mensal.'
+                      : 'Doadores verão apenas pagamento único nas campanhas.'}
+                  </ThemedText>
+                </View>
+                <View
+                  style={[
+                    styles.recurringToggle,
+                    { backgroundColor: acceptsRecurring ? colors.primary : colors.border },
+                  ]}>
+                  <Ionicons
+                    name={acceptsRecurring ? 'checkmark' : 'close'}
+                    size={18}
+                    color={colors.surface}
+                  />
+                </View>
+              </Pressable>
               <Button fullWidth>Continuar</Button>
             </View>
           </Card>

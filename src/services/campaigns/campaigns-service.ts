@@ -116,6 +116,18 @@ async function rejectInstitution(id: string, token: string | null): Promise<Pend
   return api.patch<PendingInstitution>(`/institutions/${id}/reject`, undefined, { token });
 }
 
+async function updateInstitutionRecurringDonations(
+  id: string,
+  acceptsRecurringDonations: boolean,
+  token: string | null,
+): Promise<InstitutionDetail> {
+  return api.patch<InstitutionDetail>(
+    `/institutions/${id}`,
+    { acceptsRecurringDonations },
+    { token },
+  );
+}
+
 export const campaignsService = {
   listCampaigns,
   listInstitutions,
@@ -125,4 +137,5 @@ export const campaignsService = {
   listAdminInstitutions,
   approveInstitution,
   rejectInstitution,
+  updateInstitutionRecurringDonations,
 };

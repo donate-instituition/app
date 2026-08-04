@@ -6,11 +6,17 @@ import type {
   CreateStripePaymentIntentRequest,
   CreateStripePaymentIntentResponse,
   ConfirmStripePaymentIntentResponse,
+  CancelStripeSubscriptionResponse,
   Donation,
+  StripeConfigResponse,
 } from './donations-types';
 
 async function listMyDonations(token: string | null): Promise<Donation[]> {
   return api.get<Donation[]>('/donations/me', { token });
+}
+
+async function getDonationById(id: string, token: string | null): Promise<Donation> {
+  return api.get<Donation>(`/donations/${id}`, { token });
 }
 
 async function createDonation(
@@ -42,9 +48,27 @@ async function confirmStripePaymentIntent(
   );
 }
 
+async function getStripeConfig(): Promise<StripeConfigResponse> {
+  return api.get<StripeConfigResponse>('/payments/stripe/config');
+}
+
+async function cancelStripeSubscription(
+  subscriptionId: string,
+  token: string | null,
+): Promise<CancelStripeSubscriptionResponse> {
+  return api.post<CancelStripeSubscriptionResponse>(
+    `/payments/stripe/subscriptions/${subscriptionId}/cancel`,
+    undefined,
+    { token },
+  );
+}
+
 export const donationsService = {
+  cancelStripeSubscription,
   listMyDonations,
+  getDonationById,
   createDonation,
   createStripePaymentIntent,
   confirmStripePaymentIntent,
+  getStripeConfig,
 };

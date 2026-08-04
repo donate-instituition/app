@@ -23,6 +23,7 @@ export type Campaign = {
   raisedCents: number;
   progress: number; // 0–100
   active: boolean;
+  acceptsRecurringDonations?: boolean;
   endsAt?: string; // ISO date string
   location?: GeoLocation;
 };
@@ -41,6 +42,7 @@ export type Institution = {
   state: string;
   activeCampaigns: number;
   verified: boolean;
+  acceptsRecurringDonations?: boolean;
   description: string;
   location?: GeoLocation;
 };
@@ -48,6 +50,7 @@ export type Institution = {
 export type InstitutionDetail = Institution & {
   foundedYear: number;
   email: string;
+  stripeConnectAccountId?: string;
   website?: string;
   campaigns: Campaign[];
 };

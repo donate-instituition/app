@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar, Button, Card, Checkbox, FloatingTabBar, Loading, ProgressBar, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Button, Card, FloatingTabBar, Loading, ProgressBar, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useFetch } from '@/hooks/use-fetch';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/navigation/routes';
@@ -56,6 +56,7 @@ export function DonateScreen() {
 
   const fetcher = useCallback(() => campaignsService.getCampaignById(id), [id]);
   const { data: campaign, loading: campaignLoading } = useFetch(fetcher);
+  const stripeConfig = useFetch(useCallback(() => donationsService.getStripeConfig(), []));
 
   const [step, setStep] = useState<DonationStep>('amount');
   const [selectedPreset, setSelectedPreset] = useState<number | null>(12500);
@@ -63,20 +64,42 @@ export function DonateScreen() {
   const [amountError, setAmountError] = useState('');
   const [donationKind, setDonationKind] = useState<DonationKind>('single');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
-  const [coverFees, setCoverFees] = useState(false);
   const [savePaymentData, setSavePaymentData] = useState(true);
   const [receiptEmail, setReceiptEmail] = useState(user?.email ?? 'joao@email.com');
-  const [cardNumber, setCardNumber] = useState('1234 1234 1234 1234');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
-  const [cardName, setCardName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [donatedAmount, setDonatedAmount] = useState(0);
   const [receiptPaymentIntentId, setReceiptPaymentIntentId] = useState('');
+  const [donationProcessingStatus, setDonationProcessingStatus] = useState('Aguardando confirmação');
 
   const amountCents = selectedPreset !== null ? selectedPreset : parseBRL(customRaw);
+  const serviceFeeBps = stripeConfig.data?.serviceFeeBps ?? 0;
+  const serviceFeeAmount = serviceFeeBps > 0 && serviceFeeBps < 10_000
+    ? Math.floor((amountCents * serviceFeeBps) / 10_000)
+    : 0;
+  const netAmountCents = Math.max(amountCents - serviceFeeAmount, 0);
+  const acceptsRecurringDonations = campaign?.acceptsRecurringDonations !== false;
   const receiptCode = '#INV2026-9F7A2B';
+  const donateTabs = DONATE_TABS.map((tab) => ({
+    ...tab,
+    onPress: () => {
+      const href = {
+        campaigns: routes.donorCampaigns,
+        dashboard: routes.donorDashboard,
+        donations: routes.donorDonations,
+        messages: routes.donorMessages,
+        profile: routes.donorProfile,
+      }[tab.key];
+
+      router.replace(href);
+    },
+  }));
+
+  useEffect(() => {
+    if (!acceptsRecurringDonations && donationKind === 'monthly') {
+      setDonationKind('single');
+    }
+  }, [acceptsRecurringDonations, donationKind]);
 
   function handlePresetSelect(cents: number) {
     setSelectedPreset(cents);
@@ -113,11 +136,6 @@ export function DonateScreen() {
       return;
     }
 
-    if (donationKind === 'monthly') {
-      setApiError('Doações mensais via Stripe serão ativadas no próximo passo.');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -125,6 +143,7 @@ export function DonateScreen() {
         {
           amountCents,
           campaignId: id,
+          donationKind,
           paymentMethod,
           receiptEmail,
           savePaymentMethod: savePaymentData,
@@ -138,7 +157,7 @@ export function DonateScreen() {
         returnURL: 'elodoar://stripe-redirect',
         defaultBillingDetails: {
           email: receiptEmail,
-          name: cardName || user?.name,
+          name: user?.name,
         },
       });
 
@@ -157,15 +176,19 @@ export function DonateScreen() {
         authToken,
       );
 
-      if (confirmed.donation.status !== 'completed') {
-        throw new Error('Pagamento ainda não foi confirmado pelo Stripe.');
-      }
-
       setDonatedAmount(amountCents);
       setReceiptPaymentIntentId(confirmed.payment.paymentIntentId);
+      setDonationProcessingStatus(
+        confirmed.donation.status === 'completed' ? 'Pago' : 'Processando via Stripe',
+      );
       setStep('success');
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : 'Não foi possível processar sua doação. Tente novamente.');
+      const message = error instanceof Error ? error.message : '';
+      setApiError(
+        message.includes('Stripe connected account')
+          ? 'A instituição ainda não configurou a conta Stripe Connect para receber doações.'
+          : message || 'Não foi possível processar sua doação. Tente novamente.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -206,10 +229,14 @@ export function DonateScreen() {
             </View>
             <View style={styles.successText}>
               <ThemedText variant="title" style={styles.centered}>
-                Doação realizada com sucesso!
+                {donationProcessingStatus === 'Pago'
+                  ? 'Doação realizada com sucesso!'
+                  : 'Doação enviada para processamento!'}
               </ThemedText>
               <ThemedText variant="body" color={colors.textMuted} style={styles.centered}>
-                Muito obrigado por transformar vidas. Sua solidariedade aquece o inverno de muitas crianças.
+                {donationProcessingStatus === 'Pago'
+                  ? 'Muito obrigado por transformar vidas. Sua solidariedade aquece o inverno de muitas crianças.'
+                  : 'Assim que a Stripe confirmar o pagamento, você receberá a notificação e o recibo.'}
               </ThemedText>
             </View>
 
@@ -224,8 +251,10 @@ export function DonateScreen() {
               {[
                 ['Campanha', campaign?.title ?? 'Inverno Solidário 2026'],
                 ['Instituição', campaign?.institution ?? 'Casa Lar Esperança'],
+                ['Taxa de serviço EloDoar', formatCents(serviceFeeAmount)],
+                ['Valor destinado', formatCents(netAmountCents)],
                 ['Data', '30/09/2026 · 09:41'],
-                ['Status', 'Pago'],
+                ['Status', donationProcessingStatus],
                 ['Processado com', 'stripe'],
                 ['ID da transação', receiptPaymentIntentId || 'Aguardando Stripe'],
               ].map(([label, value]) => (
@@ -283,7 +312,7 @@ export function DonateScreen() {
             <View style={styles.tabSpacer} />
           </View>
         </ScreenContainer>
-        <FloatingTabBar activeKey="donations" items={DONATE_TABS} />
+        <FloatingTabBar activeKey="donations" items={donateTabs} />
       </View>
     );
   }
@@ -347,51 +376,40 @@ export function DonateScreen() {
               </View>
             </View>
 
-            <View style={styles.section}>
-              <ThemedText variant="caption" style={styles.bold}>Número do cartão</ThemedText>
-              <TextInput
-                allowFontScaling={false}
-                style={[styles.textField, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                value={cardNumber}
-                onChangeText={setCardNumber}
-                keyboardType="number-pad"
-                placeholder="1234 1234 1234 1234"
-                placeholderTextColor={colors.textMuted}
-              />
-              <View style={styles.cardMetaGrid}>
-                <View style={styles.cardMetaField}>
-                  <ThemedText variant="caption" style={styles.bold}>Validade (MM/AA)</ThemedText>
-                  <TextInput
-                    allowFontScaling={false}
-                    style={[styles.textField, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                    value={cardExpiry}
-                    onChangeText={setCardExpiry}
-                    placeholder="MM / AA"
-                    placeholderTextColor={colors.textMuted}
-                  />
-                </View>
-                <View style={styles.cardMetaField}>
-                  <ThemedText variant="caption" style={styles.bold}>CVC</ThemedText>
-                  <TextInput
-                    allowFontScaling={false}
-                    style={[styles.textField, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                    value={cardCvc}
-                    onChangeText={setCardCvc}
-                    keyboardType="number-pad"
-                    placeholder="123"
-                    placeholderTextColor={colors.textMuted}
-                  />
-                </View>
+            <Card variant="outlined" style={styles.feeBreakdown}>
+              <ThemedText variant="body" style={styles.bold}>Resumo da cobrança</ThemedText>
+              <View style={styles.receiptRow}>
+                <ThemedText variant="body" color={colors.textMuted}>Valor pago</ThemedText>
+                <ThemedText variant="body" style={styles.bold}>{formatCents(amountCents)}</ThemedText>
               </View>
-              <ThemedText variant="caption" style={styles.bold}>Nome no cartão</ThemedText>
-              <TextInput
-                allowFontScaling={false}
-                style={[styles.textField, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-                value={cardName}
-                onChangeText={setCardName}
-                placeholder="Como impresso no cartão"
-                placeholderTextColor={colors.textMuted}
-              />
+              <View style={styles.receiptRow}>
+                <ThemedText variant="body" color={colors.textMuted}>
+                  Taxa de serviço EloDoar
+                </ThemedText>
+                <ThemedText variant="body" style={styles.bold}>{formatCents(serviceFeeAmount)}</ThemedText>
+              </View>
+              <View style={styles.receiptRow}>
+                <ThemedText variant="body" color={colors.textMuted}>Destinado à instituição</ThemedText>
+                <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                  {formatCents(netAmountCents)}
+                </ThemedText>
+              </View>
+            </Card>
+
+            <View style={styles.section}>
+              <Card variant="outlined" style={styles.stripeNotice}>
+                <View style={[styles.stripeNoticeIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name="card-outline" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.stripeNoticeText}>
+                  <ThemedText variant="body" style={styles.bold}>
+                    Dados do cartão no Stripe
+                  </ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Na próxima etapa, a Stripe abrirá uma tela segura para informar cartão, validade e CVC.
+                  </ThemedText>
+                </View>
+              </Card>
               <ThemedText variant="caption" style={styles.bold}>E-mail para recibo</ThemedText>
               <TextInput
                 allowFontScaling={false}
@@ -402,16 +420,6 @@ export function DonateScreen() {
                 placeholder="joao@email.com"
                 placeholderTextColor={colors.textMuted}
               />
-            </View>
-
-            <View style={[styles.feeBox, { backgroundColor: colors.surfaceMuted }]}>
-              <Checkbox
-                checked={coverFees}
-                onCheckedChange={setCoverFees}
-                label="Quero cobrir as taxas"
-                helperText="Sua doação será 100% destinada à causa."
-              />
-              <Ionicons name="information-circle-outline" size={20} color={colors.icon} />
             </View>
 
             <View style={styles.secureRow}>
@@ -447,7 +455,7 @@ export function DonateScreen() {
             <View style={styles.tabSpacer} />
           </View>
         </ScreenContainer>
-        <FloatingTabBar activeKey="donations" items={DONATE_TABS} />
+        <FloatingTabBar activeKey="donations" items={donateTabs} />
       </View>
     );
   }
@@ -568,6 +576,7 @@ export function DonateScreen() {
                 { key: 'monthly', label: 'Mensal', icon: 'calendar-outline' },
               ].map((kind) => {
                 const selected = donationKind === kind.key;
+                const disabled = kind.key === 'monthly' && !acceptsRecurringDonations;
 
                 return (
                   <Pressable
@@ -576,17 +585,50 @@ export function DonateScreen() {
                       styles.methodButton,
                       {
                         borderColor: selected ? colors.primary : colors.border,
-                        backgroundColor: selected ? colors.primarySoft : colors.surface,
+                        backgroundColor: disabled
+                          ? colors.surfaceMuted
+                          : selected ? colors.primarySoft : colors.surface,
+                        opacity: disabled ? 0.62 : 1,
                       },
                     ]}
+                    disabled={disabled}
                     onPress={() => setDonationKind(kind.key as DonationKind)}>
-                    <Ionicons name={kind.icon as keyof typeof Ionicons.glyphMap} size={20} color={colors.primary} />
-                    <ThemedText variant="body" style={styles.bold}>{kind.label}</ThemedText>
+                    <Ionicons
+                      name={kind.icon as keyof typeof Ionicons.glyphMap}
+                      size={20}
+                      color={disabled ? colors.icon : colors.primary}
+                    />
+                    <ThemedText variant="body" style={styles.bold} color={disabled ? colors.textMuted : colors.text}>
+                      {kind.label}
+                    </ThemedText>
                   </Pressable>
                 );
               })}
             </View>
+            {!acceptsRecurringDonations ? (
+              <ThemedText variant="caption" color={colors.textMuted}>
+                Esta instituição aceita somente pagamentos únicos nesta campanha.
+              </ThemedText>
+            ) : null}
           </View>
+
+          <Card variant="outlined" style={styles.feeBreakdown}>
+            <ThemedText variant="body" style={styles.bold}>Taxa de serviço</ThemedText>
+            <View style={styles.receiptRow}>
+              <ThemedText variant="body" color={colors.textMuted}>Valor pago</ThemedText>
+              <ThemedText variant="body" style={styles.bold}>{formatCents(amountCents)}</ThemedText>
+            </View>
+            <View style={styles.receiptRow}>
+              <ThemedText variant="body" color={colors.textMuted}>Taxa EloDoar</ThemedText>
+              <ThemedText variant="body" style={styles.bold}>{formatCents(serviceFeeAmount)}</ThemedText>
+            </View>
+            <View style={styles.receiptRow}>
+              <ThemedText variant="body" color={colors.textMuted}>Vai para a instituição</ThemedText>
+              <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                {formatCents(netAmountCents)}
+              </ThemedText>
+            </View>
+          </Card>
 
           <Button fullWidth onPress={handleContinueToPayment}>
             Continuar
@@ -594,7 +636,7 @@ export function DonateScreen() {
           <View style={styles.tabSpacer} />
         </View>
       </ScreenContainer>
-      <FloatingTabBar activeKey="donations" items={DONATE_TABS} />
+      <FloatingTabBar activeKey="donations" items={donateTabs} />
     </View>
   );
 }
