@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Redirect, Tabs } from 'expo-router';
 
+import { FloatingTabBar } from '@/components/floating-tab-bar';
 import { useChatUnread } from '@/hooks/use-chat-unread';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getHomeRouteForRole } from '@/navigation/routes';
 import { type UserRole } from '@/navigation/session';
 import { useActiveRole } from '@/store';
-import { theme } from '@/theme';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -23,9 +23,43 @@ type RoleTabsLayoutProps = {
   expectedRole: UserRole;
 };
 
+function RoleFloatingTabBar({
+  descriptors,
+  navigation,
+  state,
+  tabs,
+}: BottomTabBarProps & { tabs: TabConfig[] }) {
+  const items = state.routes.map((route, index) => {
+    const options = descriptors[route.key]?.options;
+    const focused = state.index === index;
+    const configuredTab = tabs.find((item) => item.name === route.name);
+
+    return {
+      activeIcon: configuredTab?.activeIcon ?? 'ellipse',
+      badge: typeof options?.tabBarBadge === 'number' ? options.tabBarBadge : undefined,
+      icon: configuredTab?.icon ?? 'ellipse-outline',
+      key: route.name,
+      label: String(options?.title ?? route.name),
+      onPress: () => {
+        const event = navigation.emit({
+          canPreventDefault: true,
+          target: route.key,
+          type: 'tabPress',
+        });
+
+        if (!focused && !event.defaultPrevented) {
+          navigation.navigate(route.name, route.params);
+        }
+      },
+    };
+  });
+
+  const activeRoute = state.routes[state.index];
+
+  return <FloatingTabBar activeKey={activeRoute?.name ?? ''} items={items} />;
+}
+
 export function RoleTabsLayout({ tabs, expectedRole }: RoleTabsLayoutProps) {
-  const scheme = useColorScheme() ?? 'light';
-  const colors = theme.colors[scheme];
   const activeRole = useActiveRole();
 
   if (activeRole !== expectedRole) {
@@ -34,38 +68,11 @@ export function RoleTabsLayout({ tabs, expectedRole }: RoleTabsLayoutProps) {
 
   return (
     <Tabs
+      tabBar={(props) => <RoleFloatingTabBar {...props} tabs={tabs} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: {
-          fontFamily: theme.typography.font.inter.semibold,
-          fontSize: 11,
-          fontWeight: '600',
-        },
         tabBarAllowFontScaling: false,
-        tabBarItemStyle: {
-          borderRadius: theme.radius.pill,
-          marginVertical: 10,
-        },
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 0,
-          borderRadius: theme.radius.pill,
-          bottom: 18,
-          height: 78,
-          left: 18,
-          paddingBottom: 12,
-          paddingTop: 10,
-          position: 'absolute',
-          right: 18,
-          shadowColor: colors.primaryStrong,
-          shadowOffset: { width: 0, height: 14 },
-          shadowOpacity: 0.18,
-          shadowRadius: 28,
-          elevation: 12,
-        },
+        tabBarHideOnKeyboard: true,
       }}>
       {tabs.map((tab) => (
         <Tabs.Screen
@@ -74,14 +81,6 @@ export function RoleTabsLayout({ tabs, expectedRole }: RoleTabsLayoutProps) {
           options={{
             title: tab.title,
             tabBarBadge: tab.badge && tab.badge > 0 ? tab.badge : undefined,
-            tabBarBadgeStyle: { backgroundColor: colors.primary },
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons
-                name={focused ? tab.activeIcon : tab.icon}
-                color={color}
-                size={size}
-              />
-            ),
           }}
         />
       ))}
