@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import {
   Avatar,
   Button,
   Card,
-  Divider,
   EmptyState,
+  Input,
   Loading,
   ProgressBar,
   ScreenContainer,
@@ -21,11 +21,11 @@ import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService, type Campaign, type PendingInstitution } from '@/services/campaigns';
 import {
-  donationStatusLabels,
   donationsService,
   type Donation,
-  type DonationStatus,
 } from '@/services/donations';
+import { followsService, type Follow } from '@/services/follows';
+import { postsService, type FeedPost } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -33,45 +33,17 @@ import { styles } from './styles';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type TagVariant = 'success' | 'warning' | 'danger' | 'neutral';
-
-function getStatusVariant(status: DonationStatus): TagVariant {
-  switch (status) {
-    case 'completed':
-      return 'success';
-    case 'processing':
-    case 'pending':
-      return 'warning';
-    case 'failed':
-    case 'cancelled':
-      return 'danger';
-    default:
-      return 'neutral';
-  }
-}
-
 function formatDate(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function pickFeaturedCampaign(campaigns: Campaign[]): Campaign | null {
-  const active = campaigns.filter((c) => c.active);
-  if (active.length === 0) return null;
-  return [...active].sort((a, b) => b.progress - a.progress)[0];
-}
-
-function pickSuggestedCampaigns(campaigns: Campaign[], featuredId?: string): Campaign[] {
-  return campaigns
-    .filter((c) => c.active && c.id !== featuredId)
-    .sort((a, b) => b.progress - a.progress)
-    .slice(0, 2);
-}
-
 type DashboardData = {
   donations: Donation[];
   campaigns: Campaign[];
+  follows: Follow[];
   pendingInstitutions: PendingInstitution[];
+  posts: FeedPost[];
 };
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -83,6 +55,8 @@ export function DashboardScreen() {
   const authToken = useAppStore((state) => state.authToken);
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const [postContent, setPostContent] = useState('');
+  const [publishing, setPublishing] = useState(false);
 
   const fetcher = useCallback(async (): Promise<DashboardData> => {
     if (activeRole === 'platform-admin') {
@@ -91,19 +65,21 @@ export function DashboardScreen() {
         campaignsService.listPendingInstitutions(authToken),
       ]);
 
-      return { donations: [], campaigns, pendingInstitutions };
+      return { donations: [], campaigns, follows: [], pendingInstitutions, posts: [] };
     }
 
     if (activeRole === 'institution-staff') {
       const campaigns = await campaignsService.listCampaigns();
-      return { donations: [], campaigns, pendingInstitutions: [] };
+      return { donations: [], campaigns, follows: [], pendingInstitutions: [], posts: [] };
     }
 
-    const [donations, campaigns] = await Promise.all([
+    const [donations, campaigns, follows, posts] = await Promise.all([
       donationsService.listMyDonations(authToken),
       campaignsService.listCampaigns(),
+      followsService.listMyFollows(authToken),
+      postsService.listFeed(authToken),
     ]);
-    return { donations, campaigns, pendingInstitutions: [] };
+    return { donations, campaigns, follows, pendingInstitutions: [], posts };
   }, [activeRole, authToken]);
 
   const { data, loading, error, refetch } = useFetch(fetcher);
@@ -114,15 +90,182 @@ export function DashboardScreen() {
     }, [refetch])
   );
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
-  const recentDonations = data?.donations.slice(0, 2) ?? [];
-  const featuredCampaign = data ? pickFeaturedCampaign(data.campaigns) : null;
-  const suggestedCampaigns = data
-    ? pickSuggestedCampaigns(data.campaigns, featuredCampaign?.id)
-    : [];
+const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
   const pendingInstitutions = data?.pendingInstitutions ?? [];
   const institutionCampaigns = data?.campaigns ?? [];
   const activeInstitutionCampaigns = institutionCampaigns.filter((campaign) => campaign.active);
+  const donorFeed = data?.posts ?? [];
+
+  async function handleCreatePost() {
+    const content = postContent.trim();
+    if (!content || publishing) return;
+
+    setPublishing(true);
+    try {
+      await postsService.createPost({ content, visibility: 'PUBLIC' }, authToken);
+      setPostContent('');
+      await refetch();
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  if (activeRole === 'donor') {
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.homeHeaderRow}>
+              <View style={styles.headerText}>
+                <ThemedText variant="body" color={colors.textMuted}>Bem-vindo de volta, {firstName}!</ThemedText>
+                <ThemedText variant="title">Início</ThemedText>
+              </View>
+              <View style={styles.homeHeaderActions}>
+                <Pressable accessibilityRole="button" onPress={() => router.push(routes.appNotifications)} style={styles.homeIconButton}>
+                  <Ionicons name="notifications-outline" size={30} color={colors.primaryStrong} />
+                  <View style={[styles.homeDot, { backgroundColor: colors.primary }]} />
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={() => router.push(routes.donorMessages)} style={styles.homeIconButton}>
+                  <Ionicons name="chatbubble-outline" size={30} color={colors.primaryStrong} />
+                </Pressable>
+              </View>
+            </View>
+            <ThemedText variant="caption" color={colors.textMuted}>
+              Compartilhe atualizações e acompanhe novidades da comunidade.
+            </ThemedText>
+          </View>
+
+          <Card style={styles.composerCard}>
+            <View style={styles.postAuthor}>
+              <Avatar name={user?.name} size="sm" />
+              <View style={styles.postAuthorText}>
+                <ThemedText variant="body" style={styles.bold}>{firstName}</ThemedText>
+                <ThemedText variant="body" color={colors.textMuted}>
+                  Compartilhe uma campanha, doação ou causa...
+                </ThemedText>
+              </View>
+            </View>
+            <Input
+              multiline
+              numberOfLines={3}
+              placeholder="Compartilhe uma campanha, doação ou causa..."
+              value={postContent}
+              onChangeText={setPostContent}
+              style={styles.composerInput}
+            />
+            <View style={styles.composerActions}>
+              <View style={styles.composerQuickActions}>
+                <Pressable style={styles.quickAction}>
+                  <Ionicons name="image-outline" size={22} color={colors.icon} />
+                  <ThemedText variant="body" color={colors.textMuted}>Foto / Vídeo</ThemedText>
+                </Pressable>
+                <Pressable style={styles.quickAction}>
+                  <Ionicons name="heart-outline" size={22} color={colors.icon} />
+                  <ThemedText variant="body" color={colors.textMuted}>Apoio</ThemedText>
+                </Pressable>
+                <Pressable style={styles.quickAction}>
+                  <Ionicons name="calendar-outline" size={22} color={colors.icon} />
+                  <ThemedText variant="body" color={colors.textMuted}>Evento</ThemedText>
+                </Pressable>
+              </View>
+              <Button
+                size="sm"
+                onPress={handleCreatePost}
+                disabled={!postContent.trim() || publishing}>
+                {publishing ? 'Publicando...' : 'Publicar'}
+              </Button>
+            </View>
+          </Card>
+
+          {loading && <Loading label="Carregando início..." />}
+
+          {error && (
+            <EmptyState
+              title="Não foi possível carregar"
+              description={error}
+              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+              action={<Button variant="secondary" onPress={refetch}>Tentar novamente</Button>}
+            />
+          )}
+
+          {!loading && !error ? (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <ThemedText variant="subtitle">Feed recente</ThemedText>
+                <Pressable onPress={() => router.push(routes.donorCampaigns)}>
+                  <ThemedText variant="caption" color={colors.primary}>Explorar</ThemedText>
+                </Pressable>
+              </View>
+
+              {donorFeed.length === 0 ? (
+                <Card style={styles.emptyPostCard}>
+                  <Ionicons name="sparkles-outline" size={32} color={colors.border} />
+                  <ThemedText variant="body" style={styles.bold}>
+                    Nenhuma novidade ainda
+                  </ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Siga pessoas, campanhas e instituições para movimentar seu feed.
+                  </ThemedText>
+                </Card>
+              ) : (
+                <View style={styles.list}>
+                  {donorFeed.map((post) => (
+                    <Card key={post.id} style={styles.homeFeedCard}>
+                      <View style={styles.postAuthor}>
+                        <Avatar name={post.authorType === 'USER' ? 'Doador' : 'Lar Aconchego'} size="sm" />
+                        <View style={styles.postAuthorText}>
+                          <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
+                            {post.authorType === 'USER' ? 'Doador' : 'Lar Aconchego'}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={colors.textMuted}>
+                            {formatDate(post.createdAt)}
+                          </ThemedText>
+                        </View>
+                        <Ionicons name="ellipsis-horizontal" size={20} color={colors.icon} />
+                      </View>
+                      <ThemedText variant="body">{post.content}</ThemedText>
+                      {post.campaignId ? (
+                        <Pressable
+                          style={[styles.feedCampaignLink, { backgroundColor: colors.primarySoft }]}
+                          onPress={() => router.push(routes.appCampaignDetail(post.campaignId!))}>
+                          <Ionicons name="megaphone-outline" size={22} color={colors.primary} />
+                          <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                            Ver campanha relacionada
+                          </ThemedText>
+                        </Pressable>
+                      ) : null}
+                      <View style={styles.postStats}>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          {post.stats.likesCount ?? 0} curtidas
+                        </ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          {post.stats.commentsCount ?? 0} comentários
+                        </ThemedText>
+                      </View>
+                      <View style={styles.feedActions}>
+                        <Pressable style={styles.feedAction}>
+                          <Ionicons name="heart-outline" size={22} color={colors.icon} />
+                          <ThemedText variant="body" color={colors.textMuted}>Curtir</ThemedText>
+                        </Pressable>
+                        <Pressable style={styles.feedAction}>
+                          <Ionicons name="chatbubble-outline" size={22} color={colors.icon} />
+                          <ThemedText variant="body" color={colors.textMuted}>Comentar</ThemedText>
+                        </Pressable>
+                        <Pressable style={styles.feedAction}>
+                          <Ionicons name="paper-plane-outline" size={22} color={colors.icon} />
+                          <ThemedText variant="body" color={colors.textMuted}>Compartilhar</ThemedText>
+                        </Pressable>
+                      </View>
+                    </Card>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   async function handleApproveInstitution(id: string) {
     await campaignsService.approveInstitution(id, authToken);
@@ -316,91 +459,6 @@ export function DashboardScreen() {
           </View>
         )}
 
-        {!loading && !error && activeRole === 'donor' && featuredCampaign && (
-          <Pressable onPress={() => router.push(routes.appCampaignDetail(featuredCampaign.id))}>
-            <Card style={[styles.banner, { backgroundColor: colors.primary }]} padding="lg">
-              <View style={styles.bannerContent}>
-                <Tag label="Em destaque" variant="neutral" />
-                <ThemedText variant="subtitle" color={colors.surface} numberOfLines={2}>
-                  {featuredCampaign.title}
-                </ThemedText>
-                <ThemedText variant="body" color={colors.primarySoft} numberOfLines={2}>
-                  {featuredCampaign.institution} — {featuredCampaign.progress}% da meta atingida.
-                </ThemedText>
-                <View style={styles.bannerProgress}>
-                  <ProgressBar
-                    value={featuredCampaign.progress}
-                    trackColor="rgba(255,255,255,0.25)"
-                    fillColor="rgba(255,255,255,0.9)"
-                  />
-                  <ThemedText variant="caption" color={colors.primarySoft}>
-                    {featuredCampaign.raisedFormatted} de {featuredCampaign.goalFormatted}
-                  </ThemedText>
-                </View>
-              </View>
-            </Card>
-          </Pressable>
-        )}
-
-        {!loading && !error && activeRole === 'donor' && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText variant="subtitle" style={styles.sectionTitle} numberOfLines={1}>
-                Minhas doações
-              </ThemedText>
-              <Pressable onPress={() => router.push(routes.donorDonations)}>
-                <ThemedText variant="caption" color={colors.primary} style={styles.sectionAction} numberOfLines={1}>
-                  Ver todas
-                </ThemedText>
-              </Pressable>
-            </View>
-
-            {recentDonations.length === 0 ? (
-              <EmptyState
-                title="Nenhuma doação ainda"
-                description="Suas doações recentes aparecerão aqui."
-                illustration={<Ionicons name="heart-outline" size={40} color={colors.border} />}
-              />
-            ) : (
-              <View style={styles.list}>
-                {recentDonations.map((item, index) => (
-                  <View key={item.id}>
-                    <Pressable onPress={() => router.push(routes.appCampaignDetail(item.campaignId))}>
-                      <View style={styles.donationItem}>
-                        <View style={styles.donationIcon}>
-                          <Ionicons name="heart" size={18} color={colors.secondary} />
-                        </View>
-                        <View style={styles.donationInfo}>
-                          <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
-                            {item.campaignTitle}
-                          </ThemedText>
-                          <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
-                            {item.institutionName}
-                          </ThemedText>
-                          <View style={styles.donationMeta}>
-                            <ThemedText variant="caption" color={colors.primary}>
-                              {item.amountFormatted}
-                            </ThemedText>
-                            <ThemedText variant="caption" color={colors.textMuted}>
-                              · {formatDate(item.createdAt)}
-                            </ThemedText>
-                          </View>
-                        </View>
-                        <Tag
-                          style={styles.donationStatus}
-                          label={donationStatusLabels[item.status]}
-                          variant={getStatusVariant(item.status)}
-                        />
-                      </View>
-                    </Pressable>
-                    {index < recentDonations.length - 1 && <Divider />}
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
         {!loading && !error && activeRole === 'institution-staff' && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -449,61 +507,6 @@ export function DashboardScreen() {
           </View>
         )}
 
-        {!loading && !error && activeRole === 'donor' && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText variant="subtitle" style={styles.sectionTitle} numberOfLines={1}>
-                Campanhas para você
-              </ThemedText>
-              <Pressable onPress={() => router.push(routes.donorCampaigns)}>
-                <ThemedText variant="caption" color={colors.primary} style={styles.sectionAction} numberOfLines={1}>
-                  Explorar
-                </ThemedText>
-              </Pressable>
-            </View>
-
-            {suggestedCampaigns.length === 0 ? (
-              <EmptyState
-                title="Nenhuma campanha disponível"
-                description="Novas campanhas aparecerão aqui em breve."
-                illustration={<Ionicons name="megaphone-outline" size={40} color={colors.border} />}
-              />
-            ) : (
-              <View style={styles.list}>
-                {suggestedCampaigns.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => router.push(routes.appCampaignDetail(item.id))}>
-                    <Card variant="outlined">
-                      <View style={styles.campaignCard}>
-                        <View style={styles.campaignHeader}>
-                          <View style={styles.campaignInfo}>
-                            <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
-                              {item.title}
-                            </ThemedText>
-                            <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
-                              {item.institution}
-                            </ThemedText>
-                          </View>
-                          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                        </View>
-                        <ProgressBar value={item.progress} />
-                        <View style={styles.campaignMeta}>
-                          <ThemedText variant="caption" color={colors.primary}>
-                            {item.raisedFormatted}
-                          </ThemedText>
-                          <ThemedText variant="caption" color={colors.textMuted}>
-                            de {item.goalFormatted}
-                          </ThemedText>
-                        </View>
-                      </View>
-                    </Card>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
       </View>
     </ScreenContainer>
   );

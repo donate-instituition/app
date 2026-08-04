@@ -1,14 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Avatar, Card, Divider, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useFetch } from '@/hooks/use-fetch';
 import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { getPreferredInitialRole, getSessionRoles, roleLabels, type UserRole } from '@/navigation/session';
 import { ApiError } from '@/services/api';
 import { authService } from '@/services/auth';
+import { donationsService, type Donation } from '@/services/donations';
+import { followsService, type Follow } from '@/services/follows';
+import { postsService, type FeedPost } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -36,7 +41,171 @@ function MenuItem({ icon, label, onPress }: MenuItemProps) {
   );
 }
 
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+type ProfileData = {
+  donations: Donation[];
+  follows: Follow[];
+  posts: FeedPost[];
+};
+
 export function ProfileScreen() {
+  const router = useRouter();
+  const user = useAppStore((state) => state.user);
+  const authToken = useAppStore((state) => state.authToken);
+  const scheme = useColorScheme() ?? 'light';
+  const colors = theme.colors[scheme];
+
+  const fetcher = useCallback(async (): Promise<ProfileData> => {
+    const [donations, follows, posts] = await Promise.all([
+      donationsService.listMyDonations(authToken),
+      followsService.listMyFollows(authToken),
+      postsService.listFeed(authToken),
+    ]);
+
+    return { donations, follows, posts };
+  }, [authToken]);
+
+  const { data, loading, error, refetch } = useFetch(fetcher);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch])
+  );
+
+  const ownPosts = data?.posts.filter((post) => post.authorType === 'USER' && post.authorId === user?.id) ?? [];
+  const donatedTotalCents = (data?.donations ?? [])
+    .filter((donation) => donation.status === 'completed')
+    .reduce((total, donation) => total + donation.amountCents, 0);
+  const followingCount = data?.follows.length ?? 0;
+
+  return (
+    <ScreenContainer scrollable>
+      <View style={styles.container}>
+        <Card style={styles.profileCard}>
+          <View style={styles.profileTopRow}>
+            <View />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Configurações"
+              onPress={() => router.push(routes.profileSettings)}
+              style={[styles.iconButton, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <Ionicons name="settings-outline" size={20} color={colors.primaryStrong} />
+            </Pressable>
+          </View>
+
+          <View style={styles.identity}>
+            <Avatar name={user?.name} size="lg" />
+            <View style={styles.identityInfo}>
+              <ThemedText variant="title" style={styles.name} numberOfLines={2}>
+                {user?.name ?? 'Perfil'}
+              </ThemedText>
+              <ThemedText variant="body" color={colors.textMuted} style={styles.centered} numberOfLines={1}>
+                {user?.email}
+              </ThemedText>
+              <Tag label="Usuario padrao" variant="success" style={styles.identityBadge} />
+            </View>
+          </View>
+
+          <View style={styles.socialStats}>
+            <View style={styles.socialStat}>
+              <ThemedText variant="subtitle">{ownPosts.length}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>posts</ThemedText>
+            </View>
+            <View style={styles.socialStat}>
+              <ThemedText variant="subtitle">0</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>seguidores</ThemedText>
+            </View>
+            <View style={styles.socialStat}>
+              <ThemedText variant="subtitle">{followingCount}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>seguindo</ThemedText>
+            </View>
+            <View style={styles.socialStat}>
+              <ThemedText variant="subtitle">R$ {(donatedTotalCents / 100).toFixed(0)}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>doados</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.profileActions}>
+            <Button size="sm" style={styles.profileAction} onPress={() => router.push(routes.profileSupports)}>
+              Apoios
+            </Button>
+            <Button size="sm" variant="secondary" style={styles.profileAction} onPress={() => router.push(routes.profileSettings)}>
+              Editar perfil
+            </Button>
+          </View>
+        </Card>
+
+        {loading && <Loading label="Carregando perfil..." />}
+
+        {error && (
+          <EmptyState
+            title="Não foi possível carregar"
+            description={error}
+            illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+            action={<Button variant="secondary" size="sm" onPress={refetch}>Tentar novamente</Button>}
+          />
+        )}
+
+        {!loading && !error ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText variant="subtitle">Postagens</ThemedText>
+              <Pressable onPress={() => router.push(routes.donorDashboard)}>
+                <ThemedText variant="caption" color={colors.primary}>Criar postagem</ThemedText>
+              </Pressable>
+            </View>
+
+            {ownPosts.length === 0 ? (
+              <Card style={styles.emptyPostCard}>
+                <Ionicons name="images-outline" size={32} color={colors.border} />
+                <ThemedText variant="body" style={styles.logoutText}>
+                  Nenhuma postagem ainda
+                </ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted} style={styles.centered}>
+                  Suas publicações sobre campanhas e instituições aparecem aqui.
+                </ThemedText>
+              </Card>
+            ) : (
+              <View style={styles.list}>
+                {ownPosts.map((post) => (
+                  <Card key={post.id} style={styles.postCard}>
+                    <View style={styles.postAuthor}>
+                      <Avatar name={user?.name} size="sm" />
+                      <View style={styles.menuLabel}>
+                        <ThemedText variant="body" style={styles.logoutText} numberOfLines={1}>
+                          {user?.name}
+                        </ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          {formatDate(post.createdAt)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText variant="body">{post.content}</ThemedText>
+                    <View style={styles.postStats}>
+                      <ThemedText variant="caption" color={colors.textMuted}>
+                        {post.stats.likesCount ?? 0} curtidas
+                      </ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>
+                        {post.stats.commentsCount ?? 0} comentários
+                      </ThemedText>
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            )}
+          </View>
+        ) : null}
+      </View>
+    </ScreenContainer>
+  );
+}
+
+export function SettingsMenuScreen() {
   const logout = useAppStore((state) => state.logout);
   const authToken = useAppStore((state) => state.authToken);
   const refreshToken = useAppStore((state) => state.refreshToken);
@@ -92,6 +261,12 @@ export function ProfileScreen() {
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
+        <View style={styles.header}>
+          <ThemedText variant="title">Configurações</ThemedText>
+          <ThemedText variant="caption" color={colors.textMuted}>
+            Conta, segurança, notificações e suporte.
+          </ThemedText>
+        </View>
 
         {/* Identidade */}
         <Card style={styles.identityCard}>
@@ -203,7 +378,7 @@ export function ProfileScreen() {
           <Card padding="none" style={styles.menuCard}>
             <MenuItem icon="person-outline" label="Meus dados" onPress={() => router.push(routes.profileMe)} />
             <Divider />
-            <MenuItem icon="notifications-outline" label="Notificações" onPress={() => router.push(routes.profileNotifications)} />
+            <MenuItem icon="notifications-outline" label="Preferências de notificação" onPress={() => router.push(routes.profileNotifications)} />
             <Divider />
             <MenuItem icon="lock-closed-outline" label="Privacidade e segurança" onPress={() => router.push(routes.profilePrivacy)} />
             <Divider />

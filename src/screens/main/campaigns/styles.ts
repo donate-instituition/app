@@ -5,18 +5,76 @@ import { theme } from '@/theme';
 export const styles = StyleSheet.create({
   // Layout
   container: {
-    gap: 22,
+    gap: 24,
     paddingBottom: 8,
-    paddingTop: theme.spacing.xl,
+    paddingTop: theme.spacing['2xl'],
   },
   header: {
     gap: theme.spacing.sm,
+  },
+  exploreHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  headerIconButton: {
+    alignItems: 'center',
+    height: 44,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 44,
+  },
+  headerDot: {
+    borderRadius: theme.radius.pill,
+    height: 10,
+    position: 'absolute',
+    right: 7,
+    top: 8,
+    width: 10,
   },
   centered: {
     marginTop: theme.spacing['4xl'],
   },
   list: {
     gap: theme.spacing.lg,
+  },
+  section: {
+    gap: theme.spacing.md,
+  },
+  discoverPosts: {
+    gap: theme.spacing.md,
+    paddingRight: theme.spacing.xl,
+  },
+  discoverPostCard: {
+    gap: theme.spacing.md,
+    minHeight: 160,
+    width: 260,
+  },
+  discoverPostHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  discoverAvatar: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  discoverPostAuthor: {
+    flex: 1,
+    minWidth: 0,
+  },
+  discoverPostStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
   },
 
   // Search input icon
@@ -28,25 +86,25 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     minHeight: 62,
     shadowColor: '#102A24',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
   },
 
   // Mode toggle (pill)
   modeToggle: {
     flexDirection: 'row',
     borderRadius: theme.radius.pill,
-    minHeight: 44,
-    padding: 3,
+    minHeight: 58,
+    padding: 4,
     gap: theme.spacing.xxs,
   },
   modeButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 38,
+    minHeight: 50,
     paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,
     borderRadius: theme.radius.pill,
@@ -66,7 +124,7 @@ export const styles = StyleSheet.create({
 
   // Category filter chips
   categories: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
     paddingBottom: theme.spacing.xs,
     paddingRight: theme.spacing.xl,
   },
@@ -79,8 +137,15 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 5,
     justifyContent: 'center',
-    minHeight: 34,
-    paddingHorizontal: theme.spacing.md,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  moreChip: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
   nearbyChipLoading: {
     opacity: 0.78,
@@ -170,6 +235,20 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.lg,
     minHeight: 132,
   },
+  featureCampaignCard: {
+    gap: theme.spacing.lg,
+  },
+  featureCampaignThumb: {
+    alignItems: 'center',
+    borderRadius: 16,
+    height: 184,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: '100%',
+  },
+  featureCampaignInfo: {
+    gap: theme.spacing.sm,
+  },
   campaignThumb: {
     alignItems: 'center',
     borderRadius: 18,
@@ -212,10 +291,10 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 0,
     shadowColor: '#102A24',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 22,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.11,
+    shadowRadius: 24,
+    elevation: 5,
   },
   metaLine: {
     alignItems: 'center',
@@ -285,11 +364,49 @@ export const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     width: '100%',
   },
+  featureStatsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  featureGoal: {
+    alignItems: 'flex-end',
+  },
+  featureFooter: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  supportersRow: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    minWidth: 0,
+  },
+  supporterAvatar: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    borderWidth: 2,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
+  featureDonateButton: {
+    minWidth: 128,
+  },
+  recommendedInstitutionCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    minHeight: 108,
+  },
+  followButton: {
+    minWidth: 96,
+  },
 
   // compat
-  section: {
-    gap: theme.spacing.md,
-  },
   adminActions: {
     flexDirection: 'row',
     gap: theme.spacing.sm,

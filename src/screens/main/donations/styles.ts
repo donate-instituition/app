@@ -7,6 +7,76 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.xl,
     paddingVertical: theme.spacing.lg,
   },
+  header: {
+    gap: theme.spacing.xs,
+  },
+  donateHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  headerIconButton: {
+    alignItems: 'center',
+    height: 42,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 42,
+  },
+  headerDot: {
+    borderRadius: theme.radius.pill,
+    height: 10,
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 10,
+  },
+  modeToggle: {
+    borderRadius: theme.radius.pill,
+    flexDirection: 'row',
+    minHeight: 58,
+    padding: 4,
+  },
+  modeButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  modeButtonActive: {
+    shadowColor: '#102A24',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  modeText: {
+    fontWeight: '700',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  outlineChip: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.lg,
+  },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -19,6 +89,45 @@ export const styles = StyleSheet.create({
   },
   section: {
     gap: theme.spacing.md,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  followGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.md,
+  },
+  followCard: {
+    borderRadius: 18,
+    borderWidth: theme.borderWidths.sm,
+    flexBasis: '47%',
+    gap: theme.spacing.sm,
+    minHeight: 136,
+    padding: theme.spacing.md,
+  },
+  followIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  emptyFollowCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  followCampaignCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  list: {
+    gap: theme.spacing.sm,
   },
   donationItem: {
     flexDirection: 'row',
@@ -51,5 +160,86 @@ export const styles = StyleSheet.create({
   },
   bold: {
     fontWeight: '600',
+  },
+  postCard: {
+    gap: theme.spacing.md,
+  },
+  donateCampaignCard: {
+    borderRadius: 20,
+    gap: theme.spacing.md,
+  },
+  postHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  verifiedLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    minWidth: 0,
+  },
+  followSmall: {
+    minWidth: 86,
+  },
+  donateCampaignImage: {
+    borderRadius: 16,
+    height: 200,
+    width: '100%',
+  },
+  donateProgressRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  donateProgressTrack: {
+    borderRadius: theme.radius.pill,
+    flex: 1,
+    height: 10,
+    overflow: 'hidden',
+  },
+  donateProgressFill: {
+    borderRadius: theme.radius.pill,
+    height: '100%',
+  },
+  donateGoal: {
+    alignItems: 'flex-end',
+    minWidth: 86,
+  },
+  donateMetaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+  },
+  verticalDivider: {
+    height: 32,
+    width: StyleSheet.hairlineWidth,
+  },
+  feedActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.md,
+  },
+  feedAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  postActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  postAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  donateAction: {
+    marginLeft: 'auto',
+    minWidth: 92,
   },
 });

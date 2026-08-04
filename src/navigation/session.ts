@@ -33,7 +33,7 @@ export const roleLabels: Record<UserRole, string> = {
 
 export const roleHomeLabels: Record<UserRole, string> = {
   'platform-admin': 'Dashboard administrativo',
-  donor: 'Inicio',
+  donor: 'Doar',
   'institution-staff': 'Dashboard instituicao',
 };
 

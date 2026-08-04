@@ -1,45 +1,47 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, View, type GestureResponderEvent } from 'react-native';
+import { Pressable, View } from 'react-native';
 
-import { Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { adminService, type AdminUser } from '@/services/admin';
-import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
+import { campaignsService, type Campaign } from '@/services/campaigns';
+import { postsService, type FeedPost } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-type TagVariant = 'success' | 'warning' | 'danger' | 'neutral';
-
-function getStatusVariant(status: DonationStatus): TagVariant {
-  switch (status) {
-    case 'completed': return 'success';
-    case 'processing': return 'warning';
-    case 'pending': return 'warning';
-    case 'failed': return 'danger';
-    case 'cancelled': return 'danger';
-    default: return 'neutral';
-  }
-}
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function sumCents(donations: Donation[]): string {
-  const total = donations.reduce((acc, d) => acc + d.amountCents, 0);
-  return `R$ ${(total / 100).toFixed(2).replace('.', ',')}`;
+function getPostAuthorLabel(post: FeedPost): string {
+  if (post.authorType === 'INSTITUTION') return 'Instituição';
+  return 'Doador';
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+type DonorDonateData = {
+  campaigns: Campaign[];
+  posts: FeedPost[];
+};
+
+function getCampaignImage(item: Campaign) {
+  if (item.title.toLowerCase().includes('inverno')) {
+    return 'https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=700&q=80';
+  }
+
+  if (item.title.toLowerCase().includes('escolar')) {
+    return 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=700&q=80';
+  }
+
+  return 'https://images.unsplash.com/photo-1600180758890-6b94519a8ba6?auto=format&fit=crop&w=700&q=80';
+}
 
 export function DonationsScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -47,41 +49,24 @@ export function DonationsScreen() {
   const authToken = useAppStore((state) => state.authToken);
   const activeRole = useActiveRole();
   const router = useRouter();
-  const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'following' | 'recommended'>('following');
 
-  const fetcher = useCallback(
-    () => {
-      if (activeRole === 'platform-admin') return Promise.resolve([]);
-      return donationsService.listMyDonations(authToken);
-    },
-    [activeRole, authToken]
+  const feed = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'donor') return Promise.resolve({ campaigns: [], posts: [] });
+      return Promise.all([
+        campaignsService.listCampaigns(),
+        postsService.listFeed(authToken),
+      ]).then(([campaigns, posts]) => ({ campaigns, posts }));
+    }, [activeRole, authToken])
   );
-  const { data: donations, loading, error, refetch } = useFetch(fetcher);
+
   const adminUsers = useFetch(
     useCallback(() => {
       if (activeRole !== 'platform-admin') return Promise.resolve([]);
       return adminService.listUsers(authToken);
     }, [activeRole, authToken])
   );
-
-  const completedDonations = donations?.filter((d) => d.status === 'completed') ?? [];
-  const totalDonated = donations ? sumCents(completedDonations) : 'R$ 0,00';
-  const campaignsSupported = new Set(donations?.map((d) => d.campaignId)).size;
-
-  async function handleCancelSubscription(subscriptionId: string) {
-    setCancelingSubscriptionId(subscriptionId);
-    try {
-      await donationsService.cancelStripeSubscription(subscriptionId, authToken);
-      await refetch();
-    } catch (error) {
-      Alert.alert(
-        'Não foi possível cancelar',
-        error instanceof Error ? error.message : 'Tente novamente em instantes.',
-      );
-    } finally {
-      setCancelingSubscriptionId(null);
-    }
-  }
 
   if (activeRole === 'platform-admin') {
     const users = (adminUsers.data ?? []) as AdminUser[];
@@ -132,22 +117,18 @@ export function DonationsScreen() {
 
                   return (
                     <View key={item.id ?? item._id ?? item.email}>
-                    <View style={styles.donationItem}>
-                      <View style={styles.donationInfo}>
-                        <ThemedText variant="body" style={styles.bold}>
-                          {item.fullName}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={colors.textMuted}>
-                          {item.email}
-                        </ThemedText>
+                      <View style={styles.donationItem}>
+                        <View style={styles.donationInfo}>
+                          <ThemedText variant="body" style={styles.bold}>{item.fullName}</ThemedText>
+                          <ThemedText variant="caption" color={colors.textMuted}>{item.email}</ThemedText>
+                        </View>
+                        <Tag
+                          label={primaryRole === 'DONOR' ? 'Doador' : primaryRole === 'INSTITUTION_STAFF' ? 'Instituição' : 'Admin'}
+                          variant={primaryRole === 'PLATFORM_ADMIN' ? 'warning' : 'neutral'}
+                        />
                       </View>
-                      <Tag
-                        label={primaryRole === 'DONOR' ? 'Doador' : primaryRole === 'INSTITUTION_STAFF' ? 'Instituição' : 'Admin'}
-                        variant={primaryRole === 'PLATFORM_ADMIN' ? 'warning' : 'neutral'}
-                      />
+                      {index < users.length - 1 && <Divider />}
                     </View>
-                    {index < users.length - 1 && <Divider />}
-                  </View>
                   );
                 })}
               </Card>
@@ -158,122 +139,194 @@ export function DonationsScreen() {
     );
   }
 
+  const donorData = (feed.data ?? { campaigns: [], posts: [] }) as DonorDonateData;
+  const posts = donorData.posts;
+  const campaigns = donorData.campaigns.slice(0, 4);
+
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
-
-        {/* Metrics */}
-        <View style={styles.metricsGrid}>
-          <Card style={styles.metricCard}>
-            <Ionicons name="heart" size={24} color={colors.secondary} />
-            <ThemedText variant="title">{loading ? '—' : totalDonated}</ThemedText>
+        <View style={styles.donateHeader}>
+          <View style={styles.headerText}>
+            <ThemedText variant="title">Doar</ThemedText>
             <ThemedText variant="caption" color={colors.textMuted}>
-              Total doado
+              Apoie campanhas e acompanhe causas que fazem sentido para você.
             </ThemedText>
-          </Card>
-          <Card style={styles.metricCard}>
-            <Ionicons name="megaphone" size={24} color={colors.primary} />
-            <ThemedText variant="title">{loading ? '—' : campaignsSupported}</ThemedText>
-            <ThemedText variant="caption" color={colors.textMuted}>
-              Campanhas apoiadas
-            </ThemedText>
-          </Card>
+          </View>
+          <View style={styles.headerActions}>
+            <Pressable accessibilityRole="button" onPress={() => router.push(routes.appNotifications)} style={styles.headerIconButton}>
+              <Ionicons name="notifications-outline" size={30} color={colors.primaryStrong} />
+              <View style={[styles.headerDot, { backgroundColor: colors.primary }]} />
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push(routes.donorMessages)} style={styles.headerIconButton}>
+              <Ionicons name="chatbubble-outline" size={30} color={colors.primaryStrong} />
+            </Pressable>
+          </View>
         </View>
 
-        {/* History */}
-        <View style={styles.section}>
-          <ThemedText variant="subtitle">Histórico</ThemedText>
+        <View style={[styles.modeToggle, { backgroundColor: colors.surfaceMuted }]}>
+          <Pressable
+            style={[styles.modeButton, mode === 'following' && [styles.modeButtonActive, { backgroundColor: colors.surface }]]}
+            onPress={() => setMode('following')}>
+            <ThemedText variant="body" color={mode === 'following' ? colors.primary : colors.textMuted} style={styles.modeText}>
+              Seguindo
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.modeButton, mode === 'recommended' && [styles.modeButtonActive, { backgroundColor: colors.surface }]]}
+            onPress={() => setMode('recommended')}>
+            <ThemedText variant="body" color={mode === 'recommended' ? colors.primary : colors.textMuted} style={styles.modeText}>
+              Para você
+            </ThemedText>
+          </Pressable>
+        </View>
 
-          {loading && <Loading label="Carregando doações..." />}
+        <View style={styles.chipRow}>
+          {[
+            ['alert-circle', 'Urgentes'],
+            ['book-outline', 'Educação'],
+            ['people-outline', 'Comunidade'],
+            ['leaf-outline', 'Meio ambiente'],
+          ].map(([icon, label], index) => (
+            <View
+              key={label}
+              style={[
+                styles.outlineChip,
+                {
+                  backgroundColor: index === 0 ? colors.secondarySoft : colors.surface,
+                  borderColor: index === 0 ? colors.primary : colors.border,
+                },
+              ]}>
+              <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={index === 0 ? colors.danger : colors.primary} />
+              <ThemedText variant="body" color={index === 0 ? colors.primary : colors.textMuted}>
+                {label}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
 
-          {error && (
-            <EmptyState
-              title="Não foi possível carregar"
-              description={error}
-              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
-              action={
-                <Button variant="secondary" size="sm" onPress={refetch}>
-                  Tentar novamente
-                </Button>
-              }
-            />
-          )}
+        {feed.loading && <Loading label="Carregando feed..." />}
 
-          {!loading && !error && (!donations || donations.length === 0) && (
-            <EmptyState
-              title="Nenhuma doação ainda"
-              description="Suas doações aparecerão aqui assim que você contribuir com uma campanha."
-              illustration={<Ionicons name="heart-outline" size={56} color={colors.border} />}
-            />
-          )}
+        {feed.error && (
+          <EmptyState
+            title="Não foi possível carregar"
+            description={feed.error}
+            illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+            action={<Button variant="secondary" size="sm" onPress={feed.refetch}>Tentar novamente</Button>}
+          />
+        )}
 
-          {!loading && !error && donations && donations.length > 0 && (
-            <Card>
-              {donations.map((item, index) => (
-                <View key={item.id}>
-                  <Pressable
-                    style={styles.donationItem}
-                    onPress={() => router.push(routes.appDonationDetail(item.id))}>
-                    <View style={styles.donationInfo}>
-                      <ThemedText variant="body" style={styles.bold}>
-                        {item.campaignTitle}
+        {!feed.loading && !feed.error && campaigns.length === 0 && posts.length === 0 ? (
+          <EmptyState
+            title="Seu feed ainda está vazio"
+            description="Siga campanhas, instituições e pessoas para acompanhar publicações por aqui."
+            illustration={<Ionicons name="heart-outline" size={56} color={colors.border} />}
+            action={<Button size="sm" onPress={() => router.push(routes.donorCampaigns)}>Explorar causas</Button>}
+          />
+        ) : null}
+
+        {!feed.loading && !feed.error && (campaigns.length > 0 || posts.length > 0) ? (
+          <View style={styles.list}>
+            {campaigns.map((campaign, index) => (
+              <Card key={campaign.id} style={styles.donateCampaignCard}>
+                <View style={styles.postHeader}>
+                  <Avatar name={campaign.institution} size="sm" />
+                  <View style={styles.donationInfo}>
+                    <View style={styles.verifiedLine}>
+                      <ThemedText variant="subtitle" style={styles.bold} numberOfLines={1}>
+                        {campaign.institution}
                       </ThemedText>
-                      <ThemedText variant="caption" color={colors.textMuted}>
-                        {item.institutionName}
-                      </ThemedText>
-                      <ThemedText variant="caption" color={colors.textMuted}>
-                        {formatDate(item.createdAt)}
-                      </ThemedText>
-                      {item.serviceFeeFormatted ? (
-                        <ThemedText variant="caption" color={colors.textMuted}>
-                          Taxa EloDoar: {item.serviceFeeFormatted} · Destinado: {item.netAmountFormatted}
-                        </ThemedText>
-                      ) : null}
-                      {item.receiptNumber ? (
-                        <ThemedText variant="caption" color={colors.textMuted}>
-                          Recibo {item.receiptNumber}
-                        </ThemedText>
-                      ) : null}
-                      {item.subscriptionId && item.subscriptionStatus !== 'canceled' ? (
-                        <Pressable
-                          style={[styles.cancelSubscriptionButton, { borderColor: colors.danger }]}
-                          disabled={cancelingSubscriptionId === item.subscriptionId}
-                          onPress={(event: GestureResponderEvent) => {
-                            event.stopPropagation();
-                            handleCancelSubscription(item.subscriptionId!);
-                          }}>
-                          <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
-                          <ThemedText variant="caption" color={colors.danger} style={styles.bold}>
-                            {cancelingSubscriptionId === item.subscriptionId
-                              ? 'Cancelando...'
-                              : 'Cancelar doação mensal'}
-                          </ThemedText>
-                        </Pressable>
-                      ) : null}
+                      <Ionicons name="checkmark-circle" size={18} color={colors.success} />
                     </View>
-                    <View style={styles.donationRight}>
-                      <ThemedText variant="body" color={colors.primary} style={styles.bold}>
-                        {item.amountFormatted}
-                      </ThemedText>
-                      {item.donationKind === 'monthly' ? (
-                        <Tag
-                          label={item.subscriptionStatus === 'canceled' ? 'Mensal cancelada' : 'Mensal'}
-                          variant={item.subscriptionStatus === 'canceled' ? 'danger' : 'success'}
-                        />
-                      ) : null}
-                      <Tag
-                        label={donationStatusLabels[item.status]}
-                        variant={getStatusVariant(item.status)}
-                      />
-                    </View>
-                  </Pressable>
-                  {index < donations.length - 1 && <Divider />}
+                    <ThemedText variant="caption" color={colors.textMuted}>
+                      {index === 0 ? '2h' : '1d'} · Público
+                    </ThemedText>
+                  </View>
+                  {index > 0 && <Button size="sm" variant="secondary" style={styles.followSmall}>Seguir</Button>}
+                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.icon} />
                 </View>
-              ))}
-            </Card>
-          )}
-        </View>
+                <ThemedText variant="body">
+                  {campaign.title.toLowerCase().includes('inverno')
+                    ? 'O inverno chegou e nossa meta é garantir carinho, conforto e dignidade para cada pessoa atendida.'
+                    : `Ajude a campanha ${campaign.title} a chegar mais longe.`}{' '}
+                  <ThemedText variant="body" color={colors.primary}>Ver mais</ThemedText>
+                </ThemedText>
+                <Pressable onPress={() => router.push(routes.appCampaignDetail(campaign.id))}>
+                  <Image source={getCampaignImage(campaign)} style={styles.donateCampaignImage} contentFit="cover" />
+                </Pressable>
+                <View style={styles.donateProgressRow}>
+                  <View>
+                    <ThemedText variant="title" color={colors.primary}>{campaign.progress}%</ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>da meta</ThemedText>
+                  </View>
+                  <View style={[styles.donateProgressTrack, { backgroundColor: colors.primarySoft }]}>
+                    <View style={[styles.donateProgressFill, { backgroundColor: colors.primary, width: `${Math.min(campaign.progress, 100)}%` }]} />
+                  </View>
+                  <View style={styles.donateGoal}>
+                    <ThemedText variant="body">{campaign.goalFormatted}</ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>meta</ThemedText>
+                  </View>
+                </View>
+                <View style={styles.donateMetaRow}>
+                  <ThemedText variant="body" color={colors.textMuted}>124 doações</ThemedText>
+                  <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
+                  <ThemedText variant="body" color={colors.textMuted}>356 apoiadores</ThemedText>
+                </View>
+                <Button
+                  fullWidth
+                  variant={index === 0 ? 'secondary' : 'primary'}
+                  onPress={() => router.push(routes.appDonate(campaign.id))}>
+                  Doar agora
+                </Button>
+                <View style={styles.feedActions}>
+                  <Pressable style={styles.feedAction}>
+                    <Ionicons name="heart-outline" size={22} color={colors.icon} />
+                    <ThemedText variant="body" color={colors.textMuted}>Curtir</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.feedAction}>
+                    <Ionicons name="chatbubble-outline" size={22} color={colors.icon} />
+                    <ThemedText variant="body" color={colors.textMuted}>Comentar</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.feedAction}>
+                    <Ionicons name="paper-plane-outline" size={22} color={colors.icon} />
+                    <ThemedText variant="body" color={colors.textMuted}>Compartilhar</ThemedText>
+                  </Pressable>
+                </View>
+              </Card>
+            ))}
 
+            {posts.map((post) => (
+              <Card key={post.id} style={styles.postCard}>
+                <View style={styles.postHeader}>
+                  <Avatar name={getPostAuthorLabel(post)} size="sm" />
+                  <View style={styles.donationInfo}>
+                    <ThemedText variant="body" style={styles.bold}>{getPostAuthorLabel(post)}</ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>{formatDate(post.createdAt)}</ThemedText>
+                  </View>
+                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.icon} />
+                </View>
+
+                <ThemedText variant="body">{post.content}</ThemedText>
+
+                <View style={styles.postActions}>
+                  <Pressable style={styles.postAction}>
+                    <Ionicons name="heart-outline" size={22} color={colors.icon} />
+                    <ThemedText variant="caption" color={colors.textMuted}>{post.stats.likesCount ?? 0}</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.postAction}>
+                    <Ionicons name="chatbubble-outline" size={20} color={colors.icon} />
+                    <ThemedText variant="caption" color={colors.textMuted}>{post.stats.commentsCount ?? 0}</ThemedText>
+                  </Pressable>
+                  {post.campaignId ? (
+                    <Button size="sm" style={styles.donateAction} onPress={() => router.push(routes.appDonate(post.campaignId!))}>
+                      Doar
+                    </Button>
+                  ) : null}
+                </View>
+              </Card>
+            ))}
+          </View>
+        ) : null}
       </View>
     </ScreenContainer>
   );

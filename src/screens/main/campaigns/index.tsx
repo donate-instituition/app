@@ -89,6 +89,18 @@ function getInstitutionIcon(category: CampaignCategory) {
   return icons[category];
 }
 
+function getCampaignDescription(item: Campaign) {
+  if (item.title.toLowerCase().includes('inverno')) {
+    return 'Leve carinho e conforto para quem mais precisa neste inverno.';
+  }
+
+  if (item.title.toLowerCase().includes('escolar')) {
+    return 'Kit escolar completo para crianças sonharem mais longe.';
+  }
+
+  return `Apoie essa campanha de ${item.category.toLowerCase()} e acompanhe o impacto.`;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 type ModeToggleProps = {
@@ -141,8 +153,8 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
   return (
     <Pressable onPress={onPress}>
       <Card variant="elevated" style={styles.exploreCard}>
-        <View style={styles.campaignCard}>
-          <View style={[styles.campaignThumb, { backgroundColor: colors.primarySoft }]}>
+        <View style={styles.featureCampaignCard}>
+          <View style={[styles.featureCampaignThumb, { backgroundColor: colors.primarySoft }]}>
             <Image
               source={getCampaignImage(item)}
               style={styles.campaignImage}
@@ -150,7 +162,7 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
               transition={150}
             />
           </View>
-          <View style={styles.campaignInfo}>
+          <View style={styles.featureCampaignInfo}>
             <View style={styles.cardHeader}>
               <ThemedText variant="subtitle" style={styles.cardTitle} numberOfLines={2}>
                 {item.title}
@@ -165,18 +177,55 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
                 {item.institution}
               </ThemedText>
             </View>
+            <ThemedText variant="caption" color={colors.textMuted} numberOfLines={2}>
+              {getCampaignDescription(item)}
+            </ThemedText>
             <ProgressBar value={item.progress} />
-            <View style={styles.goalRow}>
-              <ThemedText variant="body" color={colors.primary} style={styles.bold}>
-                {item.progress}%
-              </ThemedText>
-              <ThemedText
-                variant="caption"
-                color={colors.textMuted}
-                style={styles.goalText}
-                numberOfLines={1}>
-                meta {item.goalFormatted}
-              </ThemedText>
+            <View style={styles.featureStatsRow}>
+              <View>
+                <ThemedText variant="subtitle" color={colors.primary} style={styles.bold}>
+                  {item.progress}%
+                </ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>da meta</ThemedText>
+              </View>
+              <View style={styles.featureGoal}>
+                <ThemedText variant="body" color={colors.text}>
+                  {item.goalFormatted}
+                </ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>meta</ThemedText>
+              </View>
+            </View>
+            <View style={styles.featureFooter}>
+              <View style={styles.supportersRow}>
+                {[0, 1, 2].map((offset) => (
+                  <View
+                    key={offset}
+                    style={[
+                      styles.supporterAvatar,
+                      {
+                        backgroundColor: offset === 0 ? colors.primarySoft : colors.surfaceMuted,
+                        borderColor: colors.surface,
+                        marginLeft: offset === 0 ? 0 : -8,
+                      },
+                    ]}>
+                    <ThemedText variant="caption" color={colors.primary} style={styles.bold}>
+                      {offset === 2 ? '+24' : ''}
+                    </ThemedText>
+                  </View>
+                ))}
+                <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                  356 apoiadores
+                </ThemedText>
+              </View>
+              {item.active ? (
+                <Button size="sm" style={styles.featureDonateButton} onPress={onPress}>
+                  Doar agora
+                </Button>
+              ) : (
+                <Button size="sm" variant="secondary" style={styles.featureDonateButton} onPress={onPress}>
+                  Ver impacto
+                </Button>
+              )}
             </View>
           </View>
         </View>
@@ -194,44 +243,32 @@ function InstitutionCard({ item, onPress }: InstitutionCardProps) {
   return (
     <Pressable onPress={onPress}>
       <Card variant="elevated" style={styles.exploreCard}>
-        <View style={styles.institutionCard}>
+        <View style={styles.recommendedInstitutionCard}>
           <View style={[styles.institutionAvatar, { backgroundColor: colors.primarySoft }]}>
             <Ionicons name={getInstitutionIcon(item.category)} size={34} color={colors.primary} />
           </View>
           <View style={styles.institutionInfo}>
             <View style={styles.institutionTopRow}>
-              <Tag label={item.category} variant="info" />
+              <ThemedText variant="subtitle" numberOfLines={1}>
+                {item.name}
+              </ThemedText>
               {item.verified ? (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                  <ThemedText variant="body" color={colors.success} numberOfLines={1}>
-                    Verificada
-                  </ThemedText>
-                </View>
+                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
               ) : null}
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </View>
-            <ThemedText variant="subtitle" numberOfLines={2}>
-              {item.name}
+            <ThemedText variant="body" color={colors.textMuted} numberOfLines={1}>
+              {item.description}
             </ThemedText>
             <View style={styles.institutionMeta}>
               <Ionicons name="location-outline" size={15} color={colors.textMuted} />
               <ThemedText variant="body" color={colors.textMuted} numberOfLines={1}>
-                {item.city}, {item.state}
-              </ThemedText>
-            </View>
-            <ThemedText variant="body" color={colors.textMuted} numberOfLines={2}>
-              {item.description}
-            </ThemedText>
-            <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.institutionFooter}>
-              <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
-              <ThemedText variant="body" color={colors.primary} numberOfLines={1}>
-                {item.activeCampaigns}{' '}
-                {item.activeCampaigns === 1 ? 'campanha ativa' : 'campanhas ativas'}
+                {item.city}, {item.state} · 1,2 km
               </ThemedText>
             </View>
           </View>
+          <Button size="sm" variant="secondary" style={styles.followButton}>
+            Seguir
+          </Button>
         </View>
       </Card>
     </Pressable>
@@ -304,7 +341,6 @@ export function CampaignsScreen() {
   );
 
   const active = mode === 'campaigns' ? campaigns : institutions;
-  const count = active.data?.length ?? 0;
 
   async function handleNearMePress() {
     if (locationLoading) return;
@@ -652,13 +688,21 @@ export function CampaignsScreen() {
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <ThemedText variant="title">
-            Explorar
-          </ThemedText>
-          <ThemedText variant="caption" color={colors.textMuted}>
-            Busque por campanhas, instituições ou causas perto de você.
-          </ThemedText>
+        <View style={styles.exploreHeader}>
+          <View style={styles.headerText}>
+            <ThemedText variant="title">Explorar</ThemedText>
+            <ThemedText variant="caption" color={colors.textMuted}>
+              Descubra posts, instituições e campanhas que combinam com você.
+            </ThemedText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notificações"
+            onPress={() => router.push(routes.appNotifications)}
+            style={styles.headerIconButton}>
+            <Ionicons name="notifications-outline" size={30} color={colors.primaryStrong} />
+            <View style={[styles.headerDot, { backgroundColor: colors.primary }]} />
+          </Pressable>
         </View>
 
         {/* Busca */}
@@ -718,6 +762,9 @@ export function CampaignsScreen() {
                   />
                 </Pressable>
               ))}
+              <View style={[styles.moreChip, { backgroundColor: colors.surfaceMuted }]}>
+                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+              </View>
             </ScrollView>
             {locationError ? (
               <ThemedText variant="caption" color={colors.danger}>
@@ -733,14 +780,40 @@ export function CampaignsScreen() {
             <ThemedText variant="subtitle" style={styles.resultsTitle} numberOfLines={2}>
               {mode === 'campaigns' ? 'Campanhas em destaque' : 'Instituições'}
             </ThemedText>
-            <ThemedText variant="caption" color={colors.textMuted} style={styles.resultsCount} numberOfLines={2}>
-              {count} {count === 1 ? 'resultado' : 'resultados'}
-            </ThemedText>
+            <Pressable>
+              <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                Ver todas
+              </ThemedText>
+            </Pressable>
           </View>
         )}
 
         {/* Conteúdo principal */}
         {renderContent()}
+
+        {mode === 'campaigns' && !institutions.loading && !institutions.error && institutions.data && institutions.data.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.resultsHeader}>
+              <ThemedText variant="subtitle" style={styles.resultsTitle}>
+                Instituições recomendadas
+              </ThemedText>
+              <Pressable onPress={() => setMode('institutions')}>
+                <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                  Ver todas
+                </ThemedText>
+              </Pressable>
+            </View>
+            <View style={styles.list}>
+              {institutions.data.slice(0, 2).map((item) => (
+                <InstitutionCard
+                  key={item.id}
+                  item={item}
+                  onPress={() => router.push(routes.appInstitutionDetail(item.id))}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
 
       </View>
     </ScreenContainer>

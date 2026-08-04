@@ -8,6 +8,9 @@ export const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
     paddingTop: theme.spacing.lg,
   },
+  header: {
+    gap: theme.spacing.xs,
+  },
   identityCard: {
     borderRadius: 18,
     paddingVertical: theme.spacing.xl,
@@ -39,6 +42,12 @@ export const styles = StyleSheet.create({
   },
   section: {
     gap: theme.spacing.sm,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     fontWeight: '600',
@@ -91,5 +100,58 @@ export const styles = StyleSheet.create({
   },
   logoutText: {
     fontWeight: '600',
+  },
+  profileCard: {
+    gap: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+  },
+  profileTopRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  iconButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  socialStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-between',
+  },
+  socialStat: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  profileAction: {
+    flex: 1,
+  },
+  list: {
+    gap: theme.spacing.sm,
+  },
+  emptyPostCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  postCard: {
+    gap: theme.spacing.md,
+  },
+  postAuthor: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  postStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
   },
 });

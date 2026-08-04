@@ -147,4 +147,142 @@ export const styles = StyleSheet.create({
   header: {
     gap: theme.spacing.sm,
   },
+  homeHeaderRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  homeHeaderActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  homeIconButton: {
+    alignItems: 'center',
+    height: 42,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 42,
+  },
+  homeDot: {
+    borderRadius: theme.radius.pill,
+    height: 10,
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 10,
+  },
+  profileHeader: {
+    gap: theme.spacing.lg,
+  },
+  profileTopRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  settingsButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  profileIdentity: {
+    gap: theme.spacing.xs,
+  },
+  socialStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  socialStat: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  profileAction: {
+    flex: 1,
+  },
+  emptyPostCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  postCard: {
+    gap: theme.spacing.md,
+  },
+  postAuthor: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  postAuthorText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  postStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  composerCard: {
+    gap: theme.spacing.md,
+    borderRadius: 20,
+  },
+  composerInput: {
+    minHeight: 78,
+    textAlignVertical: 'top',
+  },
+  composerActions: {
+    gap: theme.spacing.md,
+  },
+  composerQuickActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.md,
+  },
+  quickAction: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  homeFeedCard: {
+    gap: theme.spacing.md,
+    borderRadius: 20,
+  },
+  feedCampaignLink: {
+    alignItems: 'center',
+    borderRadius: 16,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    minHeight: 56,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  feedActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.md,
+  },
+  feedAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
 });
