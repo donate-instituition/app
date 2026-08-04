@@ -70,10 +70,13 @@ export default function AppLayout() {
       <Stack.Screen name="donation/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="institution/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="chat/[conversationId]" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="profile/me" options={{ headerShown: false }} />
       <Stack.Screen name="profile/notifications" options={{ headerShown: false }} />
       <Stack.Screen name="profile/privacy" options={{ headerShown: false }} />
       <Stack.Screen name="profile/help" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/supports" options={{ headerShown: false }} />
     </Stack>
   );
 }

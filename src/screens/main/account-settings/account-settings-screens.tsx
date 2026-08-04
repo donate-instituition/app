@@ -23,7 +23,7 @@ type SettingsRowProps = {
   description?: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
-  onPress?: () => void;
+  onPress?: () => Promise<void> | void;
   right?: React.ReactNode;
 };
 
@@ -174,7 +174,7 @@ export function NotificationSettingsScreen() {
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
-        <Header title="Notificações" description="Escolha como o EloDoar deve falar com voce." />
+        <Header title="Preferências de notificação" description="Escolha como o EloDoar deve falar com voce." />
 
         <View style={styles.section}>
           <ThemedText variant="body" style={styles.sectionTitle}>
@@ -275,11 +275,12 @@ export function HelpSupportScreen() {
   const router = useRouter();
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const authToken = useAppStore((state) => state.authToken);
   const faq = useFetch(useCallback(() => supportService.getCurrentFaq(), []));
   const faqItems = faq.data?.items ?? [];
 
-  function openSupportChat() {
-    const conversationId = chatService.ensureConversation('platform-support', 'Equipe EloDoar');
+  async function openSupportChat() {
+    const conversationId = await chatService.ensureSupportConversation(authToken);
     router.push(routes.appChat(conversationId));
   }
 
