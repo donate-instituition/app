@@ -248,9 +248,10 @@ Implemented Functionalities
 [x] User identity display (name, email, role tag)
 [x] Menu items (Meus dados / Notificações / Privacidade / Ajuda)
 [x] Logout button
-[ ] ❌ Menu items are non-functional — NOT IMPLEMENTED
+[x] Profile sub-screens (Meus dados, Notificações, Privacidade e segurança, Ajuda e suporte)
 ✅ Role-Aware Tab Bar
 [x] Different tab icons/labels based on user role (donor / institution-staff / platform-admin)
+[x] Floating tab bar standardized across role tabs
 ✅ Design System & Theme
 [x] Light + Dark mode support (semantic color tokens)
 [x] Full component library: Avatar, Button, Card, Carousel, Checkbox, DatePicker, Divider, EmptyState, Input, Loading, ProgressBar, RadioGroup, ScreenContainer, Select, Tag, ThemedText, ThemedView
@@ -263,15 +264,30 @@ Implemented Functionalities
 [x] apiClient with Bearer token injection, timeout, and error parsing
 [x] Metro alias @/ → src/ for clean imports
 [x] unstable_enablePackageExports + CJS condition order (fixes import.meta crash with Hermes)
+
+✅ Payments / Stripe
+[x] Stripe PaymentSheet configured in the mobile app
+[x] Stripe Connect destination charges for direct institution payout
+[x] Configurable EloDoar service fee
+[x] One-time and monthly donation modes
+[x] Webhook endpoint with queued processing
+[x] Donation/payment status controlled by webhook worker
+[x] Donation receipt PDF generated asynchronously after payment confirmation
+[x] Signed PDF download URL for external browser access
+[x] Donation detail screen with share/receipt/PDF actions
+[x] Subscription cancellation endpoint and app action
+
 Known Issues / Not Yet Implemented
 Priority	Area	Difficulty	Backend	Notes
-1	✅ Orphaned screens/home/	Trivial	None	Removed — dashboard tab replaces it
-2	✅ Dashboard data	Easy	None	Wired to mock donationsService + campaignsService
-3	Profile menu items	Easy	None	Static/local UI screens (Meus dados, Notificações, etc.)
-4	Institution dashboard	Medium	None (mock)	Role-specific UI for institution-staff
-5	Admin dashboard	Medium-Hard	None (mock)	Role-specific UI for platform-admin
-6	Payment integration	Hard	External API	Stripe/Mercado Pago — needs gateway even before own backend
-7	Image uploads	Hard	Storage backend	Needs file storage (S3, Firebase, etc.)
-8	Push notifications	Hard	Backend + FCM/APNs	Needs token registration and push service
-—	Backend API	—	Required later	Set EXPO_PUBLIC_API_URL in .env when ready
-—	Chat / Messages	—	Backend later	UI complete; mock in-memory only
+1	Stripe real-world QA	Medium	Stripe	Finish manual test matrix: success, failure, cancel, duplicate webhook, refund and monthly renewal.
+2	Stripe production readiness	Medium	Stripe	Configure live keys, production webhook endpoint, Connect onboarding flow and legal/account checks.
+3	Institution Connect onboarding	Hard	Stripe	Today `stripeConnectAccountId` is set manually/scripted; institutions still need a self-service onboarding/status flow.
+4	S3 production storage	Medium	Storage backend	Local PDF storage works for dev; production needs S3 bucket, credentials, lifecycle and access policy configured.
+5	Push notifications	Hard	Backend + FCM/APNs	Needs device token registration, push provider and notification preference enforcement.
+6	Chat / Messages	Hard	Backend + realtime	UI exists, but messages are still mock/in-memory; needs persistence and realtime delivery.
+7	Image uploads	Hard	Storage backend	Campaign/institution images need upload, validation, storage and CDN/public delivery.
+8	Institution dashboard	Medium	Backend	Replace remaining mock metrics with real campaign, donation, receipt and message data.
+9	Admin dashboard	Medium-Hard	Backend	Build operational views for users, institutions, audit, reports and platform metrics.
+10	Receipts polish	Medium	Backend/App	Improve PDF layout/branding, add receipt email attachment/link, and expose receipt status in app while worker is processing.
+11	Refunds and disputes	Hard	Stripe	Handle `charge.refunded`, disputes, partial refunds and receipt/status reversal rules.
+12	Automated tests	Medium	App/Backend	Add integration/e2e coverage for Stripe webhook processing, PDF generation and mobile donation flows.
