@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,7 +10,7 @@ import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService } from '@/services/campaigns';
 import { chatService } from '@/services/chat';
-import { useActiveRole } from '@/store';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -28,6 +28,8 @@ export function CampaignDetailScreen() {
   const colors = theme.colors[scheme];
   const insets = useSafeAreaInsets();
   const activeRole = useActiveRole();
+  const authToken = useAppStore((state) => state.authToken);
+  const [openingChat, setOpeningChat] = useState(false);
 
   const fetcher = useCallback(() => campaignsService.getCampaignById(id), [id]);
   const { data: campaign, loading, error, refetch } = useFetch(fetcher);
@@ -192,12 +194,21 @@ export function CampaignDetailScreen() {
             variant="secondary"
             style={styles.actionButton}
             leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.primary} />}
-            onPress={() => {
-              const conversationId = chatService.ensureConversation(
-                campaign.institutionId,
-                campaign.institution
-              );
-              router.push(routes.appChat(conversationId));
+            disabled={openingChat}
+            onPress={async () => {
+              if (openingChat) return;
+              setOpeningChat(true);
+              try {
+                const conversationId = await chatService.ensureConversation(
+                  campaign.institutionId,
+                  campaign.institution,
+                  authToken,
+                  campaign.id,
+                );
+                router.push(routes.appChat(conversationId));
+              } finally {
+                setOpeningChat(false);
+              }
             }}>
             Conversar
           </Button>

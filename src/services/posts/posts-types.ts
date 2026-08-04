@@ -26,3 +26,43 @@ export type FeedPost = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type CreatePostRequest = {
+  authorType?: PostAuthorType;
+  campaignId?: string;
+  institutionId?: string;
+  content: string;
+  media?: PostMedia[];
+  visibility?: PostVisibility;
+};
+
+export type PostComment = {
+  id: string;
+  postId: string;
+  userId: string;
+  parentCommentId?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreatePostCommentRequest = {
+  postId: string;
+  parentCommentId?: string;
+  content: string;
+};
+
+export type PostReactionType = 'LIKE';
+
+export type PostReaction = {
+  id: string;
+  postId: string;
+  userId: string;
+  type: PostReactionType;
+  createdAt: string;
+};
+
+export type CreatePostReactionRequest = {
+  postId: string;
+  type?: PostReactionType;
+};

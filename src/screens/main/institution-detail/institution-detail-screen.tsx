@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,6 +10,8 @@ import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService, type Campaign } from '@/services/campaigns';
 import { chatService } from '@/services/chat';
+import { followsService } from '@/services/follows';
+import { useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -50,9 +52,14 @@ export function InstitutionDetailScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const insets = useSafeAreaInsets();
+  const authToken = useAppStore((state) => state.authToken);
+  const [openingChat, setOpeningChat] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const fetcher = useCallback(() => campaignsService.getInstitutionById(id), [id]);
   const { data: institution, loading, error, refetch } = useFetch(fetcher);
+  const followsFetcher = useCallback(() => followsService.listMyFollows(authToken), [authToken]);
+  const { data: follows, refetch: refetchFollows } = useFetch(followsFetcher);
 
   // ─── States ────────────────────────────────────────────────────────────────
 
@@ -94,6 +101,30 @@ export function InstitutionDetailScreen() {
   // ─── Content ───────────────────────────────────────────────────────────────
 
   const activeCampaigns = institution.campaigns.filter((c) => c.active);
+  const institutionId = institution.id;
+  const isFollowing = Boolean(
+    follows?.some((follow) => follow.targetType === 'INSTITUTION' && follow.targetId === institutionId),
+  );
+
+  async function toggleFollow() {
+    if (followLoading) return;
+
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await followsService.unfollow('INSTITUTION', institutionId, authToken);
+      } else {
+        await followsService.follow(
+          { targetType: 'INSTITUTION', targetId: institutionId },
+          authToken,
+        );
+      }
+
+      await refetchFollows();
+    } finally {
+      setFollowLoading(false);
+    }
+  }
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
@@ -143,15 +174,33 @@ export function InstitutionDetailScreen() {
               </View>
             </View>
             <View style={styles.profileActions}>
-              <Button size="sm" style={styles.profileButton}>Seguir</Button>
+              <Button
+                size="sm"
+                variant={isFollowing ? 'secondary' : 'primary'}
+                disabled={followLoading}
+                style={styles.profileButton}
+                onPress={toggleFollow}>
+                {isFollowing ? 'Seguindo' : 'Seguir'}
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
                 style={styles.profileButton}
                 leftSlot={<Ionicons name="mail-outline" size={15} color={colors.primary} />}
-                onPress={() => {
-                  const conversationId = chatService.ensureConversation(institution.id, institution.name);
-                  router.push(routes.appChat(conversationId));
+                disabled={openingChat}
+                onPress={async () => {
+                  if (openingChat) return;
+                  setOpeningChat(true);
+                  try {
+                    const conversationId = await chatService.ensureConversation(
+                      institution.id,
+                      institution.name,
+                      authToken,
+                    );
+                    router.push(routes.appChat(conversationId));
+                  } finally {
+                    setOpeningChat(false);
+                  }
                 }}>
                 Mensagem
               </Button>
@@ -217,12 +266,20 @@ export function InstitutionDetailScreen() {
           variant="primary"
           style={styles.actionButton}
           leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.surface} />}
-          onPress={() => {
-            const conversationId = chatService.ensureConversation(
-              institution.id,
-              institution.name
-            );
-            router.push(routes.appChat(conversationId));
+          disabled={openingChat}
+          onPress={async () => {
+            if (openingChat) return;
+            setOpeningChat(true);
+            try {
+              const conversationId = await chatService.ensureConversation(
+                institution.id,
+                institution.name,
+                authToken,
+              );
+              router.push(routes.appChat(conversationId));
+            } finally {
+              setOpeningChat(false);
+            }
           }}>
           Conversar com a Instituição
         </Button>
