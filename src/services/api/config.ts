@@ -33,10 +33,15 @@ function getExpoHostApiUrl() {
   return `http://${host}:3000`;
 }
 
+function getEnvValue(key: string) {
+  const value = process.env[key]?.trim();
+  return value || undefined;
+}
+
 const ANDROID_API_BASE_URL =
-  process.env.EXPO_PUBLIC_ANDROID_API_URL ??
   getExpoHostApiUrl() ??
-  process.env.EXPO_PUBLIC_API_URL ??
+  getEnvValue('EXPO_PUBLIC_ANDROID_API_URL') ??
+  getEnvValue('EXPO_PUBLIC_API_URL') ??
   'http://10.0.2.2:3000';
 
 const DEFAULT_API_BASE_URL = Platform.select({
@@ -47,6 +52,6 @@ const DEFAULT_API_BASE_URL = Platform.select({
 export const API_BASE_URL =
   Platform.OS === 'android'
     ? ANDROID_API_BASE_URL
-    : process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_BASE_URL;
+    : getEnvValue('EXPO_PUBLIC_API_URL') ?? DEFAULT_API_BASE_URL;
 
 export const API_TIMEOUT_MS = 15000;

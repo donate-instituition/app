@@ -55,7 +55,13 @@
           }
         }
       ],
-      "@stripe/stripe-react-native"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.elodoar",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "extra": {
       "router": {

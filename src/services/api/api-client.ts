@@ -2,7 +2,7 @@ import { useAppStore } from '@/store/app-store';
 import { logger } from '@/services/logger';
 
 import { API_BASE_URL, API_TIMEOUT_MS } from './config';
-import { ApiError } from './errors';
+import { ApiError, getApiErrorMessage } from './errors';
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
@@ -240,7 +240,11 @@ export async function apiClient<TResponse>(
     }
 
     if (!response.ok) {
-      throw new ApiError('Falha ao consumir a API.', response.status, payload);
+      throw new ApiError(
+        getApiErrorMessage(payload, 'Falha ao consumir a API.'),
+        response.status,
+        payload,
+      );
     }
 
     return payload as TResponse;

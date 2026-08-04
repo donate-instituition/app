@@ -69,6 +69,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StripeProvider
+        merchantIdentifier="merchant.com.elodoar"
         publishableKey={STRIPE_PUBLISHABLE_KEY || 'pk_test_missing'}
         urlScheme="elodoar">
         <SafeAreaProvider>
