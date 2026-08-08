@@ -1,3 +1,3 @@
-import { MessagesScreen } from '@/screens/main/messages';
+import { AdminAuditScreen } from '@/screens/admin/audit';
 
-export default MessagesScreen;
+export default AdminAuditScreen;

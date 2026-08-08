@@ -31,3 +31,34 @@ export type AuditLog = {
   metadata?: Record<string, unknown>;
   createdAt?: string;
 };
+
+export type AdminDashboardStats = {
+  pendingInstitutions: number;
+  activeCampaigns: number;
+  activeUsers30d: number;
+  actionsToday: number;
+};
+
+export type PaginatedResponse<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export type QueryUsersParams = {
+  role?: AdminUserRole;
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type QueryAuditLogsParams = {
+  category?: 'all' | 'login' | 'institutions' | 'users';
+  search?: string;
+  page?: number;
+  limit?: number;
+};

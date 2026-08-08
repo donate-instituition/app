@@ -54,8 +54,9 @@ export function MessagesScreen() {
   }, [activeRole, authToken]);
   const { data: conversations, loading, error, refetch } = useFetch(fetcher);
   const auditLogs = useFetch(
-    useCallback(() => {
-      if (activeRole !== 'platform-admin') return Promise.resolve([]);
+    useCallback(async () => {
+      if (activeRole !== 'platform-admin')
+        return Promise.resolve({ data: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
       return adminService.listAuditLogs(authToken);
     }, [activeRole, authToken])
   );
@@ -71,7 +72,7 @@ export function MessagesScreen() {
   }), [refetch]);
 
   if (activeRole === 'platform-admin') {
-    const logs = (auditLogs.data ?? []) as AuditLog[];
+    const logs = auditLogs.data?.data ?? [];
 
     return (
       <ScreenContainer scrollable>

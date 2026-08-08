@@ -1,3 +1,3 @@
-import { DonationsScreen } from '@/screens/main/donations';
+import { AdminUsersScreen } from '@/screens/admin/users';
 
-export default DonationsScreen;
+export default AdminUsersScreen;

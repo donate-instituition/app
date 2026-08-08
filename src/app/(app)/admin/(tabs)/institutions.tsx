@@ -1,3 +1,3 @@
-import { CampaignsScreen } from '@/screens/main/campaigns';
+import { AdminInstitutionsScreen } from '@/screens/admin/institutions';
 
-export default CampaignsScreen;
+export default AdminInstitutionsScreen;

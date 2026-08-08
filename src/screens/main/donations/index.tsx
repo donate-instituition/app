@@ -62,14 +62,15 @@ export function DonationsScreen() {
   );
 
   const adminUsers = useFetch(
-    useCallback(() => {
-      if (activeRole !== 'platform-admin') return Promise.resolve([]);
+    useCallback(async () => {
+      if (activeRole !== 'platform-admin')
+        return Promise.resolve({ data: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
       return adminService.listUsers(authToken);
     }, [activeRole, authToken])
   );
 
   if (activeRole === 'platform-admin') {
-    const users = (adminUsers.data ?? []) as AdminUser[];
+    const users = adminUsers.data?.data ?? [];
     const donorsCount = users.filter((item) => item.roles?.some((role) => role.name === 'DONOR')).length;
     const institutionStaffCount = users.filter((item) => item.roles?.some((role) => role.name === 'INSTITUTION_STAFF')).length;
 
