@@ -1,0 +1,72 @@
+name: EAS Build
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  check-config:
+    name: Check build configuration
+    runs-on: ubuntu-latest
+
+    outputs:
+      build: ${{ steps.config.outputs.build }}
+      profile: ${{ steps.config.outputs.profile }}
+      platform: ${{ steps.config.outputs.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Read build config
+        id: config
+        shell: bash
+        run: |
+          BUILD=$(yq '.build' .github/build-config.yml)
+          PROFILE=$(yq '.profile' .github/build-config.yml)
+          PLATFORM=$(yq '.platform' .github/build-config.yml)
+
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "profile=$PROFILE" >> "$GITHUB_OUTPUT"
+          echo "platform=$PLATFORM" >> "$GITHUB_OUTPUT"
+
+          echo "Build: $BUILD"
+          echo "Profile: $PROFILE"
+          echo "Platform: $PLATFORM"
+
+  eas-build:
+    name: EAS Build
+    needs: check-config
+
+    if: needs.check-config.outputs.build == 'true'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: |
+          eas build \
+            --platform ${{ needs.check-config.outputs.platform }} \
+            --profile ${{ needs.check-config.outputs.profile }} \
+            --non-interactive \
+            --no-wait

@@ -27,7 +27,12 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.elodoar"
+      "package": "com.vortely.elodoar",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -35,6 +40,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       "expo-secure-store",
       [
         "expo-location",
@@ -66,11 +72,15 @@
     "extra": {
       "router": {
         "root": "src/app"
+      },
+      "eas": {
+        "projectId": "2fe36b64-db17-429e-b8f2-aa45db51177b"
       }
     },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "elodoar"
   }
 }
