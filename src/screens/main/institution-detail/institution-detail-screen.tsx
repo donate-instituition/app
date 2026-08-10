@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, Button, Card, Divider, EmptyState, Loading, ProgressBar, Tag, ThemedText } from '@/components';
@@ -11,7 +11,8 @@ import { routes } from '@/navigation/routes';
 import { campaignsService, type Campaign } from '@/services/campaigns';
 import { chatService } from '@/services/chat';
 import { followsService } from '@/services/follows';
-import { useAppStore } from '@/store';
+import { institutionStaffService } from '@/services/institution-staff';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -53,6 +54,7 @@ export function InstitutionDetailScreen() {
   const colors = theme.colors[scheme];
   const insets = useSafeAreaInsets();
   const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
   const [openingChat, setOpeningChat] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
@@ -60,6 +62,12 @@ export function InstitutionDetailScreen() {
   const { data: institution, loading, error, refetch } = useFetch(fetcher);
   const followsFetcher = useCallback(() => followsService.listMyFollows(authToken), [authToken]);
   const { data: follows, refetch: refetchFollows } = useFetch(followsFetcher);
+  const staffMemberships = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'institution-staff') return Promise.resolve([]);
+      return institutionStaffService.listMyMemberships(authToken);
+    }, [activeRole, authToken]),
+  );
 
   // ─── States ────────────────────────────────────────────────────────────────
 
@@ -102,9 +110,14 @@ export function InstitutionDetailScreen() {
 
   const activeCampaigns = institution.campaigns.filter((c) => c.active);
   const institutionId = institution.id;
+  const isOwnInstitution = Boolean(
+    staffMemberships.data?.some((membership) => membership.institutionId === institutionId),
+  );
   const isFollowing = Boolean(
     follows?.some((follow) => follow.targetType === 'INSTITUTION' && follow.targetId === institutionId),
   );
+  const locationLabel = `${institution.name}, ${institution.city}, ${institution.state}`;
+  const hasCoordinates = Boolean(institution.location);
 
   async function toggleFollow() {
     if (followLoading) return;
@@ -123,6 +136,28 @@ export function InstitutionDetailScreen() {
       await refetchFollows();
     } finally {
       setFollowLoading(false);
+    }
+  }
+
+  async function openMaps() {
+    if (!institution) return;
+
+    const encodedLabel = encodeURIComponent(locationLabel);
+    const fallbackUrl = institution.location
+      ? `https://www.google.com/maps/search/?api=1&query=${institution.location.latitude},${institution.location.longitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodedLabel}`;
+    const mapUrl = institution.location
+      ? Platform.select({
+          android: `geo:${institution.location.latitude},${institution.location.longitude}?q=${institution.location.latitude},${institution.location.longitude}(${encodedLabel})`,
+          ios: `http://maps.apple.com/?ll=${institution.location.latitude},${institution.location.longitude}&q=${encodedLabel}`,
+          default: fallbackUrl,
+        }) ?? fallbackUrl
+      : fallbackUrl;
+
+    try {
+      await Linking.openURL(mapUrl);
+    } catch {
+      await Linking.openURL(fallbackUrl);
     }
   }
 
@@ -165,7 +200,9 @@ export function InstitutionDetailScreen() {
             </ThemedText>
             <View style={styles.profileStats}>
               <View>
-                <ThemedText variant="body" style={styles.bold}>1.204</ThemedText>
+                <ThemedText variant="body" style={styles.bold}>
+                  {institution.followersCount ?? 0}
+                </ThemedText>
                 <ThemedText variant="caption" color={colors.textMuted}>seguidores</ThemedText>
               </View>
               <View>
@@ -173,38 +210,40 @@ export function InstitutionDetailScreen() {
                 <ThemedText variant="caption" color={colors.textMuted}>campanhas</ThemedText>
               </View>
             </View>
-            <View style={styles.profileActions}>
-              <Button
-                size="sm"
-                variant={isFollowing ? 'secondary' : 'primary'}
-                disabled={followLoading}
-                style={styles.profileButton}
-                onPress={toggleFollow}>
-                {isFollowing ? 'Seguindo' : 'Seguir'}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                style={styles.profileButton}
-                leftSlot={<Ionicons name="mail-outline" size={15} color={colors.primary} />}
-                disabled={openingChat}
-                onPress={async () => {
-                  if (openingChat) return;
-                  setOpeningChat(true);
-                  try {
-                    const conversationId = await chatService.ensureConversation(
-                      institution.id,
-                      institution.name,
-                      authToken,
-                    );
-                    router.push(routes.appChat(conversationId));
-                  } finally {
-                    setOpeningChat(false);
-                  }
-                }}>
-                Mensagem
-              </Button>
-            </View>
+            {!isOwnInstitution ? (
+              <View style={styles.profileActions}>
+                <Button
+                  size="sm"
+                  variant={isFollowing ? 'ghost' : 'primary'}
+                  disabled={followLoading}
+                  style={styles.profileButton}
+                  onPress={toggleFollow}>
+                  {isFollowing ? 'Seguindo' : 'Seguir'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  style={styles.profileButton}
+                  leftSlot={<Ionicons name="mail-outline" size={15} color={colors.primary} />}
+                  disabled={openingChat}
+                  onPress={async () => {
+                    if (openingChat) return;
+                    setOpeningChat(true);
+                    try {
+                      const conversationId = await chatService.ensureConversation(
+                        institution.id,
+                        institution.name,
+                        authToken,
+                      );
+                      router.push(routes.appChat(conversationId));
+                    } finally {
+                      setOpeningChat(false);
+                    }
+                  }}>
+                  Mensagem
+                </Button>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -233,6 +272,29 @@ export function InstitutionDetailScreen() {
           </Card>
         </View>
 
+        {/* Localização */}
+        <View style={styles.section}>
+          <ThemedText variant="subtitle">Localização</ThemedText>
+          <Pressable accessibilityRole="button" onPress={() => void openMaps()}>
+            <Card style={styles.mapCard}>
+              <View style={[styles.mapPreview, { backgroundColor: colors.primarySoft }]}>
+                <View style={[styles.mapRoad, styles.mapRoadPrimary, { backgroundColor: colors.surface }]} />
+                <View style={[styles.mapRoad, styles.mapRoadSecondary, { backgroundColor: colors.surface }]} />
+                <View style={[styles.mapPin, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="location" size={22} color={colors.surface} />
+                </View>
+              </View>
+              <View style={styles.mapInfo}>
+                <ThemedText variant="body" style={styles.bold}>{institution.city}, {institution.state}</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  {hasCoordinates ? 'Toque para abrir no aplicativo de mapas.' : 'Toque para buscar esta localização no mapa.'}
+                </ThemedText>
+              </View>
+              <Ionicons name="open-outline" size={20} color={colors.primary} />
+            </Card>
+          </Pressable>
+        </View>
+
         {/* Campanhas ativas */}
         {activeCampaigns.length > 0 && (
           <View style={styles.section}>
@@ -254,36 +316,38 @@ export function InstitutionDetailScreen() {
           </View>
         )}
 
-        <View style={styles.actionBarSpacer} />
+        {!isOwnInstitution ? <View style={styles.actionBarSpacer} /> : null}
       </ScrollView>
 
       {/* Action bar fixa */}
-      <View style={[
-        styles.actionBar,
-        { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 16) },
-      ]}>
-        <Button
-          variant="primary"
-          style={styles.actionButton}
-          leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.surface} />}
-          disabled={openingChat}
-          onPress={async () => {
-            if (openingChat) return;
-            setOpeningChat(true);
-            try {
-              const conversationId = await chatService.ensureConversation(
-                institution.id,
-                institution.name,
-                authToken,
-              );
-              router.push(routes.appChat(conversationId));
-            } finally {
-              setOpeningChat(false);
-            }
-          }}>
-          Conversar com a Instituição
-        </Button>
-      </View>
+      {!isOwnInstitution ? (
+        <View style={[
+          styles.actionBar,
+          { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 16) },
+        ]}>
+          <Button
+            variant="primary"
+            style={styles.actionButton}
+            leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.surface} />}
+            disabled={openingChat}
+            onPress={async () => {
+              if (openingChat) return;
+              setOpeningChat(true);
+              try {
+                const conversationId = await chatService.ensureConversation(
+                  institution.id,
+                  institution.name,
+                  authToken,
+                );
+                router.push(routes.appChat(conversationId));
+              } finally {
+                setOpeningChat(false);
+              }
+            }}>
+            Conversar com a Instituição
+          </Button>
+        </View>
+      ) : null}
     </View>
   );
 }

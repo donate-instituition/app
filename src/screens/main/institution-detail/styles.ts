@@ -94,6 +94,52 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
   },
+  mapCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    minHeight: 112,
+  },
+  mapPreview: {
+    borderRadius: 18,
+    height: 82,
+    overflow: 'hidden',
+    position: 'relative',
+    width: 102,
+  },
+  mapRoad: {
+    borderRadius: theme.radius.pill,
+    height: 14,
+    opacity: 0.62,
+    position: 'absolute',
+  },
+  mapRoadPrimary: {
+    left: -12,
+    top: 22,
+    transform: [{ rotate: '-18deg' }],
+    width: 136,
+  },
+  mapRoadSecondary: {
+    bottom: 18,
+    right: -18,
+    transform: [{ rotate: '28deg' }],
+    width: 118,
+  },
+  mapPin: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 42,
+    justifyContent: 'center',
+    left: 30,
+    position: 'absolute',
+    top: 20,
+    width: 42,
+  },
+  mapInfo: {
+    flex: 1,
+    gap: theme.spacing.xs,
+    minWidth: 0,
+  },
 
   // Campaign rows within card
   campaignRow: {

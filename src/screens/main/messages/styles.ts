@@ -70,4 +70,65 @@ export const styles = StyleSheet.create({
   section: {
     gap: theme.spacing.md,
   },
+  bottomSheetBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: theme.spacing.md,
+    maxHeight: '82%',
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+  },
+  bottomSheetHandle: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.pill,
+    height: 4,
+    marginBottom: theme.spacing.sm,
+    width: 44,
+  },
+  modalHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  modalTitleBlock: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  closeButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  institutionList: {
+    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
+  },
+  institutionOption: {
+    alignItems: 'center',
+    borderRadius: theme.radius.lg,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    minHeight: 74,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  institutionOptionText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  inlineLoading: {
+    padding: 0,
+  },
 });

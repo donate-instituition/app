@@ -24,6 +24,16 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.lg,
   },
+  institutionProfileIdentity: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+  },
+  institutionProfileText: {
+    flex: 1,
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
   identityInfo: {
     alignItems: 'center',
     gap: theme.spacing.sm,
@@ -134,6 +144,23 @@ export const styles = StyleSheet.create({
   },
   profileAction: {
     flex: 1,
+  },
+  stripeCard: {
+    borderRadius: 18,
+    borderWidth: theme.borderWidths.sm,
+    gap: theme.spacing.md,
+  },
+  stripeHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  stripeIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
   list: {
     gap: theme.spacing.sm,

@@ -1,18 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { getHomeRouteForRole, routes } from '@/navigation/routes';
 import { getPreferredInitialRole, getSessionRoles, roleLabels, type UserRole } from '@/navigation/session';
 import { ApiError } from '@/services/api';
 import { authService } from '@/services/auth';
+import { campaignsService } from '@/services/campaigns';
 import { donationsService, type Donation } from '@/services/donations';
 import { followsService, type Follow } from '@/services/follows';
+import { institutionStaffService } from '@/services/institution-staff';
 import { postsService, type FeedPost } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
@@ -56,10 +58,22 @@ export function ProfileScreen() {
   const router = useRouter();
   const user = useAppStore((state) => state.user);
   const authToken = useAppStore((state) => state.authToken);
+  const activeRole = useActiveRole();
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const [stripeAccountInput, setStripeAccountInput] = useState('');
+  const [stripeStatusMessage, setStripeStatusMessage] = useState('');
+  const [verifyingStripeAccount, setVerifyingStripeAccount] = useState(false);
 
   const fetcher = useCallback(async (): Promise<ProfileData> => {
+    if (activeRole === 'institution-staff') {
+      const [donations, posts] = await Promise.all([
+        donationsService.listMyInstitutionDonations(authToken),
+        postsService.listFeed(authToken),
+      ]);
+      return { donations, follows: [], posts };
+    }
+
     const [donations, follows, posts] = await Promise.all([
       donationsService.listMyDonations(authToken),
       followsService.listMyFollows(authToken),
@@ -67,9 +81,26 @@ export function ProfileScreen() {
     ]);
 
     return { donations, follows, posts };
-  }, [authToken]);
+  }, [activeRole, authToken]);
 
   const { data, loading, error, refetch } = useFetch(fetcher);
+  const staffMemberships = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'institution-staff') return Promise.resolve([]);
+      return institutionStaffService.listMyMemberships(authToken);
+    }, [activeRole, authToken]),
+  );
+  const institutionId = staffMemberships.data?.[0]?.institutionId;
+  const institution = useFetch(
+    useCallback(() => {
+      if (!institutionId) return Promise.resolve(null);
+      return campaignsService.getInstitutionById(institutionId);
+    }, [institutionId]),
+  );
+
+  useEffect(() => {
+    setStripeAccountInput(institution.data?.stripeConnect?.accountId ?? institution.data?.stripeConnectAccountId ?? '');
+  }, [institution.data?.stripeConnect?.accountId, institution.data?.stripeConnectAccountId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,10 +109,235 @@ export function ProfileScreen() {
   );
 
   const ownPosts = data?.posts.filter((post) => post.authorType === 'USER' && post.authorId === user?.id) ?? [];
+  const institutionPosts =
+    data?.posts.filter((post) =>
+      institutionId
+        ? post.authorType === 'INSTITUTION' && (post.institutionId === institutionId || post.authorId === institutionId)
+        : post.authorType === 'INSTITUTION',
+    ) ?? [];
   const donatedTotalCents = (data?.donations ?? [])
     .filter((donation) => donation.status === 'completed')
     .reduce((total, donation) => total + donation.amountCents, 0);
   const followingCount = data?.follows.length ?? 0;
+
+  async function handleVerifyStripeAccount() {
+    const accountId = stripeAccountInput.trim();
+
+    if (!institutionId) {
+      setStripeStatusMessage('Não encontramos a instituição vinculada à sua conta.');
+      return;
+    }
+
+    if (!accountId) {
+      setStripeStatusMessage('Informe o ID da conta Stripe no formato acct_...');
+      return;
+    }
+
+    const normalizedAccountId = accountId.toLowerCase();
+
+    if (
+      !/^acct_[a-z0-9]+$/i.test(accountId) ||
+      normalizedAccountId.includes('teste') ||
+      normalizedAccountId.includes('test') ||
+      normalizedAccountId.includes('seu_id') ||
+      normalizedAccountId.includes('example')
+    ) {
+      setStripeStatusMessage('Informe um ID real de conta conectada Stripe, como acct_1ABC...');
+      return;
+    }
+
+    setVerifyingStripeAccount(true);
+    setStripeStatusMessage('');
+
+    try {
+      await campaignsService.verifyInstitutionStripeConnectAccount(institutionId, accountId, authToken);
+      await institution.refetch();
+      setStripeStatusMessage('Conta Stripe validada e salva na instituição.');
+    } catch (error) {
+      setStripeStatusMessage(error instanceof Error ? error.message : 'Não foi possível validar a conta Stripe.');
+    } finally {
+      setVerifyingStripeAccount(false);
+    }
+  }
+
+  if (activeRole === 'institution-staff') {
+    const institutionName = institution.data?.name ?? staffMemberships.data?.[0]?.institution?.name ?? user?.name ?? 'Instituição';
+    const institutionEmail = institution.data?.email ?? user?.email;
+    const isVerified = institution.data?.verified ?? true;
+    const campaignCount = institution.data?.campaigns?.length ?? institution.data?.activeCampaigns ?? 0;
+    const postsCount = institution.data?.postsCount ?? institutionPosts.length;
+    const followersCount = institution.data?.followersCount ?? 0;
+    const receivedDonationsCount = (data?.donations ?? []).filter((donation) => donation.status === 'completed').length;
+    const stripeConnect = institution.data?.stripeConnect;
+    const stripeReady = Boolean(stripeConnect?.ready);
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <Card style={styles.profileCard}>
+            <View style={styles.profileTopRow}>
+              <View />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Configurações"
+                onPress={() => router.push(routes.profileSettings)}
+                style={[styles.iconButton, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Ionicons name="settings-outline" size={20} color={colors.primaryStrong} />
+              </Pressable>
+            </View>
+
+            <View style={styles.institutionProfileIdentity}>
+              <Avatar name={institutionName} size="lg" />
+              <View style={styles.institutionProfileText}>
+                <ThemedText variant="title" numberOfLines={2}>{institutionName}</ThemedText>
+                <ThemedText variant="body" color={colors.textMuted} numberOfLines={1}>
+                  {institutionEmail}
+                </ThemedText>
+                <Tag
+                  label={isVerified ? 'Instituição verificada' : 'Verificação pendente'}
+                  variant={isVerified ? 'success' : 'warning'}
+                  style={styles.identityBadge}
+                />
+              </View>
+            </View>
+
+            <View style={styles.socialStats}>
+              <View style={styles.socialStat}>
+                <ThemedText variant="subtitle">{postsCount}</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>postagens</ThemedText>
+              </View>
+              <View style={styles.socialStat}>
+                <ThemedText variant="subtitle">{followersCount}</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>seguidores</ThemedText>
+              </View>
+              <View style={styles.socialStat}>
+                <ThemedText variant="subtitle">{receivedDonationsCount}</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>doações</ThemedText>
+              </View>
+              <View style={styles.socialStat}>
+                <ThemedText variant="subtitle">{campaignCount}</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>campanhas</ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.profileActions}>
+              <Button
+                size="sm"
+                style={styles.profileAction}
+                leftSlot={<Ionicons name="eye-outline" size={18} color={colors.surface} />}
+                disabled={!institutionId}
+                onPress={() => institutionId && router.push(routes.appInstitutionDetail(institutionId))}>
+                Ver perfil público
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                style={styles.profileAction}
+                leftSlot={<Ionicons name="pencil-outline" size={18} color={colors.primary} />}
+                onPress={() => router.push(routes.profileMe)}>
+                Editar dados
+              </Button>
+            </View>
+          </Card>
+
+          <Card style={[
+            styles.stripeCard,
+            { borderColor: stripeReady ? colors.primary : colors.warning },
+          ]}>
+            <View style={styles.stripeHeader}>
+              <View style={[styles.stripeIcon, { backgroundColor: stripeReady ? colors.primarySoft : colors.accentSoft }]}>
+                <Ionicons
+                  name={stripeReady ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+                  size={24}
+                  color={stripeReady ? colors.primary : colors.warning}
+                />
+              </View>
+              <View style={styles.menuLabel}>
+                <ThemedText variant="body" style={styles.logoutText}>Stripe Connect</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  {stripeReady
+                    ? 'Conta validada. A instituição pode criar campanhas e receber doações.'
+                    : 'Valide a conta conectada para liberar a criação de campanhas.'}
+                </ThemedText>
+              </View>
+            </View>
+            <Input
+              label="Conta conectada Stripe"
+              onChangeText={setStripeAccountInput}
+              placeholder="acct_..."
+              value={stripeAccountInput}
+            />
+            {stripeConnect?.requirementsCurrentlyDue?.length ? (
+              <ThemedText variant="caption" color={colors.warning}>
+                Pendências na Stripe: {stripeConnect.requirementsCurrentlyDue.slice(0, 3).join(', ')}
+              </ThemedText>
+            ) : null}
+            {stripeStatusMessage ? (
+              <ThemedText variant="caption" color={stripeReady ? colors.primary : colors.warning}>
+                {stripeStatusMessage}
+              </ThemedText>
+            ) : null}
+            <Button
+              fullWidth
+              loading={verifyingStripeAccount}
+              onPress={handleVerifyStripeAccount}
+              variant={stripeReady ? 'ghost' : 'primary'}>
+              {stripeReady ? 'Revalidar conta Stripe' : 'Validar conta Stripe'}
+            </Button>
+          </Card>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText variant="subtitle">Postagens</ThemedText>
+              <Pressable onPress={() => router.push('/institution/create?mode=post' as never)}>
+                <ThemedText variant="body" color={colors.primary}>Criar postagem</ThemedText>
+              </Pressable>
+            </View>
+
+            {loading || institution.loading ? <Loading label="Carregando perfil..." /> : null}
+            {error ? (
+              <EmptyState
+                title="Não foi possível carregar"
+                description={error}
+                illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+                action={<Button variant="secondary" size="sm" onPress={refetch}>Tentar novamente</Button>}
+              />
+            ) : null}
+
+            {!loading && !error && institutionPosts.length === 0 ? (
+              <Card style={styles.emptyPostCard}>
+                <Ionicons name="images-outline" size={32} color={colors.border} />
+                <ThemedText variant="body" style={styles.logoutText}>Nenhuma postagem ainda</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted} style={styles.centered}>
+                  Publique atualizações para seguidores e doadores.
+                </ThemedText>
+              </Card>
+            ) : (
+              <View style={styles.list}>
+                {institutionPosts.map((post) => (
+                  <Card key={post.id} style={styles.postCard}>
+                    <View style={styles.postAuthor}>
+                      <Avatar name={institutionName} size="sm" />
+                      <View style={styles.menuLabel}>
+                        <ThemedText variant="body" style={styles.logoutText}>{institutionName}</ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>{formatDate(post.createdAt)}</ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText variant="body">{post.content}</ThemedText>
+                    <View style={styles.postStats}>
+                      <ThemedText variant="caption" color={colors.primary}>{post.stats.likesCount ?? 0} curtidas</ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>{post.stats.commentsCount ?? 0} comentários</ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>{post.stats.sharesCount ?? 0} compartilhamentos</ThemedText>
+                    </View>
+                  </Card>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer scrollable>
