@@ -68,6 +68,7 @@ export default function AppLayout() {
       <Stack.Screen name="campaign/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="campaign/[id]/donate" options={{ headerShown: false }} />
       <Stack.Screen name="donation/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="institution/donations" options={{ headerShown: false }} />
       <Stack.Screen name="institution/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="chat/[conversationId]" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />

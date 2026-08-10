@@ -18,6 +18,7 @@ export const routes = {
   adminInstitutions: '/admin/institutions' as Href,
   donorDonations: '/donor/donations' as Href,
   institutionDonations: '/institution/donations' as Href,
+  institutionCreate: '/institution/create' as Href,
   adminUsers: '/admin/users' as Href,
   donorMessages: '/donor/messages' as Href,
   institutionMessages: '/institution/messages' as Href,
