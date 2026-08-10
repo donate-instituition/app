@@ -371,7 +371,7 @@ export function LoginScreen() {
           {pendingActivationEmail ? (
             <Button
               fullWidth
-              variant="secondary"
+              variant="ghost"
               loading={resendingActivation}
               onPress={handleResendActivation}>
               Reenviar email de ativação
@@ -406,7 +406,7 @@ export function LoginScreen() {
 
           <Button
             fullWidth
-            variant="secondary"
+            variant="ghost"
             leftSlot={<Ionicons name="logo-google" size={18} color={colors.text} />}
             onPress={() => setApiError('Login com Google ainda não está configurado neste ambiente.')}>
             Continuar com Google

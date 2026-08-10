@@ -229,7 +229,7 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
                   Doar agora
                 </Button>
               ) : (
-                <Button size="sm" variant="secondary" style={styles.featureDonateButton} onPress={onPress}>
+                <Button size="sm" variant="ghost" style={styles.featureDonateButton} onPress={onPress}>
                   Ver impacto
                 </Button>
               )}
@@ -273,7 +273,7 @@ function InstitutionCard({ item, onPress }: InstitutionCardProps) {
               </ThemedText>
             </View>
           </View>
-          <Button size="sm" variant="secondary" style={styles.followButton}>
+          <Button size="sm" variant="ghost" style={styles.followButton}>
             Seguir
           </Button>
         </View>

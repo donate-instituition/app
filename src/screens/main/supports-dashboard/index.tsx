@@ -127,7 +127,7 @@ export function SupportsDashboardScreen() {
               title="Nenhuma instituição seguida"
               description="Siga instituições para acompanhar campanhas e novidades por aqui."
               illustration={<Ionicons name="business-outline" size={48} color={colors.border} />}
-              action={<Button size="sm" variant="secondary" onPress={() => router.push(routes.donorCampaigns)}>Explorar instituições</Button>}
+              action={<Button size="sm" variant="ghost" onPress={() => router.push(routes.donorCampaigns)}>Explorar instituições</Button>}
             />
           ) : (
             <View style={styles.followGrid}>

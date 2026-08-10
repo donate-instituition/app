@@ -749,7 +749,7 @@ export function InstitutionCreateScreen() {
             <View style={styles.footerActions}>
               {campaignStep > 0 ? (
                 <View style={styles.footerActionItem}>
-                  <Button fullWidth variant="secondary" onPress={handlePreviousStep}>
+                  <Button fullWidth variant="ghost" onPress={handlePreviousStep}>
                     Voltar
                   </Button>
                 </View>

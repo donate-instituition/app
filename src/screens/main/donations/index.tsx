@@ -338,7 +338,7 @@ export function DonationsScreen() {
               <View style={styles.paginationRow}>
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!usersPage.meta.hasPreviousPage}
                   onPress={() => setAdminUserPage((page) => Math.max(1, page - 1))}>
                   Anterior
@@ -348,7 +348,7 @@ export function DonationsScreen() {
                 </ThemedText>
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!usersPage.meta.hasNextPage}
                   onPress={() => setAdminUserPage((page) => page + 1)}>
                   Próxima
@@ -580,11 +580,11 @@ export function DonationsScreen() {
               style={[
                 styles.outlineChip,
                 {
-                  backgroundColor: index === 0 ? colors.secondarySoft : colors.surface,
+                  backgroundColor: index === 0 ? colors.primarySoft : colors.surface,
                   borderColor: index === 0 ? colors.primary : colors.border,
                 },
               ]}>
-              <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={index === 0 ? colors.danger : colors.primary} />
+              <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={index === 0 ? colors.primary : colors.primary} />
               <ThemedText variant="body" color={index === 0 ? colors.primary : colors.textMuted}>
                 {label}
               </ThemedText>

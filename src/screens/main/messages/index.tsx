@@ -282,7 +282,7 @@ export function MessagesScreen() {
             <View style={styles.paginationRow}>
               <Button
                 size="sm"
-                variant="secondary"
+                variant="ghost"
                 disabled={!logsPage.meta.hasPreviousPage}
                 onPress={() => setAuditPage((page) => Math.max(1, page - 1))}>
                 Anterior
@@ -292,7 +292,7 @@ export function MessagesScreen() {
               </ThemedText>
               <Button
                 size="sm"
-                variant="secondary"
+                variant="ghost"
                 disabled={!logsPage.meta.hasNextPage}
                 onPress={() => setAuditPage((page) => page + 1)}>
                 Próxima

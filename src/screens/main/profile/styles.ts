@@ -11,6 +11,21 @@ export const styles = StyleSheet.create({
   header: {
     gap: theme.spacing.xs,
   },
+  settingsBackBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingsBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsHeaderTitle: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
+  },
   identityCard: {
     borderRadius: 18,
     paddingVertical: theme.spacing.xl,

@@ -470,7 +470,7 @@ export function RegisterScreen() {
               {resendMessage}
             </ThemedText>
           ) : null}
-          <Button fullWidth variant="secondary" loading={resendLoading} onPress={handleResendActivation}>
+          <Button fullWidth variant="ghost" loading={resendLoading} onPress={handleResendActivation}>
             Reenviar e-mail
           </Button>
           <Button fullWidth onPress={() => router.replace(routes.authLogin)}>

@@ -191,7 +191,7 @@ export function CampaignDetailScreen() {
           { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 16) }
         ]}>
           <Button
-            variant="secondary"
+            variant="ghost"
             style={styles.actionButton}
             leftSlot={<Ionicons name="chatbubble-outline" size={16} color={colors.primary} />}
             disabled={openingChat}

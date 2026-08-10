@@ -408,7 +408,7 @@ export function ProfileScreen() {
             <Button size="sm" style={styles.profileAction} onPress={() => router.push(routes.profileSupports)}>
               Apoios
             </Button>
-            <Button size="sm" variant="secondary" style={styles.profileAction} onPress={() => router.push(routes.profileSettings)}>
+            <Button size="sm" variant="ghost" style={styles.profileAction} onPress={() => router.push(routes.profileSettings)}>
               Editar perfil
             </Button>
           </View>
@@ -535,11 +535,14 @@ export function SettingsMenuScreen() {
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <ThemedText variant="title">Configurações</ThemedText>
-          <ThemedText variant="caption" color={colors.textMuted}>
-            Conta, segurança, notificações e suporte.
+        <View style={styles.settingsBackBar}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.settingsBackButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </Pressable>
+          <ThemedText variant="subtitle" numberOfLines={1} style={styles.settingsHeaderTitle}>
+            Configurações
           </ThemedText>
+          <View style={styles.settingsBackButton} />
         </View>
 
         {/* Identidade */}
