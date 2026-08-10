@@ -2,16 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, TextInput, View } from 'react-native';
 
 import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { adminService, type AdminUser, type AdminUsersPage } from '@/services/admin';
-import { campaignsService, type Campaign } from '@/services/campaigns';
+import { campaignsService, type Campaign, type CampaignComment } from '@/services/campaigns';
 import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
-import { postsService, type FeedPost } from '@/services/posts';
+import { postsService, type FeedPost, type PostComment } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -31,6 +31,16 @@ type DonorDonateData = {
   campaigns: Campaign[];
   posts: FeedPost[];
 };
+
+type CommentTarget =
+  | { id: string; title: string; type: 'campaign' }
+  | { id: string; title: string; type: 'post' };
+
+type FeedComment = CampaignComment | PostComment;
+
+function getCommentAuthorName(comment: FeedComment) {
+  return comment.author?.fullName?.trim() || comment.author?.email?.trim() || 'Usuário';
+}
 
 const institutionDonationFilters = [
   { key: 'all', label: 'Todas' },
@@ -62,6 +72,14 @@ export function DonationsScreen() {
   const [institutionDonationSearch, setInstitutionDonationSearch] = useState('');
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [adminUserPage, setAdminUserPage] = useState(1);
+  const [likedCampaigns, setLikedCampaigns] = useState<Set<string>>(new Set());
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
+  const [comments, setComments] = useState<FeedComment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentsError, setCommentsError] = useState('');
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
 
   useEffect(() => {
     setAdminUserPage(1);
@@ -103,6 +121,108 @@ export function DonationsScreen() {
     if (status === 'pending' || status === 'processing') return 'warning';
     if (status === 'failed' || status === 'cancelled') return 'danger';
     return 'neutral';
+  }
+
+  async function openComments(target: CommentTarget) {
+    setCommentTarget(target);
+    setCommentText('');
+    setComments([]);
+    setCommentsError('');
+    setCommentsLoading(true);
+
+    try {
+      const nextComments =
+        target.type === 'campaign'
+          ? await campaignsService.listCampaignComments(target.id, authToken)
+          : await postsService.listComments(target.id, authToken);
+      setComments(nextComments);
+    } catch (error) {
+      setCommentsError(error instanceof Error ? error.message : 'Não foi possível carregar os comentários.');
+    } finally {
+      setCommentsLoading(false);
+    }
+  }
+
+  async function submitComment() {
+    if (!commentTarget || !commentText.trim()) return;
+
+    setCommentSubmitting(true);
+
+    try {
+      const createdComment =
+        commentTarget.type === 'campaign'
+          ? await campaignsService.createCampaignComment(commentTarget.id, commentText, authToken)
+          : await postsService.createComment({ postId: commentTarget.id, content: commentText }, authToken);
+      setComments((items) => [...items, createdComment]);
+      setCommentText('');
+      await feed.refetch();
+    } catch (error) {
+      setCommentsError(error instanceof Error ? error.message : 'Não foi possível enviar o comentário.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
+
+  async function toggleCampaignLike(campaign: Campaign) {
+    const isLiked = likedCampaigns.has(campaign.id);
+
+    setLikedCampaigns((current) => {
+      const next = new Set(current);
+      if (isLiked) next.delete(campaign.id);
+      else next.add(campaign.id);
+      return next;
+    });
+
+    try {
+      if (isLiked) await campaignsService.unlikeCampaign(campaign.id, authToken);
+      else await campaignsService.likeCampaign(campaign.id, authToken);
+      await feed.refetch();
+    } catch {
+      setLikedCampaigns((current) => {
+        const next = new Set(current);
+        if (isLiked) next.add(campaign.id);
+        else next.delete(campaign.id);
+        return next;
+      });
+    }
+  }
+
+  async function togglePostLike(post: FeedPost) {
+    const isLiked = likedPosts.has(post.id);
+
+    setLikedPosts((current) => {
+      const next = new Set(current);
+      if (isLiked) next.delete(post.id);
+      else next.add(post.id);
+      return next;
+    });
+
+    try {
+      if (isLiked) await postsService.unlikePost(post.id, authToken);
+      else await postsService.likePost({ postId: post.id }, authToken);
+      await feed.refetch();
+    } catch {
+      setLikedPosts((current) => {
+        const next = new Set(current);
+        if (isLiked) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+    }
+  }
+
+  async function shareCampaign(campaign: Campaign) {
+    await Share.share({
+      message: `Conheça a campanha ${campaign.title} da ${campaign.institution}.`,
+    });
+    await campaignsService.shareCampaign(campaign.id);
+    await feed.refetch();
+  }
+
+  async function sharePost(post: FeedPost) {
+    await Share.share({ message: post.content });
+    await postsService.sharePost(post.id);
+    await feed.refetch();
   }
 
   if (activeRole === 'platform-admin') {
@@ -509,7 +629,17 @@ export function DonationsScreen() {
                       {index === 0 ? '2h' : '1d'} · Público
                     </ThemedText>
                   </View>
-                  {index > 0 && <Button size="sm" variant="secondary" style={styles.followSmall}>Seguir</Button>}
+                  {index > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      style={[
+                        styles.followSmall,
+                        { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft },
+                      ]}>
+                      Seguir
+                    </Button>
+                  )}
                   <Ionicons name="ellipsis-horizontal" size={18} color={colors.icon} />
                 </View>
                 <ThemedText variant="body">
@@ -535,28 +665,44 @@ export function DonationsScreen() {
                   </View>
                 </View>
                 <View style={styles.donateMetaRow}>
-                  <ThemedText variant="body" color={colors.textMuted}>124 doações</ThemedText>
+                  <ThemedText variant="body" color={colors.textMuted}>
+                    {campaign.donationsCount ?? 0} doações
+                  </ThemedText>
                   <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
-                  <ThemedText variant="body" color={colors.textMuted}>356 apoiadores</ThemedText>
+                  <ThemedText variant="body" color={colors.textMuted}>
+                    {campaign.followersCount ?? 0} apoiadores
+                  </ThemedText>
                 </View>
                 <Button
                   fullWidth
-                  variant={index === 0 ? 'secondary' : 'primary'}
+                  variant="primary"
                   onPress={() => router.push(routes.appDonate(campaign.id))}>
                   Doar agora
                 </Button>
                 <View style={styles.feedActions}>
-                  <Pressable style={styles.feedAction}>
-                    <Ionicons name="heart-outline" size={22} color={colors.icon} />
-                    <ThemedText variant="body" color={colors.textMuted}>Curtir</ThemedText>
+                  <Pressable style={styles.feedAction} onPress={() => void toggleCampaignLike(campaign)}>
+                    <Ionicons
+                      name={likedCampaigns.has(campaign.id) ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={likedCampaigns.has(campaign.id) ? colors.primary : colors.icon}
+                    />
+                    <ThemedText variant="body" color={likedCampaigns.has(campaign.id) ? colors.primary : colors.textMuted}>
+                      {campaign.likesCount ?? 0}
+                    </ThemedText>
                   </Pressable>
-                  <Pressable style={styles.feedAction}>
+                  <Pressable
+                    style={styles.feedAction}
+                    onPress={() => void openComments({ id: campaign.id, title: campaign.title, type: 'campaign' })}>
                     <Ionicons name="chatbubble-outline" size={22} color={colors.icon} />
-                    <ThemedText variant="body" color={colors.textMuted}>Comentar</ThemedText>
+                    <ThemedText variant="body" color={colors.textMuted}>
+                      {campaign.commentsCount ?? 0}
+                    </ThemedText>
                   </Pressable>
-                  <Pressable style={styles.feedAction}>
+                  <Pressable style={styles.feedAction} onPress={() => void shareCampaign(campaign)}>
                     <Ionicons name="paper-plane-outline" size={22} color={colors.icon} />
-                    <ThemedText variant="body" color={colors.textMuted}>Compartilhar</ThemedText>
+                    <ThemedText variant="body" color={colors.textMuted}>
+                      {campaign.sharesCount ?? 0}
+                    </ThemedText>
                   </Pressable>
                 </View>
               </Card>
@@ -576,13 +722,23 @@ export function DonationsScreen() {
                 <ThemedText variant="body">{post.content}</ThemedText>
 
                 <View style={styles.postActions}>
-                  <Pressable style={styles.postAction}>
-                    <Ionicons name="heart-outline" size={22} color={colors.icon} />
+                  <Pressable style={styles.postAction} onPress={() => void togglePostLike(post)}>
+                    <Ionicons
+                      name={likedPosts.has(post.id) ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={likedPosts.has(post.id) ? colors.primary : colors.icon}
+                    />
                     <ThemedText variant="caption" color={colors.textMuted}>{post.stats.likesCount ?? 0}</ThemedText>
                   </Pressable>
-                  <Pressable style={styles.postAction}>
+                  <Pressable
+                    style={styles.postAction}
+                    onPress={() => void openComments({ id: post.id, title: 'Post', type: 'post' })}>
                     <Ionicons name="chatbubble-outline" size={20} color={colors.icon} />
                     <ThemedText variant="caption" color={colors.textMuted}>{post.stats.commentsCount ?? 0}</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.postAction} onPress={() => void sharePost(post)}>
+                    <Ionicons name="paper-plane-outline" size={20} color={colors.icon} />
+                    <ThemedText variant="caption" color={colors.textMuted}>{post.stats.sharesCount ?? 0}</ThemedText>
                   </Pressable>
                   {post.campaignId ? (
                     <Button size="sm" style={styles.donateAction} onPress={() => router.push(routes.appDonate(post.campaignId!))}>
@@ -594,6 +750,93 @@ export function DonationsScreen() {
             ))}
           </View>
         ) : null}
+
+        <Modal
+          animationType="slide"
+          transparent
+          visible={Boolean(commentTarget)}
+          onRequestClose={() => setCommentTarget(null)}>
+          <View style={styles.commentBackdrop}>
+            <View style={[styles.commentSheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.commentHandle, { backgroundColor: colors.border }]} />
+              <View style={styles.commentHeader}>
+                <View style={styles.headerText}>
+                  <ThemedText variant="subtitle">Comentários</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                    {commentTarget?.title}
+                  </ThemedText>
+                </View>
+                <Pressable style={styles.commentCloseButton} onPress={() => setCommentTarget(null)}>
+                  <Ionicons name="close" size={22} color={colors.icon} />
+                </Pressable>
+              </View>
+
+              {commentsLoading ? (
+                <Loading label="Carregando comentários..." />
+              ) : commentsError ? (
+                <View style={styles.commentEmpty}>
+                  <Ionicons name="warning-outline" size={36} color={colors.danger} />
+                  <ThemedText variant="body" style={styles.bold}>Não foi possível carregar</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    {commentsError}
+                  </ThemedText>
+                  {commentTarget ? (
+                    <Button size="sm" variant="secondary" onPress={() => void openComments(commentTarget)}>
+                      Tentar novamente
+                    </Button>
+                  ) : null}
+                </View>
+              ) : comments.length === 0 ? (
+                <View style={styles.commentEmpty}>
+                  <Ionicons name="chatbubble-outline" size={36} color={colors.border} />
+                  <ThemedText variant="body" style={styles.bold}>Nenhum comentário ainda</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Seja a primeira pessoa a comentar.
+                  </ThemedText>
+                </View>
+              ) : (
+                <ScrollView style={styles.commentList} showsVerticalScrollIndicator={false}>
+                  {comments.map((comment, index) => (
+                    <View key={comment.id}>
+                      <View style={styles.commentItem}>
+                        <Avatar name={getCommentAuthorName(comment)} size="sm" />
+                        <View style={styles.commentBody}>
+                          <ThemedText variant="body" style={styles.bold}>
+                            {getCommentAuthorName(comment)}
+                          </ThemedText>
+                          <ThemedText variant="body">{comment.content}</ThemedText>
+                          <ThemedText variant="caption" color={colors.textMuted}>
+                            {formatDate(comment.createdAt)}
+                          </ThemedText>
+                        </View>
+                      </View>
+                      {index < comments.length - 1 ? <Divider /> : null}
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
+              <View style={[styles.commentInputRow, { borderColor: colors.border }]}>
+                <TextInput
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  placeholder="Escreva um comentário..."
+                  placeholderTextColor={colors.textMuted}
+                  style={[styles.commentInput, { color: colors.text }]}
+                />
+                <Pressable
+                  disabled={commentSubmitting || !commentText.trim()}
+                  onPress={() => void submitComment()}
+                  style={[
+                    styles.commentSendButton,
+                    { backgroundColor: commentText.trim() ? colors.primary : colors.surfaceMuted },
+                  ]}>
+                  <Ionicons name="send" size={18} color={commentText.trim() ? '#FFFFFF' : colors.icon} />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </ScreenContainer>
   );
