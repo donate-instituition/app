@@ -1,4 +1,4 @@
-import { api } from '@/services/api';
+import { api, paginationQuery, type PaginatedResponse, unwrapPaginated } from '@/services/api';
 
 import type {
   CreateDonationRequest,
@@ -12,11 +12,19 @@ import type {
 } from './donations-types';
 
 async function listMyDonations(token: string | null): Promise<Donation[]> {
-  return api.get<Donation[]>('/donations/me', { token });
+  const response = await api.get<PaginatedResponse<Donation> | Donation[]>(
+    '/donations/me',
+    { query: paginationQuery({ limit: 50 }), token },
+  );
+  return unwrapPaginated(response);
 }
 
 async function listMyInstitutionDonations(token: string | null): Promise<Donation[]> {
-  return api.get<Donation[]>('/donations/institution/me', { token });
+  const response = await api.get<PaginatedResponse<Donation> | Donation[]>(
+    '/donations/institution/me',
+    { query: paginationQuery({ limit: 50 }), token },
+  );
+  return unwrapPaginated(response);
 }
 
 async function getDonationById(id: string, token: string | null): Promise<Donation> {

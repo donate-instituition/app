@@ -110,6 +110,8 @@ export function InstitutionDetailScreen() {
 
   const activeCampaigns = institution.campaigns.filter((c) => c.active);
   const institutionId = institution.id;
+  const isPlatformAdmin = activeRole === 'platform-admin';
+  const canUseDonorActions = activeRole === 'donor';
   const isOwnInstitution = Boolean(
     staffMemberships.data?.some((membership) => membership.institutionId === institutionId),
   );
@@ -210,7 +212,7 @@ export function InstitutionDetailScreen() {
                 <ThemedText variant="caption" color={colors.textMuted}>campanhas</ThemedText>
               </View>
             </View>
-            {!isOwnInstitution ? (
+            {canUseDonorActions && !isOwnInstitution ? (
               <View style={styles.profileActions}>
                 <Button
                   size="sm"
@@ -246,6 +248,47 @@ export function InstitutionDetailScreen() {
             ) : null}
           </View>
         </View>
+
+        {isPlatformAdmin ? (
+          <View style={styles.section}>
+            <ThemedText variant="subtitle">Visão administrativa</ThemedText>
+            <Card style={styles.adminPanel}>
+              <View style={styles.adminPanelHeader}>
+                <View style={[styles.adminIconCircle, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.adminPanelText}>
+                  <ThemedText variant="body" style={styles.bold}>
+                    Status da instituição
+                  </ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Dados usados pela plataforma para validação e monitoramento.
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.adminStatusGrid}>
+                <View style={styles.adminStatusItem}>
+                  <ThemedText variant="caption" color={colors.textMuted}>Cadastro</ThemedText>
+                  <Tag label={institution.verified ? 'Aprovada' : 'Em análise'} variant={institution.verified ? 'success' : 'warning'} />
+                </View>
+                <View style={styles.adminStatusItem}>
+                  <ThemedText variant="caption" color={colors.textMuted}>Stripe Connect</ThemedText>
+                  <Tag
+                    label={institution.stripeConnect?.ready ? 'Pronta' : 'Pendente'}
+                    variant={institution.stripeConnect?.ready ? 'success' : 'warning'}
+                  />
+                </View>
+                <View style={styles.adminStatusItem}>
+                  <ThemedText variant="caption" color={colors.textMuted}>Doações mensais</ThemedText>
+                  <Tag
+                    label={institution.acceptsRecurringDonations === false ? 'Desativadas' : 'Ativas'}
+                    variant={institution.acceptsRecurringDonations === false ? 'neutral' : 'success'}
+                  />
+                </View>
+              </View>
+            </Card>
+          </View>
+        ) : null}
 
         {/* Informações */}
         <View style={styles.section}>
@@ -316,11 +359,11 @@ export function InstitutionDetailScreen() {
           </View>
         )}
 
-        {!isOwnInstitution ? <View style={styles.actionBarSpacer} /> : null}
+        {canUseDonorActions && !isOwnInstitution ? <View style={styles.actionBarSpacer} /> : null}
       </ScrollView>
 
       {/* Action bar fixa */}
-      {!isOwnInstitution ? (
+      {canUseDonorActions && !isOwnInstitution ? (
         <View style={[
           styles.actionBar,
           { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 16) },

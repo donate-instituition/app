@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
 
 import {
   Button,
@@ -46,6 +46,8 @@ const CAMPAIGN_CATEGORIES: (CampaignCategory | 'Todos')[] = [
 ];
 
 type Mode = 'campaigns' | 'institutions';
+type AdminInstitutionStatusFilter = 'all' | 'approved' | 'pending' | 'rejected';
+type AdminInstitutionSort = 'recent' | 'activity' | 'name';
 type FeedbackToast = {
   title: string;
   message: string;
@@ -291,6 +293,12 @@ export function CampaignsScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('campaigns');
   const [search, setSearch] = useState('');
+  const [adminInstitutionStatus, setAdminInstitutionStatus] =
+    useState<AdminInstitutionStatusFilter>('all');
+  const [adminInstitutionState, setAdminInstitutionState] = useState('all');
+  const [adminInstitutionSort, setAdminInstitutionSort] =
+    useState<AdminInstitutionSort>('activity');
+  const [adminFilterOpen, setAdminFilterOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CampaignCategory | 'Todos'>('Todos');
   const [institutionCampaignFilter, setInstitutionCampaignFilter] = useState<'active' | 'drafts' | 'ended'>('active');
   const [nearMeEnabled, setNearMeEnabled] = useState(false);
@@ -570,15 +578,115 @@ export function CampaignsScreen() {
 
   if (activeRole === 'platform-admin') {
     const data = adminInstitutions.data as PendingInstitution[] | null;
+    const adminSearch = search.trim().toLowerCase();
+    const allAdminInstitutions = data ?? [];
+    const pendingCount = allAdminInstitutions.filter(
+      (item) => item.status === 'PENDING_APPROVAL',
+    ).length;
+    const availableStates = Array.from(
+      new Set(
+        allAdminInstitutions
+          .map((item) => item.state?.trim())
+          .filter((state): state is string => Boolean(state)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const getInstitutionTimestamp = (item: PendingInstitution) => {
+      const timestamp = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+      return Number.isNaN(timestamp) ? 0 : timestamp;
+    };
+    const getActivityWeight = (item: PendingInstitution) => {
+      if (item.status === 'PENDING_APPROVAL') return 3;
+      if (item.status === 'ACTIVE') return 2;
+      if (item.status === 'REJECTED') return 1;
+      return 0;
+    };
+    const filteredAdminInstitutions = allAdminInstitutions
+      .filter((item) => {
+        const matchesSearch =
+          !adminSearch ||
+          [item.name, item.cnpj, item.email, item.city, item.state]
+            .filter(Boolean)
+            .some((field) => field.toLowerCase().includes(adminSearch));
+
+        const matchesStatus =
+          adminInstitutionStatus === 'all' ||
+          (adminInstitutionStatus === 'approved' && item.status === 'ACTIVE') ||
+          (adminInstitutionStatus === 'pending' && item.status === 'PENDING_APPROVAL') ||
+          (adminInstitutionStatus === 'rejected' && item.status === 'REJECTED');
+        const matchesState =
+          adminInstitutionState === 'all' || item.state === adminInstitutionState;
+
+        return matchesSearch && matchesStatus && matchesState;
+      })
+      .sort((a, b) => {
+        if (adminInstitutionSort === 'name') {
+          return a.name.localeCompare(b.name, 'pt-BR');
+        }
+
+        if (adminInstitutionSort === 'activity') {
+          const weightDifference = getActivityWeight(b) - getActivityWeight(a);
+          if (weightDifference !== 0) return weightDifference;
+        }
+
+        return getInstitutionTimestamp(b) - getInstitutionTimestamp(a);
+      });
+    const statusFilters: {
+      label: string;
+      value: AdminInstitutionStatusFilter;
+    }[] = [
+      { label: 'Todas', value: 'all' },
+      { label: 'Aprovadas', value: 'approved' },
+      { label: 'Em análise', value: 'pending' },
+      { label: 'Rejeitadas', value: 'rejected' },
+    ];
+    const sortFilters: {
+      label: string;
+      description: string;
+      value: AdminInstitutionSort;
+    }[] = [
+      {
+        label: 'Atividade recente',
+        description: 'Prioriza cadastros que precisam de atenção.',
+        value: 'activity',
+      },
+      {
+        label: 'Mais recentes',
+        description: 'Ordena pela data de cadastro.',
+        value: 'recent',
+      },
+      {
+        label: 'Nome A-Z',
+        description: 'Ordena alfabeticamente.',
+        value: 'name',
+      },
+    ];
+    const activeAdvancedFiltersCount =
+      (adminInstitutionState !== 'all' ? 1 : 0) +
+      (adminInstitutionSort !== 'activity' ? 1 : 0);
 
     return (
       <ScreenContainer scrollable>
         <View style={styles.container}>
-          <View style={styles.section}>
-            <ThemedText variant="title">Instituições</ThemedText>
-            <ThemedText variant="body" color={colors.textMuted}>
-              Cadastros, validações e status das instituições.
-            </ThemedText>
+          <View style={styles.adminInstitutionsHeader}>
+            <View style={styles.adminInstitutionsIntro}>
+              <View style={styles.headerText}>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Bem-vindo de volta 👋
+                </ThemedText>
+                <ThemedText variant="title">Instituições</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Cadastros, validações e status das instituições.
+                </ThemedText>
+              </View>
+              <View style={[styles.adminPendingBadge, { backgroundColor: colors.accentSoft }]}>
+                <ThemedText variant="body" color={colors.warning} style={styles.bold}>
+                  {pendingCount}
+                </ThemedText>
+                <ThemedText variant="caption" color={colors.warning}>
+                  Pendente
+                </ThemedText>
+              </View>
+            </View>
           </View>
 
           {adminInstitutions.loading && <Loading label="Carregando instituições..." />}
@@ -593,53 +701,255 @@ export function CampaignsScreen() {
           )}
 
           {!adminInstitutions.loading && !adminInstitutions.error && (
-            <View style={styles.list}>
-              {(data ?? []).map((item) => (
-                <Card key={item.id} variant="outlined">
-                  <View style={styles.institutionCard}>
-                    <View style={styles.cardHeader}>
-                      <Tag
-                        label={
-                          item.status === 'ACTIVE'
-                            ? 'Aprovada'
-                            : item.status === 'REJECTED'
-                              ? 'Rejeitada'
-                              : 'Pendente'
-                        }
-                        variant={item.status === 'ACTIVE' ? 'success' : item.status === 'REJECTED' ? 'danger' : 'warning'}
-                      />
+            <View style={styles.adminInstitutionsContent}>
+              <View style={styles.adminSearchRow}>
+                <View style={styles.adminSearchInputWrap}>
+                  <Input
+                    placeholder="Buscar instituição"
+                    value={search}
+                    onChangeText={setSearch}
+                    leftSlot={<Ionicons name="search-outline" size={20} color={colors.icon} />}
+                    fieldStyle={styles.adminSearchInput}
+                  />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setAdminFilterOpen(true)}
+                  style={[styles.adminFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Ionicons name="options-outline" size={22} color={colors.primary} />
+                  {activeAdvancedFiltersCount > 0 ? (
+                    <View style={[styles.adminFilterBadge, { backgroundColor: colors.primary }]}>
+                      <ThemedText variant="caption" color={colors.surface} style={styles.bold}>
+                        {activeAdvancedFiltersCount}
+                      </ThemedText>
                     </View>
-                    <ThemedText variant="subtitle">{item.name}</ThemedText>
-                    <ThemedText variant="caption" color={colors.textMuted}>
-                      CNPJ {item.cnpj}
-                    </ThemedText>
-                    <ThemedText variant="caption" color={colors.textMuted}>
-                      {item.email}
-                    </ThemedText>
-                    {item.status === 'PENDING_APPROVAL' ? (
-                      <View style={styles.adminActions}>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onPress={async () => {
-                            await campaignsService.rejectInstitution(item.id, authToken);
-                            adminInstitutions.refetch();
-                          }}>
-                          Rejeitar
-                        </Button>
-                        <Button
-                          size="sm"
-                          onPress={async () => {
-                            await campaignsService.approveInstitution(item.id, authToken);
-                            adminInstitutions.refetch();
-                          }}>
-                          Aprovar
-                        </Button>
+                  ) : null}
+                </Pressable>
+              </View>
+
+              <Modal
+                transparent
+                animationType="slide"
+                visible={adminFilterOpen}
+                onRequestClose={() => setAdminFilterOpen(false)}>
+                <Pressable
+                  style={styles.adminBottomSheetBackdrop}
+                  onPress={() => setAdminFilterOpen(false)}>
+                  <Pressable
+                    style={[styles.adminBottomSheet, { backgroundColor: colors.surface }]}
+                    onPress={(event) => event.stopPropagation()}>
+                    <View style={[styles.adminBottomSheetHandle, { backgroundColor: colors.border }]} />
+
+                    <View style={styles.adminBottomSheetHeader}>
+                      <View style={styles.headerText}>
+                        <ThemedText variant="subtitle">Filtros</ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          Refine a lista de instituições.
+                        </ThemedText>
                       </View>
-                    ) : null}
-                  </View>
-                </Card>
-              ))}
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setAdminInstitutionState('all');
+                          setAdminInstitutionSort('activity');
+                        }}>
+                        <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                          Limpar
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+
+                    <View style={styles.adminBottomSheetSection}>
+                      <ThemedText variant="body" style={styles.bold}>
+                        Estado
+                      </ThemedText>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.adminStateFilters}>
+                        {['all', ...availableStates].map((state) => {
+                          const selected = adminInstitutionState === state;
+                          const label = state === 'all' ? 'Todos' : state;
+
+                          return (
+                            <Pressable
+                              key={state}
+                              accessibilityRole="button"
+                              onPress={() => setAdminInstitutionState(state)}
+                              style={[
+                                styles.adminStatusFilter,
+                                {
+                                  backgroundColor: selected ? colors.primarySoft : colors.surface,
+                                  borderColor: selected ? colors.primary : colors.border,
+                                },
+                              ]}>
+                              <ThemedText
+                                variant="caption"
+                                color={selected ? colors.primary : colors.textMuted}
+                                style={selected ? styles.bold : undefined}>
+                                {label}
+                              </ThemedText>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+
+                    <View style={styles.adminBottomSheetSection}>
+                      <ThemedText variant="body" style={styles.bold}>
+                        Ordenar por
+                      </ThemedText>
+                      <View style={styles.adminSortOptions}>
+                        {sortFilters.map((filter) => {
+                          const selected = adminInstitutionSort === filter.value;
+
+                          return (
+                            <Pressable
+                              key={filter.value}
+                              accessibilityRole="button"
+                              onPress={() => setAdminInstitutionSort(filter.value)}
+                              style={[
+                                styles.adminSortOption,
+                                {
+                                  backgroundColor: selected ? colors.primarySoft : colors.surface,
+                                  borderColor: selected ? colors.primary : colors.border,
+                                },
+                              ]}>
+                              <View style={styles.headerText}>
+                                <ThemedText
+                                  variant="body"
+                                  color={selected ? colors.primary : colors.text}
+                                  style={styles.bold}>
+                                  {filter.label}
+                                </ThemedText>
+                                <ThemedText variant="caption" color={colors.textMuted}>
+                                  {filter.description}
+                                </ThemedText>
+                              </View>
+                              {selected ? (
+                                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                              ) : null}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    <Button onPress={() => setAdminFilterOpen(false)}>
+                      Aplicar filtros
+                    </Button>
+                  </Pressable>
+                </Pressable>
+              </Modal>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.adminStatusFilters}>
+                {statusFilters.map((filter) => {
+                  const selected = adminInstitutionStatus === filter.value;
+
+                  return (
+                    <Pressable
+                      key={filter.value}
+                      accessibilityRole="button"
+                      onPress={() => setAdminInstitutionStatus(filter.value)}
+                      style={[
+                        styles.adminStatusFilter,
+                        {
+                          backgroundColor: selected ? colors.primarySoft : colors.surface,
+                          borderColor: selected ? colors.primary : colors.border,
+                        },
+                      ]}>
+                      <ThemedText
+                        variant="caption"
+                        color={selected ? colors.primary : colors.textMuted}
+                        style={selected ? styles.bold : undefined}>
+                        {filter.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {filteredAdminInstitutions.length === 0 ? (
+                <EmptyState
+                  title="Nenhuma instituição encontrada"
+                  description={
+                    search
+                      ? `Nenhum cadastro encontrado para "${search}".`
+                      : 'Não há instituições nesse filtro.'
+                  }
+                  illustration={<Ionicons name="business-outline" size={56} color={colors.border} />}
+                />
+              ) : (
+                <View style={styles.list}>
+                  {filteredAdminInstitutions.map((item) => {
+                    const statusLabel =
+                      item.status === 'ACTIVE'
+                        ? 'Aprovada'
+                        : item.status === 'REJECTED'
+                          ? 'Rejeitada'
+                          : 'Em análise';
+                    const statusVariant =
+                      item.status === 'ACTIVE'
+                        ? 'success'
+                        : item.status === 'REJECTED'
+                          ? 'danger'
+                          : 'warning';
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        accessibilityRole="button"
+                        onPress={() => router.push(routes.appInstitutionDetail(item.id))}>
+                        <Card variant="elevated" style={styles.adminInstitutionCard}>
+                          <View style={[styles.adminInstitutionIcon, { backgroundColor: colors.primarySoft }]}>
+                            <Ionicons name="business-outline" size={26} color={colors.primary} />
+                          </View>
+                          <View style={styles.adminInstitutionInfo}>
+                            <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
+                              {item.name}
+                            </ThemedText>
+                            <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                              CNPJ {item.cnpj}
+                            </ThemedText>
+                            <View style={styles.adminLocationRow}>
+                              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
+                              <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                                {[item.city, item.state].filter(Boolean).join(', ') || item.email}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <Tag label={statusLabel} variant={statusVariant} style={styles.adminStatusTag} />
+                          <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                        </Card>
+                        {item.status === 'PENDING_APPROVAL' ? (
+                          <View style={styles.adminInlineActions}>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onPress={async () => {
+                                await campaignsService.rejectInstitution(item.id, authToken);
+                                adminInstitutions.refetch();
+                              }}>
+                              Rejeitar
+                            </Button>
+                            <Button
+                              size="sm"
+                              onPress={async () => {
+                                await campaignsService.approveInstitution(item.id, authToken);
+                                adminInstitutions.refetch();
+                              }}>
+                              Aprovar
+                            </Button>
+                          </View>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
         </View>

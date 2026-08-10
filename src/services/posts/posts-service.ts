@@ -1,4 +1,4 @@
-import { api } from '@/services/api';
+import { api, paginationQuery, type PaginatedResponse, unwrapPaginated } from '@/services/api';
 
 import type {
   CreatePostCommentRequest,
@@ -10,7 +10,11 @@ import type {
 } from './posts-types';
 
 async function listFeed(token: string | null): Promise<FeedPost[]> {
-  return api.get<FeedPost[]>('/posts/feed', { token });
+  const response = await api.get<PaginatedResponse<FeedPost> | FeedPost[]>(
+    '/posts/feed',
+    { query: paginationQuery({ limit: 50 }), token },
+  );
+  return unwrapPaginated(response);
 }
 
 async function createPost(body: CreatePostRequest, token: string | null): Promise<FeedPost> {

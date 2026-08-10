@@ -150,15 +150,98 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   adminInstitution: {
+    alignItems: 'center',
+    flexDirection: 'row',
     gap: theme.spacing.md,
   },
   adminInstitutionInfo: {
+    flex: 1,
     gap: theme.spacing.xxs,
+    minWidth: 0,
   },
   adminActions: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
     justifyContent: 'flex-end',
+  },
+  adminDashboard: {
+    gap: theme.spacing.xl,
+  },
+  adminEmptyReviewCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    minHeight: 170,
+    justifyContent: 'center',
+  },
+  adminEmptyIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 62,
+    justifyContent: 'center',
+    width: 62,
+  },
+  adminEmptyDescription: {
+    maxWidth: 230,
+    textAlign: 'center',
+  },
+  adminPendingCard: {
+    gap: theme.spacing.md,
+  },
+  adminSeeAll: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  adminMetricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.md,
+  },
+  adminMetricPressable: {
+    flexBasis: '47%',
+    flexGrow: 1,
+  },
+  adminMetricCard: {
+    gap: theme.spacing.xs,
+    minHeight: 144,
+  },
+  adminMetricIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  adminQuickActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    paddingRight: theme.spacing.lg,
+  },
+  adminQuickAction: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    justifyContent: 'center',
+    minHeight: 58,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    width: 164,
+  },
+  adminQuickIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.md,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  adminQuickText: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
   },
   bold: {
     fontWeight: '600',

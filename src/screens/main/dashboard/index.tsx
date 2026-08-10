@@ -21,6 +21,7 @@ import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService, type Campaign, type PendingInstitution } from '@/services/campaigns';
 import { chatService, type Conversation } from '@/services/chat';
+import { adminService, type AdminUser, type AuditLog } from '@/services/admin';
 import {
   donationsService,
   type Donation,
@@ -39,6 +40,29 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function isWithinDays(iso: string | undefined, days: number): boolean {
+  if (!iso) return false;
+
+  const timestamp = new Date(iso).getTime();
+  if (Number.isNaN(timestamp)) return false;
+
+  return timestamp >= Date.now() - days * 24 * 60 * 60 * 1000;
+}
+
+function isToday(iso: string | undefined): boolean {
+  if (!iso) return false;
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
 type DashboardData = {
   donations: Donation[];
   campaigns: Campaign[];
@@ -46,6 +70,8 @@ type DashboardData = {
   follows: Follow[];
   pendingInstitutions: PendingInstitution[];
   posts: FeedPost[];
+  users: AdminUser[];
+  auditLogs: AuditLog[];
 };
 
 type PeriodFilter = '7d' | '30d' | 'all';
@@ -66,12 +92,23 @@ export function DashboardScreen() {
 
   const fetcher = useCallback(async (): Promise<DashboardData> => {
     if (activeRole === 'platform-admin') {
-      const [campaigns, pendingInstitutions] = await Promise.all([
+      const [campaigns, pendingInstitutions, users, auditLogs] = await Promise.all([
         campaignsService.listCampaigns(),
         campaignsService.listPendingInstitutions(authToken),
+        adminService.listUsers(authToken),
+        adminService.listAuditLogs(authToken),
       ]);
 
-      return { donations: [], campaigns, conversations: [], follows: [], pendingInstitutions, posts: [] };
+      return {
+        donations: [],
+        campaigns,
+        conversations: [],
+        follows: [],
+        pendingInstitutions,
+        posts: [],
+        users,
+        auditLogs,
+      };
     }
 
     if (activeRole === 'institution-staff') {
@@ -80,7 +117,16 @@ export function DashboardScreen() {
         donationsService.listMyInstitutionDonations(authToken),
         chatService.listConversations(authToken),
       ]);
-      return { donations, campaigns, conversations, follows: [], pendingInstitutions: [], posts: [] };
+      return {
+        donations,
+        campaigns,
+        conversations,
+        follows: [],
+        pendingInstitutions: [],
+        posts: [],
+        users: [],
+        auditLogs: [],
+      };
     }
 
     const [donations, campaigns, follows, posts] = await Promise.all([
@@ -89,7 +135,16 @@ export function DashboardScreen() {
       followsService.listMyFollows(authToken),
       postsService.listFeed(authToken),
     ]);
-    return { donations, campaigns, conversations: [], follows, pendingInstitutions: [], posts };
+    return {
+      donations,
+      campaigns,
+      conversations: [],
+      follows,
+      pendingInstitutions: [],
+      posts,
+      users: [],
+      auditLogs: [],
+    };
   }, [activeRole, authToken]);
 
   const { data, loading, error, refetch } = useFetch(fetcher);
@@ -102,8 +157,18 @@ export function DashboardScreen() {
 
   const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
   const pendingInstitutions = data?.pendingInstitutions ?? [];
+  const adminUsers = data?.users ?? [];
+  const adminAuditLogs = data?.auditLogs ?? [];
   const institutionCampaigns = data?.campaigns ?? [];
   const activeInstitutionCampaigns = institutionCampaigns.filter((campaign) => campaign.active);
+  const publishedCampaigns = institutionCampaigns.filter((campaign) => campaign.active || campaign.status === 'PUBLISHED');
+  const activeUsersLast30Days = adminUsers.filter(
+    (adminUser) =>
+      adminUser.status?.toUpperCase() === 'ACTIVE' ||
+      adminUser.isVerified ||
+      isWithinDays(adminUser.createdAt, 30),
+  ).length;
+  const auditActionsToday = adminAuditLogs.filter((log) => isToday(log.createdAt)).length;
   const institutionDonations = data?.donations ?? [];
   const institutionConversations = data?.conversations ?? [];
   const donorFeed = data?.posts ?? [];
@@ -352,33 +417,46 @@ export function DashboardScreen() {
         )}
 
         {!loading && !error && activeRole === 'platform-admin' && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText variant="subtitle">Instituições em análise</ThemedText>
-              <Tag label={String(pendingInstitutions.length)} variant="warning" />
-            </View>
+          <View style={styles.adminDashboard}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <ThemedText variant="subtitle" style={styles.sectionTitle}>
+                  Instituições em análise
+                </ThemedText>
+                <Tag label={String(pendingInstitutions.length)} variant="warning" />
+              </View>
 
-            {pendingInstitutions.length === 0 ? (
-              <EmptyState
-                title="Sem cadastros pendentes"
-                description="Novas instituições aparecerão aqui para validação."
-                illustration={<Ionicons name="shield-checkmark-outline" size={40} color={colors.border} />}
-              />
-            ) : (
-              <View style={styles.list}>
-                {pendingInstitutions.map((institution) => (
-                  <Card key={institution.id} variant="outlined">
-                    <View style={styles.adminInstitution}>
-                      <View style={styles.adminInstitutionInfo}>
-                        <ThemedText variant="body" style={styles.bold}>
-                          {institution.name}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={colors.textMuted}>
-                          CNPJ {institution.cnpj}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={colors.textMuted}>
-                          {institution.email}
-                        </ThemedText>
+              {pendingInstitutions.length === 0 ? (
+                <Card variant="outlined" style={styles.adminEmptyReviewCard}>
+                  <View style={[styles.adminEmptyIcon, { backgroundColor: colors.primarySoft }]}>
+                    <Ionicons name="shield-checkmark-outline" size={42} color={colors.border} />
+                  </View>
+                  <ThemedText variant="body" style={styles.bold}>
+                    Sem cadastros pendentes
+                  </ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted} style={styles.adminEmptyDescription}>
+                    Novas instituições aparecerão aqui assim que precisarem de revisão.
+                  </ThemedText>
+                </Card>
+              ) : (
+                <View style={styles.list}>
+                  {pendingInstitutions.slice(0, 3).map((institution) => (
+                    <Card key={institution.id} variant="elevated" style={styles.adminPendingCard}>
+                      <View style={styles.adminInstitution}>
+                        <View style={[styles.adminMetricIcon, { backgroundColor: colors.primarySoft }]}>
+                          <Ionicons name="business-outline" size={24} color={colors.primary} />
+                        </View>
+                        <View style={styles.adminInstitutionInfo}>
+                          <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
+                            {institution.name}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                            CNPJ {institution.cnpj}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                            {institution.email}
+                          </ThemedText>
+                        </View>
                       </View>
                       <View style={styles.adminActions}>
                         <Button
@@ -393,29 +471,99 @@ export function DashboardScreen() {
                           Aprovar
                         </Button>
                       </View>
-                    </View>
-                  </Card>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
+                    </Card>
+                  ))}
+                  {pendingInstitutions.length > 3 ? (
+                    <Pressable onPress={() => router.push(routes.adminInstitutions)} style={styles.adminSeeAll}>
+                      <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                        Ver todas as instituições
+                      </ThemedText>
+                      <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              )}
+            </View>
 
-        {!loading && !error && activeRole === 'platform-admin' && (
-          <View style={styles.section}>
-            <View style={styles.grid}>
-              <Card style={styles.metric}>
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  Instituições pendentes
-                </ThemedText>
-                <ThemedText variant="title">{pendingInstitutions.length}</ThemedText>
-              </Card>
-              <Card style={styles.metric}>
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  Campanhas na plataforma
-                </ThemedText>
-                <ThemedText variant="title">{institutionCampaigns.length}</ThemedText>
-              </Card>
+            <View style={styles.adminMetricsGrid}>
+              {[
+                {
+                  icon: 'business-outline',
+                  label: 'Instituições pendentes',
+                  value: pendingInstitutions.length,
+                  detail: 'Aguardando revisão',
+                  href: routes.adminInstitutions,
+                },
+                {
+                  icon: 'megaphone-outline',
+                  label: 'Campanhas na plataforma',
+                  value: publishedCampaigns.length,
+                  detail: 'Ativas e publicadas',
+                  href: routes.adminInstitutions,
+                },
+                {
+                  icon: 'people-outline',
+                  label: 'Usuários ativos',
+                  value: activeUsersLast30Days,
+                  detail: 'Últimos 30 dias',
+                  href: routes.adminUsers,
+                },
+                {
+                  icon: 'shield-checkmark-outline',
+                  label: 'Ações hoje',
+                  value: auditActionsToday,
+                  detail: 'Logins e eventos',
+                  href: routes.adminAudit,
+                },
+              ].map((metric) => (
+                <Pressable
+                  key={metric.label}
+                  accessibilityRole="button"
+                  onPress={() => router.push(metric.href)}
+                  style={styles.adminMetricPressable}>
+                  <Card variant="elevated" style={styles.adminMetricCard}>
+                    <View style={[styles.adminMetricIcon, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons name={metric.icon as keyof typeof Ionicons.glyphMap} size={24} color={colors.primary} />
+                    </View>
+                    <ThemedText variant="caption" color={colors.textMuted} numberOfLines={2}>
+                      {metric.label}
+                    </ThemedText>
+                    <ThemedText variant="title">{metric.value}</ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                      {metric.detail}
+                    </ThemedText>
+                  </Card>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.section}>
+              <ThemedText variant="body" style={styles.bold}>
+                Ações rápidas
+              </ThemedText>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.adminQuickActions}>
+                {[
+                  { icon: 'business-outline', label: 'Revisar instituições', href: routes.adminInstitutions },
+                  { icon: 'people-outline', label: 'Usuários', href: routes.adminUsers },
+                  { icon: 'shield-checkmark-outline', label: 'Auditoria', href: routes.adminAudit },
+                ].map((action) => (
+                  <Pressable
+                    key={action.label}
+                    accessibilityRole="button"
+                    onPress={() => router.push(action.href)}
+                    style={[styles.adminQuickAction, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <View style={[styles.adminQuickIcon, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons name={action.icon as keyof typeof Ionicons.glyphMap} size={20} color={colors.primary} />
+                    </View>
+                    <ThemedText variant="caption" style={styles.adminQuickText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.86}>
+                      {action.label}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
           </View>
         )}

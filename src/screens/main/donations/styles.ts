@@ -185,6 +185,21 @@ export const styles = StyleSheet.create({
     minWidth: 0,
     paddingVertical: theme.spacing.sm,
   },
+  adminUserRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+    minHeight: 58,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  paginationRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
   donationInfo: {
     flex: 1,
     gap: theme.spacing.xxs,

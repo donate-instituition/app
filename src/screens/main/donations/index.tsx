@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
-import { adminService, type AdminUser } from '@/services/admin';
+import { adminService, type AdminUser, type AdminUsersPage } from '@/services/admin';
 import { campaignsService, type Campaign } from '@/services/campaigns';
 import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
 import { postsService, type FeedPost } from '@/services/posts';
@@ -60,6 +60,12 @@ export function DonationsScreen() {
   const [mode, setMode] = useState<'following' | 'recommended'>('following');
   const [institutionDonationFilter, setInstitutionDonationFilter] = useState<'all' | 'paid' | 'pending' | 'refunded'>('all');
   const [institutionDonationSearch, setInstitutionDonationSearch] = useState('');
+  const [adminUserSearch, setAdminUserSearch] = useState('');
+  const [adminUserPage, setAdminUserPage] = useState(1);
+
+  useEffect(() => {
+    setAdminUserPage(1);
+  }, [adminUserSearch]);
 
   const feed = useFetch(
     useCallback(() => {
@@ -73,9 +79,17 @@ export function DonationsScreen() {
 
   const adminUsers = useFetch(
     useCallback(() => {
-      if (activeRole !== 'platform-admin') return Promise.resolve([]);
-      return adminService.listUsers(authToken);
-    }, [activeRole, authToken])
+      if (activeRole !== 'platform-admin') {
+        return Promise.resolve(null);
+      }
+
+      return adminService.listUsersPage(authToken, {
+        limit: 30,
+        page: adminUserPage,
+        search: adminUserSearch,
+        sort: 'name',
+      });
+    }, [activeRole, adminUserPage, adminUserSearch, authToken])
   );
   const institutionDonations = useFetch(
     useCallback(() => {
@@ -92,21 +106,44 @@ export function DonationsScreen() {
   }
 
   if (activeRole === 'platform-admin') {
-    const users = (adminUsers.data ?? []) as AdminUser[];
-    const donorsCount = users.filter((item) => item.roles?.some((role) => role.name === 'DONOR')).length;
-    const institutionStaffCount = users.filter((item) => item.roles?.some((role) => role.name === 'INSTITUTION_STAFF')).length;
+    const usersPage = adminUsers.data as AdminUsersPage | null;
+    const users = usersPage?.items ?? [];
+    const usersTotal = usersPage?.meta.total ?? users.length;
+    const donorsCount =
+      usersPage?.summary?.donorsCount ??
+      users.filter((item) => item.roles?.some((role) => role.name === 'DONOR')).length;
+    const institutionStaffCount =
+      usersPage?.summary?.institutionStaffCount ??
+      users.filter((item) => item.roles?.some((role) => role.name === 'INSTITUTION_STAFF')).length;
+    const getUserId = (item: AdminUser) => item.id ?? item._id ?? '';
 
     return (
       <ScreenContainer scrollable>
         <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.donateHeader}>
+              <View style={styles.headerText}>
+                <ThemedText variant="title">Usuários</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Gestão de contas da plataforma.
+                </ThemedText>
+              </View>
+              <Avatar name="Admin" size="md" />
+            </View>
+          </View>
+
           <View style={styles.metricsGrid}>
             <Card style={styles.metricCard}>
-              <Ionicons name="people" size={24} color={colors.primary} />
-              <ThemedText variant="title">{adminUsers.loading ? '—' : users.length}</ThemedText>
+              <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="people" size={24} color={colors.primary} />
+              </View>
+              <ThemedText variant="title">{adminUsers.loading ? '—' : usersTotal}</ThemedText>
               <ThemedText variant="caption" color={colors.textMuted}>Usuários</ThemedText>
             </Card>
             <Card style={styles.metricCard}>
-              <Ionicons name="business" size={24} color={colors.secondary} />
+              <View style={[styles.metricCircle, { backgroundColor: colors.secondarySoft }]}>
+                <Ionicons name="business" size={24} color={colors.secondary} />
+              </View>
               <ThemedText variant="title">{adminUsers.loading ? '—' : institutionStaffCount}</ThemedText>
               <ThemedText variant="caption" color={colors.textMuted}>Equipe instituições</ThemedText>
             </Card>
@@ -117,6 +154,23 @@ export function DonationsScreen() {
             <ThemedText variant="caption" color={colors.textMuted}>
               {donorsCount} doadores · {institutionStaffCount} usuários institucionais
             </ThemedText>
+
+            <View style={styles.searchRow}>
+              <View style={styles.searchInputWrap}>
+                <Input
+                  placeholder="Buscar usuário"
+                  value={adminUserSearch}
+                  onChangeText={setAdminUserSearch}
+                  leftSlot={<Ionicons name="search-outline" size={20} color={colors.icon} />}
+                />
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setAdminUserSearch('')}
+                style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="options-outline" size={22} color={colors.primary} />
+              </Pressable>
+            </View>
 
             {adminUsers.loading && <Loading label="Carregando usuários..." />}
 
@@ -130,7 +184,7 @@ export function DonationsScreen() {
             )}
 
             {!adminUsers.loading && !adminUsers.error && (
-              <Card>
+              <Card padding="none" style={styles.institutionDonationList}>
                 {users.map((item, index) => {
                   const primaryRole = item.roles?.some((role) => role.name === 'PLATFORM_ADMIN')
                     ? 'PLATFORM_ADMIN'
@@ -140,7 +194,10 @@ export function DonationsScreen() {
 
                   return (
                     <View key={item.id ?? item._id ?? item.email}>
-                      <View style={styles.donationItem}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => router.push(`/admin/user/${getUserId(item)}` as never)}
+                        style={styles.adminUserRow}>
                         <View style={styles.donationInfo}>
                           <ThemedText variant="body" style={styles.bold}>{item.fullName}</ThemedText>
                           <ThemedText variant="caption" color={colors.textMuted}>{item.email}</ThemedText>
@@ -149,13 +206,35 @@ export function DonationsScreen() {
                           label={primaryRole === 'DONOR' ? 'Doador' : primaryRole === 'INSTITUTION_STAFF' ? 'Instituição' : 'Admin'}
                           variant={primaryRole === 'PLATFORM_ADMIN' ? 'warning' : 'neutral'}
                         />
-                      </View>
+                      </Pressable>
                       {index < users.length - 1 && <Divider />}
                     </View>
                   );
                 })}
               </Card>
             )}
+
+            {!adminUsers.loading && !adminUsers.error && usersPage ? (
+              <View style={styles.paginationRow}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!usersPage.meta.hasPreviousPage}
+                  onPress={() => setAdminUserPage((page) => Math.max(1, page - 1))}>
+                  Anterior
+                </Button>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Página {usersPage.meta.page} de {usersPage.meta.totalPages}
+                </ThemedText>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!usersPage.meta.hasNextPage}
+                  onPress={() => setAdminUserPage((page) => page + 1)}>
+                  Próxima
+                </Button>
+              </View>
+            ) : null}
           </View>
         </View>
       </ScreenContainer>

@@ -63,6 +63,8 @@ export default function AppLayout() {
       <Stack.Screen name="donor/(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="institution/(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="admin/(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="admin/audit/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="admin/user/[id]" options={{ headerShown: false }} />
 
       {/* Detalhes e fluxos compartilhados — empilhados sobre as tabs, sem tab bar. */}
       <Stack.Screen name="campaign/[id]" options={{ headerShown: false }} />

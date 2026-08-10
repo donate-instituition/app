@@ -4,11 +4,11 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 
-import { Avatar, Button, Divider, EmptyState, Input, Loading, ScreenContainer, ThemedText } from '@/components';
+import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
-import { adminService, type AuditLog } from '@/services/admin';
+import { adminService, type AuditLog, type AuditLogCategory, type AuditLogsPage } from '@/services/admin';
 import { chatService, subscribeConversationChanges } from '@/services/chat';
 import { campaignsService } from '@/services/campaigns';
 import { useActiveRole, useAppStore } from '@/store';
@@ -40,6 +40,26 @@ function formatAuditAction(action: string) {
   return labels[action] ?? action;
 }
 
+const auditFilters: { key: AuditLogCategory; label: string }[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'login', label: 'Login' },
+  { key: 'institutions', label: 'Instituições' },
+  { key: 'users', label: 'Usuários' },
+];
+
+function getAuditActorLabel(item: AuditLog) {
+  const actor = item.metadata?.actorEmail ?? item.metadata?.email ?? item.metadata?.userEmail;
+
+  if (typeof actor === 'string' && actor.trim()) {
+    return actor;
+  }
+
+  if (item.action.startsWith('auth.')) return 'user';
+  if (item.targetType?.toLowerCase().includes('institution')) return 'instituição';
+  if (item.targetType?.toLowerCase().includes('user')) return 'user';
+  return item.targetType?.toLowerCase() || 'admin';
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function MessagesScreen() {
@@ -53,6 +73,8 @@ export function MessagesScreen() {
   const [institutionSearch, setInstitutionSearch] = useState('');
   const [creatingConversationId, setCreatingConversationId] = useState<string | null>(null);
   const [createConversationError, setCreateConversationError] = useState('');
+  const [auditCategory, setAuditCategory] = useState<AuditLogCategory>('all');
+  const [auditPage, setAuditPage] = useState(1);
 
   const fetcher = useCallback(() => {
     if (activeRole === 'platform-admin') return Promise.resolve([]);
@@ -67,10 +89,19 @@ export function MessagesScreen() {
   );
   const auditLogs = useFetch(
     useCallback(() => {
-      if (activeRole !== 'platform-admin') return Promise.resolve([]);
-      return adminService.listAuditLogs(authToken);
-    }, [activeRole, authToken])
+      if (activeRole !== 'platform-admin') return Promise.resolve(null);
+      return adminService.listAuditLogsPage(authToken, {
+        category: auditCategory,
+        limit: 30,
+        page: auditPage,
+        search,
+      });
+    }, [activeRole, auditCategory, auditPage, authToken, search])
   );
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditCategory, search]);
 
   useFocusEffect(
     useCallback(() => {
@@ -129,15 +160,73 @@ export function MessagesScreen() {
   }
 
   if (activeRole === 'platform-admin') {
-    const logs = (auditLogs.data ?? []) as AuditLog[];
+    const logsPage = auditLogs.data as AuditLogsPage | null;
+    const logs = logsPage?.items ?? [];
+    const todayCount = logsPage?.summary?.todayCount ?? logs.filter((item) => item.createdAt && new Date(item.createdAt).toDateString() === new Date().toDateString()).length;
 
     return (
       <ScreenContainer scrollable>
-        <View style={styles.container}>
-          <ThemedText variant="title">Auditoria</ThemedText>
-          <ThemedText variant="body" color={colors.textMuted}>
-            Histórico recente de ações administrativas.
-          </ThemedText>
+        <View style={styles.adminAuditContainer}>
+          <View style={styles.adminHeader}>
+            <View style={styles.adminHeaderText}>
+              <ThemedText variant="caption" color={colors.textMuted}>Bem-vindo de volta 👋</ThemedText>
+              <ThemedText variant="title">Auditoria</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>
+                Histórico recente de ações administrativas.
+              </ThemedText>
+            </View>
+            <Avatar name="Admin" size="md" />
+          </View>
+
+          <View style={styles.auditToolbar}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              {auditFilters.map((item) => {
+                const selected = item.key === auditCategory;
+
+                return (
+                  <Pressable
+                    key={item.key}
+                    accessibilityRole="button"
+                    onPress={() => setAuditCategory(item.key)}
+                    style={[
+                      styles.auditChip,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surface,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}>
+                    <ThemedText
+                      variant="caption"
+                      color={selected ? '#FFFFFF' : colors.textMuted}
+                      style={selected ? styles.bold : undefined}>
+                      {item.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View style={[styles.auditTodayBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.auditTodayIcon, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+              </View>
+              <View>
+                <ThemedText variant="caption" color={colors.textMuted}>Total hoje</ThemedText>
+                <ThemedText variant="subtitle">{todayCount}</ThemedText>
+              </View>
+            </View>
+          </View>
+
+          <Input
+            onChangeText={setSearch}
+            placeholder="Buscar evento"
+            value={search}
+            leftSlot={
+              <View style={styles.searchIcon}>
+                <Ionicons name="search-outline" size={16} color={colors.icon} />
+              </View>
+            }
+          />
 
           {auditLogs.loading && <Loading label="Carregando auditoria..." />}
 
@@ -159,27 +248,57 @@ export function MessagesScreen() {
           )}
 
           {!auditLogs.loading && !auditLogs.error && logs.length > 0 && (
-            <View>
+            <Card padding="none" style={styles.auditListCard}>
               {logs.map((item, index) => (
-                <View key={item.id}>
-                  <View style={styles.conversationItem}>
-                    <View style={[styles.badge, { backgroundColor: colors.primarySoft }]}>
-                      <Ionicons name="shield-checkmark-outline" size={14} color={colors.primary} />
+                <View key={item.id ?? `${item.action}-${item.createdAt ?? index}`}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push(routes.adminAuditDetail(item.id))}
+                    style={styles.auditItem}>
+                    <View style={styles.auditIconColumn}>
+                      {index > 0 ? <View style={[styles.auditLine, { backgroundColor: colors.border }]} /> : <View style={styles.auditLineSpacer} />}
+                      <View style={[styles.auditIcon, { backgroundColor: colors.primarySoft }]}>
+                        <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+                      </View>
+                      {index < logs.length - 1 ? <View style={[styles.auditLine, { backgroundColor: colors.border }]} /> : <View style={styles.auditLineSpacer} />}
                     </View>
                     <View style={styles.conversationContent}>
                       <ThemedText variant="body" style={styles.bold}>
                         {formatAuditAction(item.action)}
                       </ThemedText>
                       <ThemedText variant="caption" color={colors.textMuted}>
-                        {item.targetType} · {item.createdAt ? formatRelativeTime(item.createdAt) : 'Agora'}
+                        {getAuditActorLabel(item)} · {item.createdAt ? formatRelativeTime(item.createdAt) : 'Agora'}
                       </ThemedText>
                     </View>
-                  </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.icon} />
+                  </Pressable>
                   {index < logs.length - 1 && <Divider />}
                 </View>
               ))}
-            </View>
+            </Card>
           )}
+
+          {!auditLogs.loading && !auditLogs.error && logsPage ? (
+            <View style={styles.paginationRow}>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!logsPage.meta.hasPreviousPage}
+                onPress={() => setAuditPage((page) => Math.max(1, page - 1))}>
+                Anterior
+              </Button>
+              <ThemedText variant="caption" color={colors.textMuted}>
+                Página {logsPage.meta.page} de {logsPage.meta.totalPages}
+              </ThemedText>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!logsPage.meta.hasNextPage}
+                onPress={() => setAuditPage((page) => page + 1)}>
+                Próxima
+              </Button>
+            </View>
+          ) : null}
         </View>
       </ScreenContainer>
     );

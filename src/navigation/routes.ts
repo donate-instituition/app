@@ -16,6 +16,7 @@ export const routes = {
   donorCampaigns: '/donor/campaigns' as Href,
   institutionCampaigns: '/institution/campaigns' as Href,
   adminInstitutions: '/admin/institutions' as Href,
+  adminAuditDetail: (id: string) => `/admin/audit/${id}` as Href,
   donorDonations: '/donor/donations' as Href,
   institutionDonations: '/institution/donations' as Href,
   institutionCreate: '/institution/create' as Href,

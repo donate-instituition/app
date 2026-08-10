@@ -1,4 +1,4 @@
-import { api } from '@/services/api';
+import { api, paginationQuery, type PaginatedResponse, unwrapPaginated } from '@/services/api';
 
 import type {
   Campaign,
@@ -85,21 +85,28 @@ function filterInstitutions(institutions: Institution[], filters: InstitutionFil
 }
 
 async function listCampaigns(filters: CampaignFilters = {}): Promise<Campaign[]> {
-  const campaigns = await api.get<Campaign[]>('/campaigns');
-  return filterCampaigns(campaigns, filters);
+  const campaigns = await api.get<PaginatedResponse<Campaign> | Campaign[]>('/campaigns', {
+    query: paginationQuery({ limit: 50, search: filters.search }),
+  });
+  return filterCampaigns(unwrapPaginated(campaigns), filters);
 }
 
 async function listMyInstitutionCampaigns(
   token: string | null,
   filters: CampaignFilters = {},
 ): Promise<Campaign[]> {
-  const campaigns = await api.get<Campaign[]>('/campaigns/mine', { token });
-  return filterCampaigns(campaigns, filters);
+  const campaigns = await api.get<PaginatedResponse<Campaign> | Campaign[]>('/campaigns/mine', {
+    query: paginationQuery({ limit: 50, search: filters.search }),
+    token,
+  });
+  return filterCampaigns(unwrapPaginated(campaigns), filters);
 }
 
 async function listInstitutions(filters: InstitutionFilters = {}): Promise<Institution[]> {
-  const institutions = await api.get<Institution[]>('/institutions');
-  return filterInstitutions(institutions, filters);
+  const institutions = await api.get<PaginatedResponse<Institution> | Institution[]>('/institutions', {
+    query: paginationQuery({ limit: 50, search: filters.search }),
+  });
+  return filterInstitutions(unwrapPaginated(institutions), filters);
 }
 
 async function getCampaignById(id: string): Promise<CampaignDetail> {
@@ -147,11 +154,19 @@ async function uploadCampaignCover(
 }
 
 async function listPendingInstitutions(token: string | null): Promise<PendingInstitution[]> {
-  return api.get<PendingInstitution[]>('/institutions/admin/pending', { token });
+  const response = await api.get<PaginatedResponse<PendingInstitution> | PendingInstitution[]>(
+    '/institutions/admin/pending',
+    { query: paginationQuery({ limit: 50 }), token },
+  );
+  return unwrapPaginated(response);
 }
 
 async function listAdminInstitutions(token: string | null): Promise<PendingInstitution[]> {
-  return api.get<PendingInstitution[]>('/institutions/admin', { token });
+  const response = await api.get<PaginatedResponse<PendingInstitution> | PendingInstitution[]>(
+    '/institutions/admin',
+    { query: paginationQuery({ limit: 50 }), token },
+  );
+  return unwrapPaginated(response);
 }
 
 async function approveInstitution(id: string, token: string | null): Promise<PendingInstitution> {

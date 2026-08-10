@@ -172,6 +172,42 @@ export const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   actionButton: {
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  adminPanel: {
+    gap: theme.spacing.md,
+  },
+  adminPanelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  adminIconCircle: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  adminPanelText: {
     flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  adminStatusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  adminStatusItem: {
+    borderColor: theme.colors.light.border,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: theme.spacing.xs,
+    minHeight: 72,
+    padding: theme.spacing.sm,
   },
 });

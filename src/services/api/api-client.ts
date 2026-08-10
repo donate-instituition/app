@@ -8,6 +8,7 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
   idempotencyKey?: string;
   idempotencyScope?: string;
+  query?: Record<string, boolean | null | number | string | undefined>;
   token?: string | null;
 };
 
@@ -19,6 +20,7 @@ type IdempotencyCacheEntry = {
 const IDEMPOTENT_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const IDEMPOTENCY_RETRY_WINDOW_MS = Math.max(API_TIMEOUT_MS * 4, 60_000);
 const idempotencyKeys = new Map<string, IdempotencyCacheEntry>();
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
 const apiLogger = logger.child('API');
 
 apiLogger.info('API client configured', {
@@ -76,6 +78,38 @@ function setCachedIdempotencyKey(fingerprint: string, key: string) {
     expiresAt: Date.now() + IDEMPOTENCY_RETRY_WINDOW_MS,
     key,
   });
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function buildUrl(path: string, query?: RequestOptions['query']) {
+  const baseUrl = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+
+  if (!query) {
+    return baseUrl;
+  }
+
+  const searchParams = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    searchParams.set(key, String(value));
+  });
+
+  const queryString = searchParams.toString();
+
+  if (!queryString) {
+    return baseUrl;
+  }
+
+  return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}${queryString}`;
 }
 
 function getIdempotencyHeaders(
@@ -166,6 +200,7 @@ export async function apiClient<TResponse>(
     headers,
     idempotencyKey,
     idempotencyScope,
+    query,
     token,
     ...options
   }: RequestOptions = {},
@@ -173,7 +208,7 @@ export async function apiClient<TResponse>(
 ): Promise<TResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  const url = buildUrl(path, query);
   const method = options.method?.toUpperCase() ?? 'GET';
   const startedAt = Date.now();
   const idempotency = getIdempotencyHeaders(
@@ -239,6 +274,38 @@ export async function apiClient<TResponse>(
       }
     }
 
+    if (!response.ok && response.status === 429 && attempt === 0) {
+      const retryAfterHeader = response.headers.get('retry-after');
+      const retryAfterSeconds = Number(retryAfterHeader);
+      const retryAfterMs = Math.min(
+        Math.max(
+          Number.isFinite(retryAfterSeconds) ? retryAfterSeconds * 1000 : 1_000,
+          750,
+        ),
+        3_000,
+      );
+
+      apiLogger.warn(`${method} ${path} rate limited; retrying`, {
+        retryAfterMs,
+        requestId: response.headers.get('x-request-id') ?? undefined,
+      });
+      await wait(retryAfterMs);
+
+      return await apiClient<TResponse>(
+        path,
+        {
+          body,
+          headers,
+          idempotencyKey: idempotency?.headers['Idempotency-Key'],
+          idempotencyScope,
+          query,
+          token,
+          ...options,
+        },
+        1,
+      );
+    }
+
     if (!response.ok) {
       throw new ApiError(
         getApiErrorMessage(payload, 'Falha ao consumir a API.'),
@@ -279,8 +346,24 @@ export async function apiClient<TResponse>(
 }
 
 export const api = {
-  get: <TResponse>(path: string, options?: RequestOptions) =>
-    apiClient<TResponse>(path, { ...options, method: 'GET' }),
+  get: <TResponse>(path: string, options?: RequestOptions) => {
+    const url = buildUrl(path, options?.query);
+    const dedupeKey = `${url}:${options?.token ?? 'anonymous'}`;
+    const existingRequest = inFlightGetRequests.get(dedupeKey);
+
+    if (existingRequest) {
+      apiLogger.debug(`GET ${path} joined in-flight request`);
+      return existingRequest as Promise<TResponse>;
+    }
+
+    const request = apiClient<TResponse>(path, { ...options, method: 'GET' })
+      .finally(() => {
+        inFlightGetRequests.delete(dedupeKey);
+      });
+
+    inFlightGetRequests.set(dedupeKey, request);
+    return request;
+  },
   post: <TResponse, TBody = unknown>(path: string, body?: TBody, options?: RequestOptions) =>
     apiClient<TResponse>(path, { ...options, method: 'POST', body }),
   put: <TResponse, TBody = unknown>(path: string, body?: TBody, options?: RequestOptions) =>
