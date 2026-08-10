@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppNavigationThemes } from '@/navigation/theme';
+import { firebaseService } from '@/services/firebase';
 import { useAppStore } from '@/store';
 
 const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -52,6 +53,8 @@ export default function RootLayout() {
   // Prevents routing before the persisted session is loaded, avoiding
   // a flash of the login screen for already-authenticated users.
   const [hydrated, setHydrated] = useState(useAppStore.persist.hasHydrated());
+  const authToken = useAppStore((state) => state.authToken);
+  const user = useAppStore((state) => state.user);
 
   useEffect(() => {
     if (hydrated) return;
@@ -60,6 +63,14 @@ export default function RootLayout() {
     if (useAppStore.persist.hasHydrated()) setHydrated(true);
     return unsub;
   }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !fontsLoaded) {
+      return;
+    }
+
+    void firebaseService.initialize(authToken, user);
+  }, [authToken, fontsLoaded, hydrated, user]);
 
   if (!hydrated || !fontsLoaded) {
     // Blank screen while AsyncStorage loads — typically < 100ms
