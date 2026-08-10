@@ -40,6 +40,11 @@ export type PostComment = {
   id: string;
   postId: string;
   userId: string;
+  author?: {
+    email?: string;
+    fullName?: string;
+    id: string;
+  };
   parentCommentId?: string;
   content: string;
   createdAt: string;

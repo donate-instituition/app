@@ -51,6 +51,10 @@ async function unlikePost(postId: string, token: string | null): Promise<{ postI
   return api.delete<{ postId: string }>(`/post-reactions/post/${postId}`, { token });
 }
 
+async function sharePost(postId: string): Promise<{ postId: string; sharesCount: number }> {
+  return api.post<{ postId: string; sharesCount: number }>(`/posts/${postId}/share`);
+}
+
 export const postsService = {
   createComment,
   createPost,
@@ -58,5 +62,6 @@ export const postsService = {
   likePost,
   listFeed,
   listComments,
+  sharePost,
   unlikePost,
 };
