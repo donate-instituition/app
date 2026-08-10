@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
 
 import {
   Avatar,
@@ -20,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { campaignsService, type Campaign, type PendingInstitution } from '@/services/campaigns';
+import { chatService, type Conversation } from '@/services/chat';
 import {
   donationsService,
   type Donation,
@@ -41,10 +42,13 @@ function formatDate(iso: string): string {
 type DashboardData = {
   donations: Donation[];
   campaigns: Campaign[];
+  conversations: Conversation[];
   follows: Follow[];
   pendingInstitutions: PendingInstitution[];
   posts: FeedPost[];
 };
+
+type PeriodFilter = '7d' | '30d' | 'all';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -57,6 +61,8 @@ export function DashboardScreen() {
   const colors = theme.colors[scheme];
   const [postContent, setPostContent] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [institutionPeriod, setInstitutionPeriod] = useState<PeriodFilter>('30d');
+  const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
 
   const fetcher = useCallback(async (): Promise<DashboardData> => {
     if (activeRole === 'platform-admin') {
@@ -65,12 +71,16 @@ export function DashboardScreen() {
         campaignsService.listPendingInstitutions(authToken),
       ]);
 
-      return { donations: [], campaigns, follows: [], pendingInstitutions, posts: [] };
+      return { donations: [], campaigns, conversations: [], follows: [], pendingInstitutions, posts: [] };
     }
 
     if (activeRole === 'institution-staff') {
-      const campaigns = await campaignsService.listCampaigns();
-      return { donations: [], campaigns, follows: [], pendingInstitutions: [], posts: [] };
+      const [campaigns, donations, conversations] = await Promise.all([
+        campaignsService.listMyInstitutionCampaigns(authToken),
+        donationsService.listMyInstitutionDonations(authToken),
+        chatService.listConversations(authToken),
+      ]);
+      return { donations, campaigns, conversations, follows: [], pendingInstitutions: [], posts: [] };
     }
 
     const [donations, campaigns, follows, posts] = await Promise.all([
@@ -79,7 +89,7 @@ export function DashboardScreen() {
       followsService.listMyFollows(authToken),
       postsService.listFeed(authToken),
     ]);
-    return { donations, campaigns, follows, pendingInstitutions: [], posts };
+    return { donations, campaigns, conversations: [], follows, pendingInstitutions: [], posts };
   }, [activeRole, authToken]);
 
   const { data, loading, error, refetch } = useFetch(fetcher);
@@ -90,11 +100,46 @@ export function DashboardScreen() {
     }, [refetch])
   );
 
-const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
+  const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
   const pendingInstitutions = data?.pendingInstitutions ?? [];
   const institutionCampaigns = data?.campaigns ?? [];
   const activeInstitutionCampaigns = institutionCampaigns.filter((campaign) => campaign.active);
+  const institutionDonations = data?.donations ?? [];
+  const institutionConversations = data?.conversations ?? [];
   const donorFeed = data?.posts ?? [];
+  const periodLabels: Record<PeriodFilter, string> = {
+    '7d': 'Últimos 7 dias',
+    '30d': 'Últimos 30 dias',
+    all: 'Todo período',
+  };
+  const periodDays: Record<PeriodFilter, number | null> = {
+    '7d': 7,
+    '30d': 30,
+    all: null,
+  };
+
+  function isInSelectedPeriod(isoDate: string) {
+    const days = periodDays[institutionPeriod];
+    if (!days) return true;
+
+    const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
+    return new Date(isoDate).getTime() >= threshold;
+  }
+
+  const periodCompletedDonations = institutionDonations.filter(
+    (donation) => donation.status === 'completed' && isInSelectedPeriod(donation.createdAt),
+  );
+  const periodRaisedCents = periodCompletedDonations.reduce(
+    (total, donation) => total + (donation.netAmountCents ?? donation.amountCents),
+    0,
+  );
+  const periodCampaigns = institutionCampaigns.filter((campaign) =>
+    !campaign.endsAt || isInSelectedPeriod(campaign.endsAt),
+  );
+  const unreadConversationsCount = institutionConversations.reduce(
+    (total, conversation) => total + conversation.unreadCount,
+    0,
+  );
 
   async function handleCreatePost() {
     const content = postContent.trim();
@@ -280,20 +325,21 @@ const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
   return (
     <ScreenContainer scrollable>
       <View style={styles.container}>
-        {/* Header de saudação */}
-        <View style={styles.greeting}>
-          <View style={styles.greetingRow}>
-            <View style={styles.greetingText}>
-              <ThemedText variant="caption" color={colors.textMuted}>
-                Bem-vindo de volta 👋
-              </ThemedText>
-              <ThemedText variant="title" numberOfLines={1}>
-                {firstName}
-              </ThemedText>
+        {activeRole === 'platform-admin' ? (
+          <View style={styles.greeting}>
+            <View style={styles.greetingRow}>
+              <View style={styles.greetingText}>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Bem-vindo de volta 👋
+                </ThemedText>
+                <ThemedText variant="title" numberOfLines={1}>
+                  {firstName}
+                </ThemedText>
+              </View>
+              <Avatar name={user?.name} size="md" />
             </View>
-            <Avatar name={user?.name} size="md" />
           </View>
-        </View>
+        ) : null}
 
         {loading && <Loading label="Carregando início..." />}
 
@@ -377,85 +423,218 @@ const firstName = user?.name?.split(' ')[0] ?? 'Visitante';
 
         {!loading && !error && activeRole === 'institution-staff' && (
           <View style={styles.section}>
-            <View style={styles.institutionPanelHeader}>
-              <View>
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  Últimos 30 dias
-                </ThemedText>
-                <ThemedText variant="title">
-                  {user?.name ?? 'Casa Lar Esperança'}
-                </ThemedText>
+            <View style={styles.institutionHero}>
+              <View style={styles.institutionPanelHeader}>
+                <View style={styles.greetingText}>
+                  <ThemedText variant="body" color={colors.primary}>
+                    Bem-vindo de volta
+                  </ThemedText>
+                  <ThemedText variant="title" numberOfLines={2}>
+                    {user?.name ?? 'Instituição'}
+                  </ThemedText>
+                </View>
+                <View style={styles.homeHeaderActions}>
+                  <Pressable onPress={() => router.push(routes.appNotifications)} style={styles.homeIconButton}>
+                    <Ionicons name="notifications-outline" size={28} color={colors.primaryStrong} />
+                    <View style={[styles.homeDot, { backgroundColor: colors.primary }]} />
+                  </Pressable>
+                  <Avatar name={user?.name} size="md" />
+                </View>
               </View>
-              <Ionicons name="notifications-outline" size={22} color={colors.text} />
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setPeriodPickerOpen(true)}
+                style={[styles.periodChip, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Ionicons name="calendar-outline" size={18} color={colors.icon} />
+                <ThemedText variant="body">{periodLabels[institutionPeriod]}</ThemedText>
+                <Ionicons name="chevron-down" size={16} color={colors.icon} />
+              </Pressable>
             </View>
-            <View style={styles.grid}>
-              <Card style={styles.metric} variant="elevated">
-                <Ionicons name="trending-up-outline" size={18} color={colors.primary} />
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  arrecadados no mês
-                </ThemedText>
-                <ThemedText variant="title">
-                  R$ {(institutionCampaigns.reduce((sum, campaign) => sum + campaign.raisedCents, 0) / 100).toFixed(0)}
-                </ThemedText>
-              </Card>
-              <Card style={styles.metric} variant="elevated">
-                <Ionicons name="people-outline" size={18} color={colors.primary} />
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  novos doadores
-                </ThemedText>
-                <ThemedText variant="title">214</ThemedText>
-              </Card>
-              <Card style={styles.metric} variant="elevated">
-                <Ionicons name="radio-button-on-outline" size={18} color={colors.primary} />
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  campanhas ativas
-                </ThemedText>
-                <ThemedText variant="title">{activeInstitutionCampaigns.length}</ThemedText>
-              </Card>
-              <Card style={styles.metric} variant="elevated">
-                <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  mensagens não lidas
-                </ThemedText>
-                <ThemedText variant="title">9</ThemedText>
-              </Card>
+
+            <Modal
+              transparent
+              animationType="slide"
+              visible={periodPickerOpen}
+              onRequestClose={() => setPeriodPickerOpen(false)}>
+              <Pressable
+                style={styles.bottomSheetBackdrop}
+                onPress={() => setPeriodPickerOpen(false)}>
+                <Pressable
+                  style={[styles.bottomSheet, { backgroundColor: colors.surface }]}
+                  onPress={(event) => event.stopPropagation()}>
+                  <View style={[styles.bottomSheetHandle, { backgroundColor: colors.border }]} />
+                  <ThemedText variant="subtitle">Selecionar período</ThemedText>
+                  <View style={styles.bottomSheetOptions}>
+                    {(['7d', '30d', 'all'] as PeriodFilter[]).map((period) => {
+                      const selected = institutionPeriod === period;
+
+                      return (
+                        <Pressable
+                          key={period}
+                          accessibilityRole="button"
+                          onPress={() => {
+                            setInstitutionPeriod(period);
+                            setPeriodPickerOpen(false);
+                          }}
+                          style={[
+                            styles.bottomSheetOption,
+                            {
+                              backgroundColor: selected ? colors.primarySoft : colors.surface,
+                              borderColor: selected ? colors.primary : colors.border,
+                            },
+                          ]}>
+                          <View style={styles.bottomSheetOptionText}>
+                            <ThemedText
+                              variant="body"
+                              color={selected ? colors.primary : colors.text}
+                              style={styles.bold}>
+                              {periodLabels[period]}
+                            </ThemedText>
+                            <ThemedText variant="caption" color={colors.textMuted}>
+                              {period === 'all'
+                                ? 'Considera todo o histórico disponível.'
+                                : `Considera movimentações dos ${period === '7d' ? '7' : '30'} dias mais recentes.`}
+                            </ThemedText>
+                          </View>
+                          {selected ? (
+                            <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </Pressable>
+              </Pressable>
+            </Modal>
+
+            <View style={styles.institutionMetricsGrid}>
+              {[
+                {
+                  icon: 'cash-outline',
+                  value: `R$ ${(periodRaisedCents / 100).toFixed(0)}`,
+                  label: institutionPeriod === 'all' ? 'arrecadados' : 'arrecadados no período',
+                  footer: `${periodCompletedDonations.length} doações`,
+                  onPress: () => router.push(routes.institutionDonations),
+                },
+                {
+                  icon: 'people-outline',
+                  value: String(periodCompletedDonations.length),
+                  label: 'doações confirmadas',
+                  footer: periodLabels[institutionPeriod],
+                  onPress: () => router.push(routes.institutionDonations),
+                },
+                {
+                  icon: 'flag-outline',
+                  value: String(activeInstitutionCampaigns.length),
+                  label: activeInstitutionCampaigns.length === 1 ? 'campanha ativa' : 'campanhas ativas',
+                  footer: 'Ver campanhas',
+                  onPress: () => router.push(routes.institutionCampaigns),
+                },
+                {
+                  icon: 'chatbubble-ellipses-outline',
+                  value: String(unreadConversationsCount),
+                  label: 'mensagens não lidas',
+                  footer: 'Ver conversas',
+                  onPress: () => router.push(routes.institutionMessages),
+                },
+              ].map((item, index) => (
+                <Pressable key={item.label} onPress={item.onPress} style={styles.institutionMetricPressable}>
+                  <Card style={styles.institutionMetricCard} variant="elevated">
+                  <View style={[styles.metricIconCircle, { backgroundColor: colors.primarySoft }]}>
+                    <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={26} color={colors.primary} />
+                  </View>
+                  <ThemedText variant="title">{item.value}</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>{item.label}</ThemedText>
+                  <View style={styles.metricFooter}>
+                    <ThemedText variant="caption" color={index < 2 ? colors.primary : colors.textMuted} style={styles.bold}>
+                      {item.footer}
+                    </ThemedText>
+                    {index >= 2 ? <Ionicons name="chevron-forward" size={14} color={colors.primary} /> : null}
+                  </View>
+                  </Card>
+                </Pressable>
+              ))}
             </View>
+
             <Card variant="elevated">
               <View style={styles.chartCard}>
-                <ThemedText variant="body" style={styles.bold}>
-                  Desempenho das campanhas
-                </ThemedText>
-                <View style={styles.chartBars}>
-                  {[32, 58, 76, 42, 88, 64, 100].map((height, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.chartBar,
-                        {
-                          height,
-                          backgroundColor: colors.primary,
-                        },
-                      ]}
-                    />
+                <View style={styles.sectionHeader}>
+                  <ThemedText variant="body" style={[styles.bold, styles.sectionTitle]}>
+                    Desempenho das campanhas
+                  </ThemedText>
+                  <View style={[styles.periodChipSmall, { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }]}>
+                    <ThemedText variant="caption" color={colors.primary} style={styles.bold}>
+                      Arrecadado
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.campaignChart}>
+                  {periodCampaigns.slice(0, 4).map((campaign) => (
+                    <View key={campaign.id} style={styles.chartColumn}>
+                      <ThemedText variant="caption" style={styles.bold}>
+                        R$ {(campaign.raisedCents / 100).toFixed(0)}
+                      </ThemedText>
+                      <View
+                        style={[
+                          styles.chartBar,
+                          {
+                            height: Math.max(28, Math.min(120, campaign.progress + 24)),
+                            backgroundColor: colors.primary,
+                          },
+                        ]}
+                      />
+                      <ThemedText variant="caption" color={colors.textMuted} numberOfLines={2} style={styles.chartLabel}>
+                        {campaign.title}
+                      </ThemedText>
+                    </View>
                   ))}
+                </View>
+                <Pressable style={styles.reportLink} onPress={() => router.push(routes.institutionDonations)}>
+                  <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                    Ver relatório completo
+                  </ThemedText>
+                  <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                </Pressable>
+              </View>
+            </Card>
+
+            <Card variant="elevated">
+              <View style={styles.quickActionsCard}>
+                <View style={styles.quickActionsHeader}>
+                  <ThemedText variant="body" style={styles.bold}>Ações rápidas</ThemedText>
+                  <View style={styles.carouselHint}>
+                    <View style={[styles.carouselHintDot, { backgroundColor: colors.primary }]} />
+                    <View style={[styles.carouselHintDot, { backgroundColor: colors.border }]} />
+                    <View style={[styles.carouselHintDot, { backgroundColor: colors.border }]} />
+                  </View>
+                </View>
+                <View style={styles.quickActionsCarouselWrap}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.quickActionsCarousel}>
+                    {[
+                      { icon: 'create-outline', label: 'Nova postagem', href: '/institution/create?mode=post' },
+                      { icon: 'flag-outline', label: 'Nova campanha', href: '/institution/create?mode=campaign' },
+                      { icon: 'heart-outline', label: 'Ver doações', href: routes.institutionDonations },
+                      { icon: 'document-text-outline', label: 'Prestação de contas', href: '/institution/create?mode=accountability' },
+                    ].map((item) => (
+                      <Pressable key={item.label} onPress={() => router.push(item.href as never)} style={[styles.quickActionTile, { borderColor: colors.border }]}>
+                        <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={26} color={colors.primary} />
+                        <ThemedText variant="caption" style={styles.quickActionLabel} numberOfLines={2}>
+                          {item.label}
+                        </ThemedText>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                  <View pointerEvents="none" style={[styles.carouselPeek, { backgroundColor: colors.surface }]}>
+                    <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                  </View>
                 </View>
               </View>
             </Card>
-            <Pressable onPress={() => router.push(routes.institutionCampaigns)}>
-              <Card variant="elevated">
-                <View style={styles.accountabilityRow}>
-                  <View>
-                    <ThemedText variant="body" style={styles.bold}>
-                      Prestações de contas pendentes
-                    </ThemedText>
-                    <ThemedText variant="caption" color={colors.textMuted}>
-                      3 comprovantes aguardando envio
-                    </ThemedText>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </View>
-              </Card>
-            </Pressable>
+
           </View>
         )}
 

@@ -4,12 +4,13 @@ import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { adminService, type AdminUser } from '@/services/admin';
 import { campaignsService, type Campaign } from '@/services/campaigns';
+import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
 import { postsService, type FeedPost } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
@@ -31,6 +32,13 @@ type DonorDonateData = {
   posts: FeedPost[];
 };
 
+const institutionDonationFilters = [
+  { key: 'all', label: 'Todas' },
+  { key: 'paid', label: 'Pagas' },
+  { key: 'pending', label: 'Pendentes' },
+  { key: 'refunded', label: 'Reembolsadas' },
+] as const;
+
 function getCampaignImage(item: Campaign) {
   if (item.title.toLowerCase().includes('inverno')) {
     return 'https://images.unsplash.com/photo-1516762689617-e1cffcef479d?auto=format&fit=crop&w=700&q=80';
@@ -50,6 +58,8 @@ export function DonationsScreen() {
   const activeRole = useActiveRole();
   const router = useRouter();
   const [mode, setMode] = useState<'following' | 'recommended'>('following');
+  const [institutionDonationFilter, setInstitutionDonationFilter] = useState<'all' | 'paid' | 'pending' | 'refunded'>('all');
+  const [institutionDonationSearch, setInstitutionDonationSearch] = useState('');
 
   const feed = useFetch(
     useCallback(() => {
@@ -67,6 +77,19 @@ export function DonationsScreen() {
       return adminService.listUsers(authToken);
     }, [activeRole, authToken])
   );
+  const institutionDonations = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'institution-staff') return Promise.resolve([]);
+      return donationsService.listMyInstitutionDonations(authToken);
+    }, [activeRole, authToken])
+  );
+
+  function getStatusVariant(status: DonationStatus): 'success' | 'warning' | 'danger' | 'neutral' {
+    if (status === 'completed') return 'success';
+    if (status === 'pending' || status === 'processing') return 'warning';
+    if (status === 'failed' || status === 'cancelled') return 'danger';
+    return 'neutral';
+  }
 
   if (activeRole === 'platform-admin') {
     const users = (adminUsers.data ?? []) as AdminUser[];
@@ -134,6 +157,172 @@ export function DonationsScreen() {
               </Card>
             )}
           </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (activeRole === 'institution-staff') {
+    const donations = (institutionDonations.data ?? []) as Donation[];
+    const normalizedSearch = institutionDonationSearch.trim().toLowerCase();
+    const filteredDonations = donations.filter((item) => {
+      const matchesFilter =
+        institutionDonationFilter === 'all' ||
+        (institutionDonationFilter === 'paid' && item.status === 'completed') ||
+        (institutionDonationFilter === 'pending' && ['pending', 'processing'].includes(item.status)) ||
+        (institutionDonationFilter === 'refunded' && ['cancelled', 'failed'].includes(item.status));
+      const matchesSearch =
+        !normalizedSearch ||
+        [
+          item.campaignTitle,
+          item.institutionName,
+          item.amountFormatted,
+          donationStatusLabels[item.status],
+          formatDate(item.createdAt),
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedSearch);
+
+      return matchesFilter && matchesSearch;
+    });
+    const completed = donations.filter((item) => item.status === 'completed');
+    const now = new Date();
+    const todayTotal = completed
+      .filter((item) => new Date(item.createdAt).toDateString() === now.toDateString())
+      .reduce((sum, item) => sum + (item.netAmountCents ?? item.amountCents), 0);
+    const monthTotal = completed
+      .filter((item) => {
+        const createdAt = new Date(item.createdAt);
+        return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === now.getMonth();
+      })
+      .reduce((sum, item) => sum + (item.netAmountCents ?? item.amountCents), 0);
+    const donorsCount = completed.length;
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <View style={styles.backBar}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </Pressable>
+            <ThemedText variant="subtitle" numberOfLines={1} style={styles.backBarTitle}>
+              Doações
+            </ThemedText>
+            <View style={styles.backButton} />
+          </View>
+
+          <ThemedText variant="caption" color={colors.textMuted}>
+            Acompanhe entradas, recibos e status.
+          </ThemedText>
+
+          <View style={styles.searchRow}>
+            <View style={styles.searchInputWrap}>
+              <Input
+                placeholder="Buscar doadores ou campanhas"
+                value={institutionDonationSearch}
+                onChangeText={setInstitutionDonationSearch}
+                leftSlot={<View style={styles.searchIcon}><Ionicons name="search-outline" size={18} color={colors.icon} /></View>}
+              />
+            </View>
+            <Pressable
+              style={[styles.filterButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+              onPress={() => setInstitutionDonationSearch('')}>
+              <Ionicons name="filter-outline" size={28} color={colors.primary} />
+            </Pressable>
+          </View>
+
+          <View style={styles.chipRow}>
+            {institutionDonationFilters.map(({ key, label }) => {
+              const selected = institutionDonationFilter === key;
+
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="button"
+                  onPress={() => setInstitutionDonationFilter(key)}
+                  style={[
+                    styles.outlineChip,
+                    { backgroundColor: selected ? colors.primarySoft : colors.surface, borderColor: selected ? colors.primary : colors.border },
+                  ]}>
+                  <ThemedText variant="body" color={selected ? colors.primary : colors.textMuted}>{label}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.metricsGrid}>
+            <Card style={styles.institutionDonationMetric}>
+              <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+              </View>
+              <ThemedText variant="body" color={colors.textMuted}>Hoje</ThemedText>
+              <ThemedText variant="title">R$ {(todayTotal / 100).toFixed(0)}</ThemedText>
+            </Card>
+            <Card style={styles.institutionDonationMetric}>
+              <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="bar-chart-outline" size={24} color={colors.primary} />
+              </View>
+              <ThemedText variant="body" color={colors.textMuted}>Mês</ThemedText>
+              <ThemedText variant="title">R$ {(monthTotal / 100).toFixed(0)}</ThemedText>
+            </Card>
+            <Card style={styles.institutionDonationMetric}>
+              <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="people-outline" size={24} color={colors.primary} />
+              </View>
+              <ThemedText variant="title">{donorsCount}</ThemedText>
+              <ThemedText variant="body" color={colors.textMuted}>doadores</ThemedText>
+            </Card>
+          </View>
+
+          {institutionDonations.loading && <Loading label="Carregando doações..." />}
+          {institutionDonations.error ? (
+            <EmptyState
+              title="Não foi possível carregar"
+              description={institutionDonations.error}
+              illustration={<Ionicons name="cloud-offline-outline" size={56} color={colors.border} />}
+              action={<Button variant="secondary" size="sm" onPress={institutionDonations.refetch}>Tentar novamente</Button>}
+            />
+          ) : null}
+          {!institutionDonations.loading && !institutionDonations.error && donations.length === 0 ? (
+            <EmptyState
+              title="Nenhuma doação ainda"
+              description="As entradas da instituição aparecerão aqui."
+              illustration={<Ionicons name="receipt-outline" size={56} color={colors.border} />}
+            />
+          ) : null}
+          {!institutionDonations.loading && !institutionDonations.error && donations.length > 0 && filteredDonations.length === 0 ? (
+            <EmptyState
+              title="Nenhuma doação encontrada"
+              description="Tente mudar a busca ou o filtro selecionado."
+              illustration={<Ionicons name="search-outline" size={56} color={colors.border} />}
+            />
+          ) : null}
+          {!institutionDonations.loading && !institutionDonations.error && filteredDonations.length > 0 ? (
+            <Card padding="none" style={styles.institutionDonationList}>
+              {filteredDonations.map((item, index) => (
+                <View key={item.id}>
+                  <Pressable style={styles.institutionDonationRow} onPress={() => router.push(routes.appDonationDetail(item.id))}>
+                    <Avatar name={item.institutionName} size="md" />
+                    <View style={styles.donationInfo}>
+                      <ThemedText variant="body" style={styles.bold}>Doador EloDoar</ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>{item.campaignTitle}</ThemedText>
+                      <View style={styles.inlineMeta}>
+                        <Ionicons name="time-outline" size={14} color={colors.icon} />
+                        <ThemedText variant="caption" color={colors.textMuted}>{formatDate(item.createdAt)}</ThemedText>
+                      </View>
+                    </View>
+                    <View style={styles.donationRight}>
+                      <ThemedText variant="subtitle">{item.amountFormatted}</ThemedText>
+                      <Tag label={donationStatusLabels[item.status]} variant={getStatusVariant(item.status)} />
+                    </View>
+                    <Ionicons name="receipt-outline" size={24} color={colors.primary} />
+                  </Pressable>
+                  {index < filteredDonations.length - 1 ? <Divider /> : null}
+                </View>
+              ))}
+            </Card>
+          ) : null}
         </View>
       </ScreenContainer>
     );

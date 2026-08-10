@@ -16,6 +16,22 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.md,
     justifyContent: 'space-between',
   },
+  backBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    minHeight: 40,
+  },
+  backButton: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  backBarTitle: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
+  },
   headerText: {
     flex: 1,
     gap: theme.spacing.sm,
@@ -87,6 +103,38 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: theme.spacing.xs,
   },
+  institutionDonationMetric: {
+    flex: 1,
+    gap: theme.spacing.sm,
+    minHeight: 142,
+  },
+  metricCircle: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  searchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  searchInputWrap: {
+    flex: 1,
+  },
+  searchIcon: {
+    paddingLeft: theme.spacing.lg,
+    paddingRight: theme.spacing.sm,
+  },
+  filterButton: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: theme.borderWidths.sm,
+    height: 58,
+    justifyContent: 'center',
+    width: 58,
+  },
   section: {
     gap: theme.spacing.md,
   },
@@ -145,6 +193,23 @@ export const styles = StyleSheet.create({
   donationRight: {
     alignItems: 'flex-end',
     flexShrink: 0,
+    gap: theme.spacing.xs,
+  },
+  institutionDonationList: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  institutionDonationRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    minHeight: 92,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  inlineMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
     gap: theme.spacing.xs,
   },
   cancelSubscriptionButton: {

@@ -10,6 +10,8 @@ import type {
   InstitutionDetail,
   InstitutionFilters,
   PendingInstitution,
+  CreateCampaignInput,
+  UploadedCampaignAsset,
 } from './campaigns-types';
 
 function matchSearch(fields: string[], query: string) {
@@ -87,6 +89,14 @@ async function listCampaigns(filters: CampaignFilters = {}): Promise<Campaign[]>
   return filterCampaigns(campaigns, filters);
 }
 
+async function listMyInstitutionCampaigns(
+  token: string | null,
+  filters: CampaignFilters = {},
+): Promise<Campaign[]> {
+  const campaigns = await api.get<Campaign[]>('/campaigns/mine', { token });
+  return filterCampaigns(campaigns, filters);
+}
+
 async function listInstitutions(filters: InstitutionFilters = {}): Promise<Institution[]> {
   const institutions = await api.get<Institution[]>('/institutions');
   return filterInstitutions(institutions, filters);
@@ -98,6 +108,42 @@ async function getCampaignById(id: string): Promise<CampaignDetail> {
 
 async function getInstitutionById(id: string): Promise<InstitutionDetail> {
   return api.get<InstitutionDetail>(`/institutions/${id}`);
+}
+
+async function createMyInstitutionCampaign(
+  input: CreateCampaignInput,
+  token: string | null,
+): Promise<CampaignDetail> {
+  return api.post<CampaignDetail>(
+    '/campaigns/me',
+    {
+      ...input,
+      acceptedItems: input.tags?.map((tag) => ({
+        category: mapTagToAcceptedItemCategory(tag),
+        name: tag,
+      })),
+      donationTypes: ['MONEY'],
+      endAt: input.endAt,
+      goal: {
+        moneyTarget: input.goal.moneyTarget,
+      },
+      status: input.status ?? 'PUBLISHED',
+      tags: input.tags ?? [],
+      visibility: 'PUBLIC',
+    },
+    { token },
+  );
+}
+
+async function uploadCampaignCover(
+  input: {
+    base64: string;
+    contentType: string;
+    filename: string;
+  },
+  token: string | null,
+): Promise<UploadedCampaignAsset> {
+  return api.post<UploadedCampaignAsset>('/campaigns/uploads', input, { token });
 }
 
 async function listPendingInstitutions(token: string | null): Promise<PendingInstitution[]> {
@@ -128,14 +174,44 @@ async function updateInstitutionRecurringDonations(
   );
 }
 
+async function verifyInstitutionStripeConnectAccount(
+  id: string,
+  stripeConnectAccountId: string,
+  token: string | null,
+): Promise<InstitutionDetail> {
+  return api.post<InstitutionDetail, { stripeConnectAccountId: string }>(
+    `/institutions/${id}/stripe/connect-account`,
+    { stripeConnectAccountId },
+    { token },
+  );
+}
+
+function mapTagToAcceptedItemCategory(tag: string) {
+  const normalizedTag = tag
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  if (normalizedTag.includes('aliment')) return 'FOOD';
+  if (normalizedTag.includes('saude')) return 'HYGIENE';
+  if (normalizedTag.includes('crianca')) return 'TOYS';
+  if (normalizedTag.includes('inverno')) return 'CLOTHES';
+
+  return 'OTHER';
+}
+
 export const campaignsService = {
   listCampaigns,
+  listMyInstitutionCampaigns,
   listInstitutions,
   getCampaignById,
   getInstitutionById,
+  createMyInstitutionCampaign,
+  uploadCampaignCover,
   listPendingInstitutions,
   listAdminInstitutions,
   approveInstitution,
   rejectInstitution,
   updateInstitutionRecurringDonations,
+  verifyInstitutionStripeConnectAccount,
 };

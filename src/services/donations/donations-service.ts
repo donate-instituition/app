@@ -15,6 +15,10 @@ async function listMyDonations(token: string | null): Promise<Donation[]> {
   return api.get<Donation[]>('/donations/me', { token });
 }
 
+async function listMyInstitutionDonations(token: string | null): Promise<Donation[]> {
+  return api.get<Donation[]>('/donations/institution/me', { token });
+}
+
 async function getDonationById(id: string, token: string | null): Promise<Donation> {
   return api.get<Donation>(`/donations/${id}`, { token });
 }
@@ -65,6 +69,7 @@ async function cancelStripeSubscription(
 
 export const donationsService = {
   cancelStripeSubscription,
+  listMyInstitutionDonations,
   listMyDonations,
   getDonationById,
   createDonation,

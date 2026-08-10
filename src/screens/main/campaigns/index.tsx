@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import {
   Button,
@@ -46,6 +46,11 @@ const CAMPAIGN_CATEGORIES: (CampaignCategory | 'Todos')[] = [
 ];
 
 type Mode = 'campaigns' | 'institutions';
+type FeedbackToast = {
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+};
 
 const exploreLogger = logger.child('Explore');
 
@@ -287,11 +292,31 @@ export function CampaignsScreen() {
   const [mode, setMode] = useState<Mode>('campaigns');
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<CampaignCategory | 'Todos'>('Todos');
+  const [institutionCampaignFilter, setInstitutionCampaignFilter] = useState<'active' | 'drafts' | 'ended'>('active');
   const [nearMeEnabled, setNearMeEnabled] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [updatingRecurring, setUpdatingRecurring] = useState(false);
+  const [toast, setToast] = useState<FeedbackToast | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function showToast(nextToast: FeedbackToast) {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+
+    setToast(nextToast);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3600);
+  }
 
   // Memoised fetchers — change when filters change
   const campaignFetcher = useCallback<() => Promise<Campaign[]>>(
@@ -302,9 +327,12 @@ export function CampaignsScreen() {
         category: activeCategory,
         nearMe: nearMeEnabled && userLocation ? userLocation : undefined,
       };
+      if (activeRole === 'institution-staff') {
+        return campaignsService.listMyInstitutionCampaigns(authToken, filters);
+      }
       return campaignsService.listCampaigns(filters);
     },
-    [activeRole, search, activeCategory, nearMeEnabled, userLocation]
+    [activeRole, authToken, search, activeCategory, nearMeEnabled, userLocation]
   );
 
   const institutionFetcher = useCallback(
@@ -368,10 +396,11 @@ export function CampaignsScreen() {
           canAskAgain: permission.canAskAgain,
           status: permission.status,
         });
-        Alert.alert(
-          'Permissão de localização',
-          'Para encontrar campanhas e instituições próximas, permita o acesso à localização nas configurações do aparelho.',
-        );
+        showToast({
+          title: 'Permissão de localização',
+          message: 'Permita o acesso à localização nas configurações do aparelho.',
+          type: 'error',
+        });
         return;
       }
 
@@ -394,7 +423,11 @@ export function CampaignsScreen() {
       setUserLocation(null);
       setLocationError('Não foi possível obter sua localização agora.');
       exploreLogger.error('Failed to capture near me location', { message });
-      Alert.alert('Localização indisponível', 'Não foi possível obter sua localização agora. Tente novamente.');
+      showToast({
+        title: 'Localização indisponível',
+        message: 'Não foi possível obter sua localização agora. Tente novamente.',
+        type: 'error',
+      });
     } finally {
       setLocationLoading(false);
     }
@@ -414,23 +447,65 @@ export function CampaignsScreen() {
       );
       currentInstitution.refetch();
       campaigns.refetch();
-      Alert.alert(
-        'Configuração atualizada',
-        nextValue
+      showToast({
+        title: 'Configuração atualizada',
+        message: nextValue
           ? 'A instituição agora aceita doações mensais.'
           : 'A instituição agora aceita somente doações únicas por campanha.',
-      );
+        type: 'success',
+      });
     } catch (error) {
-      Alert.alert(
-        'Não foi possível salvar',
-        error instanceof Error ? error.message : 'Tente novamente em instantes.',
-      );
+      showToast({
+        title: 'Não foi possível salvar',
+        message: error instanceof Error ? error.message : 'Tente novamente em instantes.',
+        type: 'error',
+      });
     } finally {
       setUpdatingRecurring(false);
     }
   }
 
   // ─── Render helpers ───────────────────────────────────────────────────────
+
+  function renderToast() {
+    if (!toast) return null;
+
+    const isError = toast.type === 'error';
+    const isSuccess = toast.type === 'success';
+    const accentColor = isError ? colors.danger : isSuccess ? colors.primary : colors.info;
+
+    return (
+      <View
+        style={[
+          styles.toast,
+          {
+            backgroundColor: isError ? colors.secondarySoft : isSuccess ? colors.primarySoft : colors.infoSoft,
+            borderColor: accentColor,
+          },
+        ]}>
+        <Ionicons
+          name={isError ? 'alert-circle-outline' : isSuccess ? 'checkmark-circle-outline' : 'information-circle-outline'}
+          size={22}
+          color={accentColor}
+        />
+        <View style={styles.toastText}>
+          <ThemedText variant="body" color={accentColor} style={styles.toastTitle}>
+            {toast.title}
+          </ThemedText>
+          <ThemedText variant="caption" color={colors.text}>
+            {toast.message}
+          </ThemedText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Fechar aviso"
+          onPress={() => setToast(null)}
+          style={styles.toastClose}>
+          <Ionicons name="close" size={18} color={colors.icon} />
+        </Pressable>
+      </View>
+    );
+  }
 
   function renderContent() {
     if (active.loading) {
@@ -573,87 +648,59 @@ export function CampaignsScreen() {
   }
 
   if (activeRole === 'institution-staff') {
-    const institutionCampaigns = campaigns.data ?? [];
+    const institutionCampaigns = (campaigns.data ?? []).filter((item) =>
+      currentInstitutionId ? item.institutionId === currentInstitutionId : true,
+    );
     const acceptsRecurring = currentInstitution.data?.acceptsRecurringDonations !== false;
+    const filteredInstitutionCampaigns = institutionCampaigns.filter((item) => {
+      if (institutionCampaignFilter === 'ended') return ['FINISHED', 'CANCELED'].includes(item.status ?? '') || !item.active;
+      if (institutionCampaignFilter === 'drafts') return ['DRAFT', 'IN_REVIEW'].includes(item.status ?? '');
+      return item.status === 'PUBLISHED' && item.active;
+    });
+    const campaignsInReview = institutionCampaigns.filter((item) => item.status === 'IN_REVIEW').length;
 
     return (
       <ScreenContainer scrollable>
         <View style={styles.container}>
-          <View style={styles.header}>
+          {renderToast()}
+
+          <View style={styles.institutionCampaignHeader}>
+            <View style={styles.institutionCampaignIntro}>
+              <ThemedText variant="caption" color={colors.primary}>Bem-vindo, equipe!</ThemedText>
+              <Button
+                size="sm"
+                variant="primary"
+                leftSlot={<Ionicons name="add" size={18} color={colors.surface} />}
+                onPress={() => router.push(routes.institutionCreate)}>
+                Nova campanha
+              </Button>
+            </View>
             <ThemedText variant="title">Campanhas</ThemedText>
             <ThemedText variant="caption" color={colors.textMuted}>
               Gerencie campanhas, metas e prestação de contas.
             </ThemedText>
           </View>
 
-          <Card variant="elevated">
-            <View style={styles.newCampaignCard}>
-              <View style={styles.stepper}>
-                <View style={[styles.stepDot, { backgroundColor: colors.primary }]}>
-                  <ThemedText variant="caption" color={colors.surface}>1</ThemedText>
-                </View>
-                <View style={[styles.stepLine, { backgroundColor: colors.primarySoft }]} />
-                <View style={[styles.stepDot, { backgroundColor: colors.surfaceMuted }]}>
-                  <ThemedText variant="caption" color={colors.textMuted}>2</ThemedText>
-                </View>
-                <View style={[styles.stepLine, { backgroundColor: colors.primarySoft }]} />
-                <View style={[styles.stepDot, { backgroundColor: colors.surfaceMuted }]}>
-                  <ThemedText variant="caption" color={colors.textMuted}>3</ThemedText>
-                </View>
-              </View>
-              <View style={[styles.uploadBox, { borderColor: colors.border }]}>
-                <Ionicons name="image-outline" size={26} color={colors.icon} />
-                <ThemedText variant="body">Adicionar imagem de capa</ThemedText>
-                <ThemedText variant="caption" color={colors.textMuted}>
-                  Formatos: JPG, PNG · Máx. 5MB
-                </ThemedText>
-              </View>
-              <View style={styles.mockField}>
-                <ThemedText variant="caption" color={colors.textMuted}>Título da campanha</ThemedText>
-                <View style={[styles.fakeInput, { borderColor: colors.border }]}>
-                  <ThemedText variant="body">Inverno Solidário 2026</ThemedText>
-                </View>
-              </View>
-              <View style={styles.categories}>
-                {['Crianças', 'Inverno', 'Urgente', 'Educação'].map((label, index) => (
-                  <Tag key={label} label={label} variant={index === 0 ? 'success' : 'neutral'} />
-                ))}
-              </View>
-              <Pressable
-                style={[
-                  styles.recurringSetting,
-                  {
-                    backgroundColor: acceptsRecurring ? colors.primarySoft : colors.surfaceMuted,
-                    borderColor: acceptsRecurring ? colors.primary : colors.border,
-                  },
-                ]}
-                disabled={updatingRecurring || !currentInstitutionId}
-                onPress={handleToggleRecurringDonations}>
-                <View style={styles.recurringSettingText}>
-                  <ThemedText variant="body" style={styles.bold}>
-                    {acceptsRecurring ? 'Aceita doações mensais' : 'Somente doação única'}
+          <View style={[styles.institutionTabs, { borderColor: colors.border }]}>
+            {[
+              ['active', 'Ativas'],
+              ['drafts', 'Rascunhos'],
+              ['ended', 'Encerradas'],
+            ].map(([key, label]) => {
+              const selected = institutionCampaignFilter === key;
+
+              return (
+                <Pressable
+                  key={key}
+                  style={[styles.institutionTabButton, { backgroundColor: selected ? colors.primarySoft : 'transparent' }]}
+                  onPress={() => setInstitutionCampaignFilter(key as typeof institutionCampaignFilter)}>
+                  <ThemedText variant="body" color={selected ? colors.primary : colors.textMuted} style={styles.bold}>
+                    {label}
                   </ThemedText>
-                  <ThemedText variant="caption" color={colors.textMuted}>
-                    {acceptsRecurring
-                      ? 'Doadores podem escolher pagamento único ou mensal.'
-                      : 'Doadores verão apenas pagamento único nas campanhas.'}
-                  </ThemedText>
-                </View>
-                <View
-                  style={[
-                    styles.recurringToggle,
-                    { backgroundColor: acceptsRecurring ? colors.primary : colors.border },
-                  ]}>
-                  <Ionicons
-                    name={acceptsRecurring ? 'checkmark' : 'close'}
-                    size={18}
-                    color={colors.surface}
-                  />
-                </View>
-              </Pressable>
-              <Button fullWidth>Continuar</Button>
-            </View>
-          </Card>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {campaigns.loading && <Loading label="Carregando campanhas..." />}
 
@@ -667,19 +714,181 @@ export function CampaignsScreen() {
           )}
 
           {!campaigns.loading && !campaigns.error && (
-            <View style={styles.section}>
-              <ThemedText variant="subtitle">Campanhas ativas</ThemedText>
-              <View style={styles.list}>
-                {institutionCampaigns.map((item) => (
-                  <CampaignCard
-                    key={item.id}
-                    item={item}
-                    onPress={() => router.push(routes.appCampaignDetail(item.id))}
-                  />
-                ))}
-              </View>
+            <View style={styles.list}>
+              {filteredInstitutionCampaigns.map((item) => (
+                <Card key={item.id} variant="elevated" style={styles.institutionCampaignCard}>
+                  <View style={styles.institutionCampaignTop}>
+                    <View style={[styles.institutionCampaignIcon, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons
+                        name={item.title.toLowerCase().includes('escolar') ? 'bag-outline' : 'snow-outline'}
+                        size={34}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <View style={styles.institutionCampaignTitle}>
+                      <View style={styles.cardHeader}>
+                        <ThemedText variant="subtitle" style={styles.cardTitle} numberOfLines={2}>
+                          {item.title}
+                        </ThemedText>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Ver detalhes de ${item.title}`}
+                          onPress={() => router.push(routes.appCampaignDetail(item.id))}
+                          style={styles.iconButton}>
+                          <Ionicons name="ellipsis-horizontal" size={22} color={colors.icon} />
+                        </Pressable>
+                      </View>
+                      <Tag
+                        label={
+                          item.status === 'IN_REVIEW'
+                            ? 'Em revisão'
+                            : item.active
+                              ? 'Ativa'
+                              : 'Encerrada'
+                        }
+                        variant={item.status === 'IN_REVIEW' ? 'warning' : item.active ? 'success' : 'neutral'}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.goalRow}>
+                    <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                      {item.progress}%
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.bold}>
+                      {item.raisedFormatted} de {item.goalFormatted}
+                    </ThemedText>
+                  </View>
+                  <ProgressBar value={item.progress} />
+
+                  {item.status === 'IN_REVIEW' ? (
+                    <View style={styles.institutionCampaignActions}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        style={styles.campaignActionButton}
+                        onPress={() => router.push(routes.appCampaignDetail(item.id))}>
+                        Detalhes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        style={styles.campaignActionButton}
+                        onPress={() => router.push('/institution/create?mode=campaign' as never)}>
+                        Revisar
+                      </Button>
+                    </View>
+                  ) : item.active ? (
+                    <>
+                      <View style={styles.institutionCampaignStats}>
+                        <View style={styles.statBlock}>
+                          <View style={[styles.metaIcon, { backgroundColor: colors.primarySoft }]}>
+                            <Ionicons name="people" size={18} color={colors.primary} />
+                          </View>
+                          <View>
+                            <ThemedText variant="subtitle">{item.donationsCount ?? 0}</ThemedText>
+                            <ThemedText variant="caption" color={colors.textMuted}>doações</ThemedText>
+                          </View>
+                        </View>
+                        <View style={[styles.verticalDivider, { backgroundColor: colors.border }]} />
+                        <View style={styles.statBlock}>
+                          <View style={[styles.metaIcon, { backgroundColor: colors.primarySoft }]}>
+                            <Ionicons name="heart" size={18} color={colors.primary} />
+                          </View>
+                          <View>
+                            <ThemedText variant="subtitle">{item.followersCount ?? 0}</ThemedText>
+                            <ThemedText variant="caption" color={colors.textMuted}>apoiadores</ThemedText>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={styles.institutionCampaignActions}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          style={styles.campaignActionButton}
+                          onPress={() => router.push(routes.appCampaignDetail(item.id))}>
+                          Detalhes
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          style={styles.campaignActionButton}
+                          onPress={() => router.push('/institution/create?mode=post' as never)}>
+                          Posts
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          style={styles.campaignActionButton}
+                          onPress={() => router.push(routes.institutionDonations)}>
+                          Doações
+                        </Button>
+                      </View>
+                    </>
+                  ) : (
+                    <Button fullWidth variant="ghost" onPress={() => router.push(routes.appCampaignDetail(item.id))}>
+                      Ver impacto
+                    </Button>
+                  )}
+                </Card>
+              ))}
+
+              {institutionCampaignFilter === 'drafts' && campaignsInReview > 0 ? (
+                <Pressable onPress={() => router.push(routes.institutionCreate)}>
+                  <Card variant="outlined" style={styles.draftCard}>
+                    <View style={[styles.institutionCampaignIcon, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons name="document-text-outline" size={28} color={colors.primary} />
+                    </View>
+                    <View style={styles.institutionCampaignTitle}>
+                      <ThemedText variant="body" style={styles.bold}>Rascunhos</ThemedText>
+                      <ThemedText variant="caption" color={colors.textMuted}>
+                        {campaignsInReview} {campaignsInReview === 1 ? 'campanha aguardando' : 'campanhas aguardando'} revisão
+                      </ThemedText>
+                    </View>
+                    <Ionicons name="chevron-forward" size={22} color={colors.primary} />
+                  </Card>
+                </Pressable>
+              ) : null}
+
+              {filteredInstitutionCampaigns.length === 0 && institutionCampaignFilter !== 'drafts' ? (
+                <EmptyState
+                  title="Nenhuma campanha nesta aba"
+                  description="Quando houver campanhas nesse estado, elas aparecerão aqui."
+                  illustration={<Ionicons name="flag-outline" size={48} color={colors.border} />}
+                />
+              ) : null}
             </View>
           )}
+
+          <Pressable
+            style={[
+              styles.recurringSetting,
+              {
+                backgroundColor: acceptsRecurring ? colors.primarySoft : colors.surfaceMuted,
+                borderColor: acceptsRecurring ? colors.primary : colors.border,
+              },
+            ]}
+            disabled={updatingRecurring || !currentInstitutionId}
+            onPress={handleToggleRecurringDonations}>
+            <View style={styles.recurringSettingText}>
+              <ThemedText variant="body" style={styles.bold}>
+                {acceptsRecurring ? 'Aceita doações mensais' : 'Somente doação única'}
+              </ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>
+                Controle se doadores podem assinar contribuições mensais.
+              </ThemedText>
+            </View>
+            <View
+              style={[
+                styles.recurringToggle,
+                { backgroundColor: acceptsRecurring ? colors.primary : colors.border },
+              ]}>
+              <Ionicons
+                name={acceptsRecurring ? 'checkmark' : 'close'}
+                size={18}
+                color={colors.surface}
+              />
+            </View>
+          </Pressable>
         </View>
       </ScreenContainer>
     );

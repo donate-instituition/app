@@ -17,13 +17,18 @@ export type Campaign = {
   institution: string;
   institutionId: string;
   category: CampaignCategory;
+  status?: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'PAUSED' | 'FINISHED' | 'CANCELED';
   goalFormatted: string;
   raisedFormatted: string;
   goalCents: number;
   raisedCents: number;
   progress: number; // 0–100
+  donationsCount?: number;
+  followersCount?: number;
+  postsCount?: number;
   active: boolean;
   acceptsRecurringDonations?: boolean;
+  bannerUrl?: string;
   endsAt?: string; // ISO date string
   location?: GeoLocation;
 };
@@ -34,6 +39,27 @@ export type CampaignDetail = Campaign & {
   itemsNeeded?: string[];
 };
 
+export type CreateCampaignInput = {
+  bannerUrl?: string;
+  description?: string;
+  endAt?: string;
+  goal: {
+    moneyTarget: number;
+  };
+  status?: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED';
+  tags?: string[];
+  title: string;
+};
+
+export type UploadedCampaignAsset = {
+  contentType: string;
+  fileName: string;
+  key: string;
+  provider: 'local' | 's3';
+  size: number;
+  url: string;
+};
+
 export type Institution = {
   id: string;
   name: string;
@@ -41,8 +67,27 @@ export type Institution = {
   city: string;
   state: string;
   activeCampaigns: number;
+  followersCount?: number;
+  postsCount?: number;
+  receivedDonationsCount?: number;
+  receivedAmount?: number;
   verified: boolean;
   acceptsRecurringDonations?: boolean;
+  stripeConnect?: {
+    accountId?: string;
+    chargesEnabled?: boolean;
+    country?: string;
+    defaultCurrency?: string;
+    detailsSubmitted?: boolean;
+    exists?: boolean;
+    livemode?: boolean;
+    payoutsEnabled?: boolean;
+    ready: boolean;
+    requirementsCurrentlyDue?: string[];
+    requirementsDisabledReason?: string;
+    status: 'missing' | 'not_verified' | 'pending' | 'ready';
+    verifiedAt?: string;
+  };
   description: string;
   location?: GeoLocation;
 };

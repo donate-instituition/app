@@ -44,8 +44,40 @@ export const styles = StyleSheet.create({
   list: {
     gap: theme.spacing.lg,
   },
+  toast: {
+    alignItems: 'flex-start',
+    borderRadius: 18,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+  },
+  toastClose: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  toastText: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  toastTitle: {
+    fontWeight: '600',
+  },
   section: {
     gap: theme.spacing.md,
+  },
+  institutionCampaignHeader: {
+    gap: theme.spacing.xs,
+  },
+  institutionCampaignIntro: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
   },
   discoverPosts: {
     gap: theme.spacing.md,
@@ -120,6 +152,20 @@ export const styles = StyleSheet.create({
   },
   modeButtonTextActive: {
     fontWeight: '600',
+  },
+  institutionTabs: {
+    borderRadius: 18,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    padding: theme.spacing.xs,
+  },
+  institutionTabButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    flex: 1,
+    minHeight: 54,
+    justifyContent: 'center',
   },
 
   // Category filter chips
@@ -207,6 +253,56 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 34,
   },
+  institutionCampaignCard: {
+    borderRadius: 20,
+    gap: theme.spacing.lg,
+  },
+  institutionCampaignTop: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  institutionCampaignIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 78,
+    justifyContent: 'center',
+    width: 78,
+  },
+  institutionCampaignTitle: {
+    flex: 1,
+    gap: theme.spacing.sm,
+    minWidth: 0,
+  },
+  institutionCampaignStats: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+    justifyContent: 'center',
+  },
+  statBlock: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  verticalDivider: {
+    height: 44,
+    width: StyleSheet.hairlineWidth,
+  },
+  institutionCampaignActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  campaignActionButton: {
+    flex: 1,
+  },
+  draftCard: {
+    alignItems: 'center',
+    borderStyle: 'dashed',
+    borderRadius: 20,
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
 
   // Results counter
   results: {
@@ -276,6 +372,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: theme.spacing.xs,
+  },
+  iconButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
   },
   goalRow: {
     flexDirection: 'row',
