@@ -227,7 +227,7 @@ export function DashboardScreen() {
           <View style={styles.header}>
             <View style={styles.homeHeaderRow}>
               <View style={styles.headerText}>
-                <ThemedText variant="body" color={colors.textMuted}>Bem-vindo de volta, {firstName}!</ThemedText>
+                <ThemedText variant="body" color={colors.textMuted}>Bem-vindo(a) de volta, {firstName}!</ThemedText>
                 <ThemedText variant="title">Início</ThemedText>
               </View>
               <View style={styles.homeHeaderActions}>
@@ -394,7 +394,7 @@ export function DashboardScreen() {
             <View style={styles.greetingRow}>
               <View style={styles.greetingText}>
                 <ThemedText variant="caption" color={colors.textMuted}>
-                  Bem-vindo de volta 👋
+                  Bem-vindo(a) de volta 👋
                 </ThemedText>
                 <ThemedText variant="title" numberOfLines={1}>
                   {firstName}
@@ -574,7 +574,7 @@ export function DashboardScreen() {
               <View style={styles.institutionPanelHeader}>
                 <View style={styles.greetingText}>
                   <ThemedText variant="body" color={colors.primary}>
-                    Bem-vindo de volta
+                    Bem-vindo(a) de volta
                   </ThemedText>
                   <ThemedText variant="title" numberOfLines={2}>
                     {user?.name ?? 'Instituição'}

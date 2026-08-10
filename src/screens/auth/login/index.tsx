@@ -304,7 +304,7 @@ export function LoginScreen() {
             <Ionicons name="heart-outline" size={32} color={colors.surface} />
           </View>
           <ThemedText variant="title" style={styles.title}>
-            Bem-vindo de volta
+            Bem-vindo(a) de volta
           </ThemedText>
           <ThemedText variant="body" color={colors.textMuted}>
             Entre para continuar doando.

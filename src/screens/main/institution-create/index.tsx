@@ -535,7 +535,7 @@ export function InstitutionCreateScreen() {
         ) : null}
 
         <View style={styles.header}>
-          <ThemedText variant="caption" color={colors.primary}>Bem-vindo, equipe!</ThemedText>
+          <ThemedText variant="caption" color={colors.primary}>Bem-vindo(a), equipe!</ThemedText>
           <ThemedText variant="title">Criar</ThemedText>
           <ThemedText variant="caption" color={colors.textMuted}>
             Publique novidades, campanhas e prestações de contas.

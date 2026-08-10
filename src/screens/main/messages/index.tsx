@@ -169,7 +169,7 @@ export function MessagesScreen() {
         <View style={styles.adminAuditContainer}>
           <View style={styles.adminHeader}>
             <View style={styles.adminHeaderText}>
-              <ThemedText variant="caption" color={colors.textMuted}>Bem-vindo de volta 👋</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>Bem-vindo(a) de volta 👋</ThemedText>
               <ThemedText variant="title">Auditoria</ThemedText>
               <ThemedText variant="caption" color={colors.textMuted}>
                 Histórico recente de ações administrativas.

@@ -671,7 +671,7 @@ export function CampaignsScreen() {
             <View style={styles.adminInstitutionsIntro}>
               <View style={styles.headerText}>
                 <ThemedText variant="caption" color={colors.textMuted}>
-                  Bem-vindo de volta 👋
+                  Bem-vindo(a) de volta 👋
                 </ThemedText>
                 <ThemedText variant="title">Instituições</ThemedText>
                 <ThemedText variant="caption" color={colors.textMuted}>
@@ -976,7 +976,7 @@ export function CampaignsScreen() {
 
           <View style={styles.institutionCampaignHeader}>
             <View style={styles.institutionCampaignIntro}>
-              <ThemedText variant="caption" color={colors.primary}>Bem-vindo, equipe!</ThemedText>
+              <ThemedText variant="caption" color={colors.primary}>Bem-vindo(a), equipe!</ThemedText>
               <Button
                 size="sm"
                 variant="primary"
