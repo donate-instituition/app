@@ -9,6 +9,7 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   idempotencyKey?: string;
   idempotencyScope?: string;
   query?: Record<string, boolean | null | number | string | undefined>;
+  suppressErrorLog?: boolean;
   token?: string | null;
 };
 
@@ -21,6 +22,7 @@ const IDEMPOTENT_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const IDEMPOTENCY_RETRY_WINDOW_MS = Math.max(API_TIMEOUT_MS * 4, 60_000);
 const idempotencyKeys = new Map<string, IdempotencyCacheEntry>();
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
+let refreshTokenPromise: Promise<string | null> | null = null;
 const apiLogger = logger.child('API');
 
 apiLogger.info('API client configured', {
@@ -153,6 +155,19 @@ async function parseResponse(response: Response) {
 }
 
 async function refreshAccessToken() {
+  if (refreshTokenPromise) {
+    apiLogger.debug('POST /auth/refresh joined in-flight request');
+    return refreshTokenPromise;
+  }
+
+  refreshTokenPromise = refreshAccessTokenRequest().finally(() => {
+    refreshTokenPromise = null;
+  });
+
+  return refreshTokenPromise;
+}
+
+async function refreshAccessTokenRequest() {
   const { refreshToken, setTokens } = useAppStore.getState();
 
   if (!refreshToken) {
@@ -201,6 +216,7 @@ export async function apiClient<TResponse>(
     idempotencyKey,
     idempotencyScope,
     query,
+    suppressErrorLog,
     token,
     ...options
   }: RequestOptions = {},
@@ -266,6 +282,8 @@ export async function apiClient<TResponse>(
             headers,
             idempotencyKey: idempotency?.headers['Idempotency-Key'],
             idempotencyScope,
+            query,
+            suppressErrorLog,
             token: nextAccessToken,
             ...options,
           },
@@ -299,6 +317,7 @@ export async function apiClient<TResponse>(
           idempotencyKey: idempotency?.headers['Idempotency-Key'],
           idempotencyScope,
           query,
+          suppressErrorLog,
           token,
           ...options,
         },
@@ -317,11 +336,17 @@ export async function apiClient<TResponse>(
     return payload as TResponse;
   } catch (error) {
     if (error instanceof ApiError) {
-      apiLogger.error(`${method} ${path} failed`, {
+      const logPayload = {
         idempotencyKey: idempotency?.headers['Idempotency-Key'],
         message: error.message,
         status: error.status,
-      });
+      };
+
+      if (suppressErrorLog) {
+        apiLogger.warn(`${method} ${path} failed`, logPayload);
+      } else {
+        apiLogger.error(`${method} ${path} failed`, logPayload);
+      }
       throw error;
     }
 
