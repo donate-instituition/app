@@ -636,7 +636,7 @@ export function RegisterScreen() {
                     clearFieldError('terms');
                   }}
                 />
-                <ThemedText variant="body" color={colors.text}>
+                <ThemedText variant="body" color={colors.text} style={{ flex: 1 }}>
                   Aceito os{' '}
                   <ThemedText
                     variant="body"
@@ -797,7 +797,7 @@ export function RegisterScreen() {
                     clearFieldError('terms');
                   }}
                 />
-                <ThemedText variant="body" color={colors.text}>
+                <ThemedText variant="body" color={colors.text} style={{ flex: 1 }}>
                   Aceito os{' '}
                   <ThemedText
                     variant="body"
