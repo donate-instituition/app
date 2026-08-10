@@ -19,14 +19,14 @@ async function registerPushToken(
   },
   token: string | null,
 ): Promise<{ registered: boolean }> {
-  return api.post('/users/me/push-tokens', input, { token });
+  return api.post('/users/me/push-tokens', input, { suppressErrorLog: true, token });
 }
 
 async function unregisterPushToken(
   pushToken: string,
   token: string | null,
 ): Promise<{ unregistered: boolean }> {
-  return api.post('/users/me/push-tokens/remove', { token: pushToken }, { token });
+  return api.post('/users/me/push-tokens/remove', { token: pushToken }, { suppressErrorLog: true, token });
 }
 
 export const notificationsService = {

@@ -5,10 +5,13 @@ import { Platform } from 'react-native';
 import { logger } from '@/services/logger';
 import { notificationsService } from '@/services/notifications';
 import type { SessionUser } from '@/navigation/session';
+import { ApiError } from '@/services/api';
 
 const firebaseLogger = logger.child('Firebase');
 let backgroundHandlerConfigured = false;
 let initialized = false;
+let lastRegisteredTokenKey = '';
+let registerTokenPromise: Promise<void> | null = null;
 let unsubscribeMessage: (() => void) | undefined;
 let unsubscribeTokenRefresh: (() => void) | undefined;
 
@@ -78,6 +81,23 @@ async function registerToken(authToken: string | null) {
     return;
   }
 
+  if (registerTokenPromise) {
+    firebaseLogger.debug('FCM token registration joined in-flight request');
+    return registerTokenPromise;
+  }
+
+  registerTokenPromise = registerTokenRequest(authToken).finally(() => {
+    registerTokenPromise = null;
+  });
+
+  return registerTokenPromise;
+}
+
+async function registerTokenRequest(authToken: string) {
+  if (!authToken) {
+    return;
+  }
+
   const messaging = await getMessaging();
 
   if (!messaging) {
@@ -92,16 +112,34 @@ async function registerToken(authToken: string | null) {
 
   await messaging.module.registerDeviceForRemoteMessages(messaging.instance);
   const token = await messaging.module.getToken(messaging.instance);
+  const tokenKey = `${authToken}:${token}`;
 
-  await notificationsService.registerPushToken(
-    {
-      appVersion: Constants.expoConfig?.version,
-      platform: Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'unknown',
-      token,
-    },
-    authToken,
-  );
-  firebaseLogger.info('FCM token registered');
+  if (lastRegisteredTokenKey === tokenKey) {
+    firebaseLogger.debug('FCM token already registered for current session');
+    return;
+  }
+
+  try {
+    await notificationsService.registerPushToken(
+      {
+        appVersion: Constants.expoConfig?.version,
+        platform: Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'unknown',
+        token,
+      },
+      authToken,
+    );
+    lastRegisteredTokenKey = tokenKey;
+    firebaseLogger.info('FCM token registered');
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 429)) {
+      firebaseLogger.warn('FCM token registration postponed', {
+        status: error.status,
+      });
+      return;
+    }
+
+    throw error;
+  }
 }
 
 async function configureCrashlytics(user: SessionUser | null) {
@@ -211,15 +249,27 @@ async function initialize(authToken: string | null, user: SessionUser | null) {
         return;
       }
 
-      await notificationsService.registerPushToken(
-        {
-          appVersion: Constants.expoConfig?.version,
-          platform: Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'unknown',
-          token,
-        },
-        authToken,
-      );
-      firebaseLogger.info('FCM token refreshed');
+      try {
+        await notificationsService.registerPushToken(
+          {
+            appVersion: Constants.expoConfig?.version,
+            platform: Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'unknown',
+            token,
+          },
+          authToken,
+        );
+        lastRegisteredTokenKey = `${authToken}:${token}`;
+        firebaseLogger.info('FCM token refreshed');
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 401 || error.status === 429)) {
+          firebaseLogger.warn('FCM token refresh registration postponed', {
+            status: error.status,
+          });
+          return;
+        }
+
+        throw error;
+      }
     });
   } catch (error) {
     firebaseLogger.error('Firebase initialization failed', {
@@ -234,6 +284,8 @@ function cleanup() {
   unsubscribeTokenRefresh?.();
   unsubscribeMessage = undefined;
   unsubscribeTokenRefresh = undefined;
+  lastRegisteredTokenKey = '';
+  registerTokenPromise = null;
   initialized = false;
 }
 
