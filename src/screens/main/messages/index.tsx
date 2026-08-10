@@ -25,7 +25,7 @@ function formatRelativeTime(iso: string): string {
   yesterday.setDate(today.getDate() - 1);
 
   if (date.toDateString() === today.toDateString()) {
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
   }
   if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
   return date.toLocaleDateString('pt-BR', { weekday: 'short' });

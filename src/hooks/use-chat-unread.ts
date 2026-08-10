@@ -16,19 +16,30 @@ export function useChatUnread(): number {
     setCount(chatService.getTotalUnread());
   }, []);
 
-  const refreshFromApi = useCallback(() => {
-    void chatService
-      .listConversations(authToken)
-      .then(() => setCount(chatService.getTotalUnread()))
-      .catch(() => setCount(chatService.getTotalUnread()));
+  // Connect the socket and fetch conversations on mount to start receiving events immediately
+  useEffect(() => {
+    if (authToken) {
+      chatService.connect(authToken);
+      void chatService
+        .listConversations(authToken)
+        .then(() => setCount(chatService.getTotalUnread()))
+        .catch(() => {});
+    }
   }, [authToken]);
 
+  // Subscribe to unread changes so badge updates in real-time
   useEffect(() => subscribeUnreadChanges(refresh), [refresh]);
 
+  // Also refresh from API when the tab regains focus
   useFocusEffect(
     useCallback(() => {
-      refreshFromApi();
-    }, [refreshFromApi])
+      if (authToken) {
+        void chatService
+          .listConversations(authToken)
+          .then(() => setCount(chatService.getTotalUnread()))
+          .catch(() => {});
+      }
+    }, [authToken])
   );
 
   return count;

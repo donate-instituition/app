@@ -30,6 +30,7 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
   });
 }
 
@@ -145,14 +146,42 @@ export function ChatDetailScreen() {
     [authToken, conversationId, user?.id],
   );
 
+  // Polling fallback: refetch messages periodically to catch any missed socket events
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const freshMessages = await chatService.getMessages(conversationId, authToken);
+        setMessages((prev) => {
+          const lastPrevId = prev[prev.length - 1]?.id;
+          const lastFreshId = freshMessages[freshMessages.length - 1]?.id;
+          if (prev.length === freshMessages.length && lastPrevId === lastFreshId) return prev;
+          return freshMessages;
+        });
+      } catch {
+        // Silently ignore polling errors
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [authToken, conversationId]);
+
   // Auto-scroll to bottom when messages change
-  const scrollToEnd = useCallback(() => {
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-  }, []);
+  const shouldAutoScroll = useRef(true);
+  const prevMessagesLength = useRef(messages.length);
 
   useEffect(() => {
-    if (messages.length > 0) scrollToEnd();
-  }, [messages.length, scrollToEnd]);
+    if (messages.length > prevMessagesLength.current) {
+      shouldAutoScroll.current = true;
+    }
+    prevMessagesLength.current = messages.length;
+  }, [messages.length]);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (shouldAutoScroll.current) {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      shouldAutoScroll.current = false;
+    }
+  }, []);
 
   async function handleSend() {
     const text = inputText.trim();
@@ -297,7 +326,7 @@ export function ChatDetailScreen() {
         contentContainerStyle={styles.messageList}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        onLayout={scrollToEnd}
+        onContentSizeChange={handleContentSizeChange}
         ListFooterComponent={
           loading ? (
             <Loading label="Carregando conversa..." />

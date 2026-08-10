@@ -255,16 +255,16 @@ export function DonationsScreen() {
           <View style={styles.metricsGrid}>
             <Card style={styles.metricCard}>
               <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
-                <Ionicons name="people" size={24} color={colors.primary} />
+                <Ionicons name="people" size={20} color={colors.primary} />
               </View>
-              <ThemedText variant="title">{adminUsers.loading ? '—' : usersTotal}</ThemedText>
+              <ThemedText variant="subtitle" numberOfLines={1} adjustsFontSizeToFit>{adminUsers.loading ? '—' : usersTotal}</ThemedText>
               <ThemedText variant="caption" color={colors.textMuted}>Usuários</ThemedText>
             </Card>
             <Card style={styles.metricCard}>
-              <View style={[styles.metricCircle, { backgroundColor: colors.secondarySoft }]}>
-                <Ionicons name="business" size={24} color={colors.secondary} />
+              <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="business" size={20} color={colors.primary} />
               </View>
-              <ThemedText variant="title">{adminUsers.loading ? '—' : institutionStaffCount}</ThemedText>
+              <ThemedText variant="subtitle" numberOfLines={1} adjustsFontSizeToFit>{adminUsers.loading ? '—' : institutionStaffCount}</ThemedText>
               <ThemedText variant="caption" color={colors.textMuted}>Equipe instituições</ThemedText>
             </Card>
           </View>
@@ -453,24 +453,24 @@ export function DonationsScreen() {
           <View style={styles.metricsGrid}>
             <Card style={styles.institutionDonationMetric}>
               <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
-                <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
               </View>
-              <ThemedText variant="body" color={colors.textMuted}>Hoje</ThemedText>
-              <ThemedText variant="title">R$ {(todayTotal / 100).toFixed(0)}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>Hoje</ThemedText>
+              <ThemedText variant="subtitle" numberOfLines={1} adjustsFontSizeToFit>R$ {(todayTotal / 100).toFixed(0)}</ThemedText>
             </Card>
             <Card style={styles.institutionDonationMetric}>
               <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
-                <Ionicons name="bar-chart-outline" size={24} color={colors.primary} />
+                <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
               </View>
-              <ThemedText variant="body" color={colors.textMuted}>Mês</ThemedText>
-              <ThemedText variant="title">R$ {(monthTotal / 100).toFixed(0)}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>Mês</ThemedText>
+              <ThemedText variant="subtitle" numberOfLines={1} adjustsFontSizeToFit>R$ {(monthTotal / 100).toFixed(0)}</ThemedText>
             </Card>
             <Card style={styles.institutionDonationMetric}>
               <View style={[styles.metricCircle, { backgroundColor: colors.primarySoft }]}>
-                <Ionicons name="people-outline" size={24} color={colors.primary} />
+                <Ionicons name="people-outline" size={20} color={colors.primary} />
               </View>
-              <ThemedText variant="title">{donorsCount}</ThemedText>
-              <ThemedText variant="body" color={colors.textMuted}>doadores</ThemedText>
+              <ThemedText variant="subtitle" numberOfLines={1} adjustsFontSizeToFit>{donorsCount}</ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted}>doadores</ThemedText>
             </Card>
           </View>
 

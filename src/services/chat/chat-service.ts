@@ -123,6 +123,18 @@ function connect(token?: string | null) {
   });
   socket.on('message:new', (message: Message) => {
     notifyMessageChange(message);
+    // Update cached conversation with the new message info
+    const existingConv = cachedConversations.find((c) => c.id === message.conversationId);
+    if (existingConv) {
+      const isActiveChat = messageListeners.has(message.conversationId);
+      const updatedConv = {
+        ...existingConv,
+        lastMessage: message.content,
+        lastMessageAt: message.createdAt,
+        unreadCount: isActiveChat ? existingConv.unreadCount : existingConv.unreadCount + 1,
+      };
+      upsertCachedConversation(updatedConv);
+    }
   });
   socket.on('unread:update', (payload: UnreadUpdatePayload) => {
     cachedConversations = cachedConversations.map((conversation) =>
@@ -233,12 +245,16 @@ async function markAsRead(
   );
 
   if (hadUnread) {
+    const updated = cachedConversations.find((c) => c.id === conversationId);
     cachedConversations = cachedConversations.map((conversation) =>
       conversation.id === conversationId
         ? { ...conversation, unreadCount: 0 }
         : conversation,
     );
     notifyUnreadChange();
+    if (updated) {
+      notifyConversationChange({ ...updated, unreadCount: 0 });
+    }
   }
 }
 

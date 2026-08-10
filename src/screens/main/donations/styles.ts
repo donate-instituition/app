@@ -105,15 +105,16 @@ export const styles = StyleSheet.create({
   },
   institutionDonationMetric: {
     flex: 1,
-    gap: theme.spacing.sm,
-    minHeight: 142,
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.md,
   },
   metricCircle: {
     alignItems: 'center',
     borderRadius: theme.radius.pill,
-    height: 54,
+    height: 40,
     justifyContent: 'center',
-    width: 54,
+    width: 40,
   },
   searchRow: {
     alignItems: 'center',
