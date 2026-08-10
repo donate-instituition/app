@@ -23,9 +23,12 @@ export type Campaign = {
   goalCents: number;
   raisedCents: number;
   progress: number; // 0–100
+  commentsCount?: number;
   donationsCount?: number;
   followersCount?: number;
+  likesCount?: number;
   postsCount?: number;
+  sharesCount?: number;
   active: boolean;
   acceptsRecurringDonations?: boolean;
   bannerUrl?: string;
@@ -118,4 +121,18 @@ export type CampaignFilters = {
 export type InstitutionFilters = {
   search?: string;
   nearMe?: GeoLocation;
+};
+
+export type CampaignComment = {
+  id: string;
+  campaignId: string;
+  userId: string;
+  author?: {
+    email?: string;
+    fullName?: string;
+    id: string;
+  };
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 };

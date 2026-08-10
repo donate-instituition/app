@@ -2,6 +2,7 @@ export { campaignsService } from './campaigns-service';
 export type {
   Campaign,
   CampaignCategory,
+  CampaignComment,
   CampaignDetail,
   CampaignFilters,
   Institution,

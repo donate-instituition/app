@@ -3,6 +3,7 @@ import { api, paginationQuery, type PaginatedResponse, unwrapPaginated } from '@
 import type {
   Campaign,
   CampaignCategory,
+  CampaignComment,
   CampaignDetail,
   CampaignFilters,
   GeoLocation,
@@ -201,6 +202,52 @@ async function verifyInstitutionStripeConnectAccount(
   );
 }
 
+async function listCampaignComments(
+  id: string,
+  token: string | null,
+): Promise<CampaignComment[]> {
+  return api.get<CampaignComment[]>(`/campaigns/${id}/comments`, { token });
+}
+
+async function createCampaignComment(
+  id: string,
+  content: string,
+  token: string | null,
+): Promise<CampaignComment> {
+  return api.post<CampaignComment, { content: string }>(
+    `/campaigns/${id}/comments`,
+    { content },
+    { token },
+  );
+}
+
+async function likeCampaign(
+  id: string,
+  token: string | null,
+): Promise<{ campaignId: string; liked: boolean }> {
+  return api.post<{ campaignId: string; liked: boolean }>(
+    `/campaigns/${id}/like`,
+    undefined,
+    { token },
+  );
+}
+
+async function unlikeCampaign(
+  id: string,
+  token: string | null,
+): Promise<{ campaignId: string; liked: boolean }> {
+  return api.delete<{ campaignId: string; liked: boolean }>(
+    `/campaigns/${id}/like`,
+    { token },
+  );
+}
+
+async function shareCampaign(id: string): Promise<{ campaignId: string; sharesCount: number }> {
+  return api.post<{ campaignId: string; sharesCount: number }>(
+    `/campaigns/${id}/share`,
+  );
+}
+
 function mapTagToAcceptedItemCategory(tag: string) {
   const normalizedTag = tag
     .normalize('NFD')
@@ -229,4 +276,9 @@ export const campaignsService = {
   rejectInstitution,
   updateInstitutionRecurringDonations,
   verifyInstitutionStripeConnectAccount,
+  createCampaignComment,
+  likeCampaign,
+  listCampaignComments,
+  shareCampaign,
+  unlikeCampaign,
 };
