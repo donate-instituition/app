@@ -910,7 +910,6 @@ export function CampaignsScreen() {
             onPress={() => router.push(routes.appNotifications)}
             style={styles.headerIconButton}>
             <Ionicons name="notifications-outline" size={30} color={colors.primaryStrong} />
-            <View style={[styles.headerDot, { backgroundColor: colors.primary }]} />
           </Pressable>
         </View>
 

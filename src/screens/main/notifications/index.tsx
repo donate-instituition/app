@@ -6,6 +6,7 @@ import { Pressable, View } from 'react-native';
 import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
+import { routes } from '@/navigation/routes';
 import { notificationsService, type AppNotification } from '@/services/notifications';
 import { useAppStore } from '@/store';
 import { theme } from '@/theme';
@@ -46,6 +47,12 @@ export function NotificationsScreen() {
     if (!notification.readAt) {
       await notificationsService.markAsRead(notification.id, authToken);
       void notifications.refetch();
+    }
+
+    const conversationId = notification.data?.conversationId;
+
+    if (notification.type === 'NEW_MESSAGE' && typeof conversationId === 'string') {
+      router.push(routes.appChat(conversationId));
     }
   }
 

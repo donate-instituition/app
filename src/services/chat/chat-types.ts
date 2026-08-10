@@ -10,6 +10,8 @@ export type Message = {
 };
 
 export type Conversation = {
+  counterpartName?: string;
+  displayName?: string;
   id: string;
   institutionId: string;
   institutionName: string;

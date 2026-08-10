@@ -89,6 +89,7 @@ export function ChatDetailScreen() {
   const [error, setError] = useState('');
 
   const listRef = useRef<FlatList<Message>>(null);
+  const conversationTitle = conversation?.displayName ?? conversation?.counterpartName ?? conversation?.institutionName;
 
   useEffect(() => {
     let mounted = true;
@@ -209,7 +210,7 @@ export function ChatDetailScreen() {
           {!isMe && (
             <View style={styles.avatarSlot}>
               {showAvatar ? (
-                <Avatar name={conversation?.institutionName} size="sm" />
+                <Avatar name={conversationTitle} size="sm" />
               ) : (
                 <View style={{ width: 32 }} />
               )}
@@ -268,11 +269,11 @@ export function ChatDetailScreen() {
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <Avatar name={conversation?.institutionName} size="sm" />
+          <Avatar name={conversationTitle} size="sm" />
           <View style={styles.headerText}>
             <View style={styles.nameRow}>
               <ThemedText variant="body" numberOfLines={1} style={styles.headerName}>
-                {conversation?.institutionName ?? '…'}
+                {conversationTitle ?? '…'}
               </ThemedText>
               <Ionicons name="checkmark-circle" size={14} color={colors.success} />
             </View>

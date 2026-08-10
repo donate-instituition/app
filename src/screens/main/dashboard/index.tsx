@@ -168,7 +168,6 @@ export function DashboardScreen() {
               <View style={styles.homeHeaderActions}>
                 <Pressable accessibilityRole="button" onPress={() => router.push(routes.appNotifications)} style={styles.homeIconButton}>
                   <Ionicons name="notifications-outline" size={30} color={colors.primaryStrong} />
-                  <View style={[styles.homeDot, { backgroundColor: colors.primary }]} />
                 </Pressable>
                 <Pressable accessibilityRole="button" onPress={() => router.push(routes.donorMessages)} style={styles.homeIconButton}>
                   <Ionicons name="chatbubble-outline" size={30} color={colors.primaryStrong} />
@@ -436,7 +435,6 @@ export function DashboardScreen() {
                 <View style={styles.homeHeaderActions}>
                   <Pressable onPress={() => router.push(routes.appNotifications)} style={styles.homeIconButton}>
                     <Ionicons name="notifications-outline" size={28} color={colors.primaryStrong} />
-                    <View style={[styles.homeDot, { backgroundColor: colors.primary }]} />
                   </Pressable>
                   <Avatar name={user?.name} size="md" />
                 </View>

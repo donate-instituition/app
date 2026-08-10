@@ -48,6 +48,16 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatStripeRequirement(requirement: string) {
+  const labels: Record<string, string> = {
+    'business_profile.product_description': 'descrição da atividade',
+    business_type: 'tipo de negócio',
+    external_account: 'conta bancária de repasse',
+  };
+
+  return labels[requirement] ?? requirement;
+}
+
 type ProfileData = {
   donations: Donation[];
   follows: Follow[];
@@ -150,9 +160,17 @@ export function ProfileScreen() {
     setStripeStatusMessage('');
 
     try {
-      await campaignsService.verifyInstitutionStripeConnectAccount(institutionId, accountId, authToken);
+      const updatedInstitution = await campaignsService.verifyInstitutionStripeConnectAccount(institutionId, accountId, authToken);
       await institution.refetch();
-      setStripeStatusMessage('Conta Stripe validada e salva na instituição.');
+      const requirements = updatedInstitution.stripeConnect?.requirementsCurrentlyDue ?? [];
+
+      if (updatedInstitution.stripeConnect?.ready) {
+        setStripeStatusMessage('Conta Stripe pronta para receber doações.');
+      } else if (requirements.length) {
+        setStripeStatusMessage('Conta encontrada e salva. Conclua as pendências na Stripe para liberar campanhas.');
+      } else {
+        setStripeStatusMessage('Conta encontrada e salva. Aguarde a Stripe concluir a ativação da conta.');
+      }
     } catch (error) {
       setStripeStatusMessage(error instanceof Error ? error.message : 'Não foi possível validar a conta Stripe.');
     } finally {
@@ -269,7 +287,7 @@ export function ProfileScreen() {
             />
             {stripeConnect?.requirementsCurrentlyDue?.length ? (
               <ThemedText variant="caption" color={colors.warning}>
-                Pendências na Stripe: {stripeConnect.requirementsCurrentlyDue.slice(0, 3).join(', ')}
+                Pendências na Stripe: {stripeConnect.requirementsCurrentlyDue.slice(0, 3).map(formatStripeRequirement).join(', ')}
               </ThemedText>
             ) : null}
             {stripeStatusMessage ? (

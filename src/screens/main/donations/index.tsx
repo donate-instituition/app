@@ -345,7 +345,6 @@ export function DonationsScreen() {
           <View style={styles.headerActions}>
             <Pressable accessibilityRole="button" onPress={() => router.push(routes.appNotifications)} style={styles.headerIconButton}>
               <Ionicons name="notifications-outline" size={30} color={colors.primaryStrong} />
-              <View style={[styles.headerDot, { backgroundColor: colors.primary }]} />
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => router.push(routes.donorMessages)} style={styles.headerIconButton}>
               <Ionicons name="chatbubble-outline" size={30} color={colors.primaryStrong} />

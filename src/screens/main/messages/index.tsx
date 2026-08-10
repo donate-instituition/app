@@ -89,7 +89,7 @@ export function MessagesScreen() {
     if (!query) return items;
 
     return items.filter((item) =>
-      [item.institutionName, item.lastMessage]
+      [item.displayName ?? item.counterpartName ?? item.institutionName, item.institutionName, item.lastMessage]
         .filter(Boolean)
         .some((field) => field.toLowerCase().includes(query)),
     );
@@ -250,11 +250,11 @@ export function MessagesScreen() {
                 key={item.id}
                 onPress={() => router.push(routes.appChat(item.id))}>
                 <View style={styles.conversationItem}>
-                  <Avatar name={item.institutionName} size="md" />
+                  <Avatar name={item.displayName ?? item.counterpartName ?? item.institutionName} size="md" />
                   <View style={styles.conversationContent}>
                     <View style={styles.conversationHeader}>
                       <ThemedText variant="body" style={styles.bold}>
-                        {item.institutionName}
+                        {item.displayName ?? item.counterpartName ?? item.institutionName}
                       </ThemedText>
                       <ThemedText variant="caption" color={colors.textMuted}>
                         {formatRelativeTime(item.lastMessageAt)}
