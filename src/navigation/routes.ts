@@ -6,6 +6,8 @@ export const routes = {
   authLogin: '/login' as Href,
   authRegister: '/register' as Href,
   authForgotPassword: '/forgot-password' as Href,
+  authGoogleOnboarding: '/google-onboarding' as Href,
+  authGoogleOnboardingDetails: '/google-onboarding-details' as Href,
   authActivateAccount: '/activate-account' as Href,
   authTerms: '/terms' as Href,
   authTermsAccept: '/terms?mode=accept' as Href,

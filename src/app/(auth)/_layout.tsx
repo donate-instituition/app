@@ -18,6 +18,8 @@ export default function AuthLayout() {
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
       <Stack.Screen name="activate-account" options={{ headerShown: false }} />
+      <Stack.Screen name="google-onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="google-onboarding-details" options={{ headerShown: false }} />
     </Stack>
   );
 }
