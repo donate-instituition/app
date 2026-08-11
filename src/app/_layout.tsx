@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@react-navigation/native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -20,6 +21,10 @@ import { firebaseService } from '@/services/firebase';
 import { useAppStore } from '@/store';
 
 const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
+});
 
 // Warnings gerados por dependências internas do Expo/React Navigation que ainda
 // referenciam SafeAreaView do react-native. Nosso código já usa o correto
