@@ -8,7 +8,7 @@ import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContai
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { getHomeRouteForRole, routes } from '@/navigation/routes';
-import { getPreferredInitialRole, getSessionRoles, roleLabels, type UserRole } from '@/navigation/session';
+import { getAvatarSource, getPreferredInitialRole, getSessionRoles, roleLabels, type UserRole } from '@/navigation/session';
 import { ApiError } from '@/services/api';
 import { authService } from '@/services/auth';
 import { campaignsService } from '@/services/campaigns';
@@ -373,7 +373,7 @@ export function ProfileScreen() {
           </View>
 
           <View style={styles.identity}>
-            <Avatar name={user?.name} size="lg" />
+            <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
             <View style={styles.identityInfo}>
               <ThemedText variant="title" style={styles.name} numberOfLines={2}>
                 {user?.name ?? 'Perfil'}
@@ -449,7 +449,7 @@ export function ProfileScreen() {
                 {ownPosts.map((post) => (
                   <Card key={post.id} style={styles.postCard}>
                     <View style={styles.postAuthor}>
-                      <Avatar name={user?.name} size="sm" />
+                      <Avatar name={user?.name} source={getAvatarSource(user)} size="sm" />
                       <View style={styles.menuLabel}>
                         <ThemedText variant="body" style={styles.logoutText} numberOfLines={1}>
                           {user?.name}
@@ -548,7 +548,7 @@ export function SettingsMenuScreen() {
         {/* Identidade */}
         <Card style={styles.identityCard}>
           <View style={styles.identity}>
-            <Avatar name={user?.name} size="lg" />
+            <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
             <View style={styles.identityInfo}>
               <ThemedText variant="subtitle" style={styles.name} numberOfLines={2}>
                 {user?.name}

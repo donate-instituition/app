@@ -7,6 +7,7 @@ import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, Th
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
+import { getAvatarSource } from '@/navigation/session';
 import { chatService } from '@/services/chat';
 import { supportService } from '@/services/support';
 import { useAppStore } from '@/store';
@@ -133,7 +134,7 @@ export function MyDataScreen() {
 
         <Card style={styles.formCard}>
           <View style={styles.profileSummary}>
-            <Avatar name={user?.name} size="lg" />
+            <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
             <View style={[styles.avatarEdit, { backgroundColor: colors.primary }]}>
               <Ionicons name="pencil-outline" size={16} color={colors.surface} />
             </View>

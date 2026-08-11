@@ -19,6 +19,7 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
+import { getAvatarSource } from '@/navigation/session';
 import { campaignsService, type Campaign, type PendingInstitution } from '@/services/campaigns';
 import { chatService, type Conversation } from '@/services/chat';
 import { adminService, type AdminUser, type AuditLog } from '@/services/admin';
@@ -246,7 +247,7 @@ export function DashboardScreen() {
 
           <Card style={styles.composerCard}>
             <View style={styles.postAuthor}>
-              <Avatar name={user?.name} size="sm" />
+              <Avatar name={user?.name} source={getAvatarSource(user)} size="sm" />
               <View style={styles.postAuthorText}>
                 <ThemedText variant="body" style={styles.bold}>{firstName}</ThemedText>
                 <ThemedText variant="body" color={colors.textMuted}>
@@ -400,7 +401,7 @@ export function DashboardScreen() {
                   {firstName}
                 </ThemedText>
               </View>
-              <Avatar name={user?.name} size="md" />
+              <Avatar name={user?.name} source={getAvatarSource(user)} size="md" />
             </View>
           </View>
         ) : null}
@@ -584,7 +585,7 @@ export function DashboardScreen() {
                   <Pressable onPress={() => router.push(routes.appNotifications)} style={styles.homeIconButton}>
                     <Ionicons name="notifications-outline" size={28} color={colors.primaryStrong} />
                   </Pressable>
-                  <Avatar name={user?.name} size="md" />
+                  <Avatar name={user?.name} source={getAvatarSource(user)} size="md" />
                 </View>
               </View>
 
