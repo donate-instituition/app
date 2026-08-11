@@ -58,6 +58,42 @@ export type RegisterPendingVerificationResponse = {
   email: string;
 };
 
+// ─── Google Sign-In ───────────────────────────────────────────────────────────
+
+type GoogleLoginRequest = {
+  idToken: string;
+};
+
+export type GoogleLoginResponse = {
+  token: string;
+  accessToken: string;
+  refreshToken: string;
+  user: SessionUser;
+};
+
+export type GoogleNeedsOnboardingResponse = {
+  status: 'needs-onboarding';
+  onboardingToken: string;
+  name: string;
+  email: string;
+};
+
+type CompleteGoogleOnboardingRequest = {
+  onboardingToken: string;
+  accountType: 'DONOR' | 'INSTITUTION';
+  cpf: string;
+  birthDate: string;
+  phone: string;
+  password?: string;
+  institutionLegalName?: string;
+  institutionDisplayName?: string;
+  institutionCnpj?: string;
+  institutionEmail?: string;
+  institutionPhone?: string;
+  institutionDescription?: string;
+  institutionWebsite?: string;
+};
+
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 
 type ForgotPasswordRequest = {
@@ -130,6 +166,18 @@ export const authService = {
 
   refresh: (refreshToken: string) =>
     api.post<RefreshTokenResponse, { refreshToken: string }>('/auth/refresh', { refreshToken }),
+
+  loginWithGoogle: (body: GoogleLoginRequest) =>
+    api.post<GoogleLoginResponse | GoogleNeedsOnboardingResponse, GoogleLoginRequest>(
+      '/auth/google',
+      body,
+    ),
+
+  completeGoogleOnboarding: (body: CompleteGoogleOnboardingRequest) =>
+    api.post<
+      GoogleLoginResponse | RegisterPendingInstitutionResponse,
+      CompleteGoogleOnboardingRequest
+    >('/auth/google/onboarding', body),
 
   activateAccount: (body: ActivateAccountRequest) =>
     api.post<ActivateAccountResponse, ActivateAccountRequest>('/auth/activate-account', body),
