@@ -7,7 +7,12 @@ import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, Th
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
-import { getAvatarSource } from '@/navigation/session';
+import {
+  defaultNotificationSettings,
+  getAvatarSource,
+  type NotificationSettings,
+} from '@/navigation/session';
+import { authService } from '@/services/auth';
 import { chatService } from '@/services/chat';
 import { supportService } from '@/services/support';
 import { useAppStore } from '@/store';
@@ -167,10 +172,46 @@ export function MyDataScreen() {
 export function NotificationSettingsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
-  const [donations, setDonations] = useState(true);
-  const [campaigns, setCampaigns] = useState(true);
-  const [messages, setMessages] = useState(true);
-  const [emailSummary, setEmailSummary] = useState(false);
+  const user = useAppStore((state) => state.user);
+  const authToken = useAppStore((state) => state.authToken);
+  const setNotificationSettings = useAppStore((state) => state.setNotificationSettings);
+  const [savingKey, setSavingKey] = useState<keyof NotificationSettings | null>(null);
+  const [error, setError] = useState('');
+
+  const settings = user?.notificationSettings ?? defaultNotificationSettings;
+
+  async function handleToggle(key: keyof NotificationSettings, nextValue: boolean) {
+    setError('');
+    setSavingKey(key);
+    setNotificationSettings({ [key]: nextValue });
+
+    try {
+      const updatedUser = await authService.updateNotificationSettings(
+        { [key]: nextValue },
+        authToken,
+      );
+      setNotificationSettings(updatedUser.notificationSettings ?? { [key]: nextValue });
+    } catch {
+      setNotificationSettings({ [key]: !nextValue });
+      setError('Não foi possível salvar sua preferência. Tente novamente.');
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  function renderSwitch(key: keyof NotificationSettings) {
+    const value = settings[key];
+
+    return (
+      <Switch
+        value={value}
+        onValueChange={(next) => handleToggle(key, next)}
+        disabled={savingKey === key}
+        trackColor={{ false: colors.border, true: colors.primarySoft }}
+        thumbColor={value ? colors.primary : colors.surface}
+      />
+    );
+  }
 
   return (
     <ScreenContainer scrollable>
@@ -186,30 +227,35 @@ export function NotificationSettingsScreen() {
               icon="heart-outline"
               label="Doações"
               description="Confirmacoes, recibos e atualizacoes de status."
-              right={<Switch value={donations} onValueChange={setDonations} trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={donations ? colors.primary : colors.surface} />}
+              right={renderSwitch('donations')}
             />
             <Divider />
             <SettingsRow
               icon="megaphone-outline"
               label="Campanhas"
               description="Metas atingidas, novas campanhas e prestacoes."
-              right={<Switch value={campaigns} onValueChange={setCampaigns} trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={campaigns ? colors.primary : colors.surface} />}
+              right={renderSwitch('campaigns')}
             />
             <Divider />
             <SettingsRow
               icon="chatbubble-outline"
               label="Conversas"
               description="Mensagens recebidas de instituicoes."
-              right={<Switch value={messages} onValueChange={setMessages} trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={messages ? colors.primary : colors.surface} />}
+              right={renderSwitch('conversations')}
             />
             <Divider />
             <SettingsRow
               icon="mail-outline"
               label="Resumo por e-mail"
               description="Um resumo semanal das suas interacoes."
-              right={<Switch value={emailSummary} onValueChange={setEmailSummary} trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={emailSummary ? colors.primary : colors.surface} />}
+              right={renderSwitch('emailDigestEnabled')}
             />
           </Card>
+          {error ? (
+            <ThemedText variant="caption" color={colors.danger} style={styles.apiError}>
+              {error}
+            </ThemedText>
+          ) : null}
         </View>
       </View>
     </ScreenContainer>

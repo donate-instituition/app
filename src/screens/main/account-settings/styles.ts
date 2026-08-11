@@ -157,4 +157,7 @@ export const styles = StyleSheet.create({
   pressed: {
     opacity: 0.84,
   },
+  apiError: {
+    marginLeft: theme.spacing.md,
+  },
 });
