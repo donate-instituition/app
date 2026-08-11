@@ -72,4 +72,28 @@ export const styles = StyleSheet.create({
   bold: {
     fontWeight: '700',
   },
+  receiptModalBackdrop: {
+    backgroundColor: 'rgba(16, 42, 36, 0.32)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  receiptModalSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: theme.spacing.lg,
+    maxHeight: '85%',
+    padding: theme.spacing.xl,
+    paddingBottom: theme.spacing['2xl'],
+  },
+  receiptModalHandle: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.pill,
+    height: 4,
+    width: 44,
+  },
+  receiptModalHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
 });

@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { Alert, Linking, Pressable, Share, View } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, Share, View } from 'react-native';
 
 import { Button, Card, EmptyState, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -55,6 +57,8 @@ export function DonationDetailScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const authToken = useAppStore((state) => state.authToken);
+  const [receiptModalVisible, setReceiptModalVisible] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const fetcher = useCallback(
     () => donationsService.getDonationById(id, authToken),
@@ -72,8 +76,13 @@ export function DonationDetailScreen() {
     });
   }
 
-  async function handleOpenReceipt() {
-    if (!receiptUrl) {
+  function handleViewReceipt() {
+    if (!donation) return;
+    setReceiptModalVisible(true);
+  }
+
+  async function handleDownloadPdf() {
+    if (!receiptUrl || !donation) {
       Alert.alert(
         'Recibo em processamento',
         'O recibo será liberado assim que o worker terminar de gerar o PDF.',
@@ -81,13 +90,29 @@ export function DonationDetailScreen() {
       return;
     }
 
-    const canOpen = await Linking.canOpenURL(receiptUrl);
-    if (!canOpen) {
-      Alert.alert('Não foi possível abrir', 'Tente novamente em instantes.');
-      return;
-    }
+    setDownloadingPdf(true);
 
-    await Linking.openURL(receiptUrl);
+    try {
+      const fileUri = `${FileSystem.cacheDirectory}recibo-${donation.receiptNumber ?? donation.id}.pdf`;
+      const downloadResult = await FileSystem.downloadAsync(receiptUrl, fileUri);
+
+      if (downloadResult.status !== 200) {
+        throw new Error(`Unexpected status ${downloadResult.status}`);
+      }
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Recibo baixado', 'O PDF foi salvo no dispositivo.');
+      }
+    } catch {
+      Alert.alert('Não foi possível baixar o recibo', 'Tente novamente em instantes.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   }
 
   return (
@@ -166,14 +191,19 @@ export function DonationDetailScreen() {
               </Pressable>
               <Pressable
                 style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={handleOpenReceipt}>
+                onPress={handleViewReceipt}>
                 <Ionicons name="document-text-outline" size={22} color={colors.primary} />
                 <ThemedText variant="caption" style={styles.bold}>Ver recibo</ThemedText>
               </Pressable>
               <Pressable
+                disabled={downloadingPdf}
                 style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={handleOpenReceipt}>
-                <Ionicons name="download-outline" size={22} color={colors.primary} />
+                onPress={handleDownloadPdf}>
+                {downloadingPdf ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="download-outline" size={22} color={colors.primary} />
+                )}
                 <ThemedText variant="caption" style={styles.bold}>PDF</ThemedText>
               </Pressable>
             </View>
@@ -189,6 +219,58 @@ export function DonationDetailScreen() {
                 </View>
               </Card>
             ) : null}
+
+            <Modal
+              transparent
+              animationType="slide"
+              visible={receiptModalVisible}
+              onRequestClose={() => setReceiptModalVisible(false)}>
+              <Pressable style={styles.receiptModalBackdrop} onPress={() => setReceiptModalVisible(false)}>
+                <Pressable
+                  style={[styles.receiptModalSheet, { backgroundColor: colors.surface }]}
+                  onPress={(event) => event.stopPropagation()}>
+                  <View style={[styles.receiptModalHandle, { backgroundColor: colors.border }]} />
+                  <View style={styles.receiptModalHeader}>
+                    <ThemedText variant="subtitle">Recibo de doação</ThemedText>
+                    <Pressable accessibilityRole="button" onPress={() => setReceiptModalVisible(false)}>
+                      <Ionicons name="close" size={24} color={colors.text} />
+                    </Pressable>
+                  </View>
+
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    {donation.receiptNumber ?? 'Processando'}
+                  </ThemedText>
+
+                  <ThemedText variant="title" color={colors.primary}>
+                    {donation.amountFormatted}
+                  </ThemedText>
+
+                  {[
+                    ['Campanha', donation.campaignTitle],
+                    ['Instituição', donation.institutionName],
+                    ['Tipo', donation.donationKind === 'monthly' ? 'Mensal' : 'Única'],
+                    ['Taxa EloDoar', donation.serviceFeeFormatted ?? 'R$ 0,00'],
+                    ['Valor destinado', donation.netAmountFormatted ?? donation.amountFormatted],
+                    ['Data', formatDateTime(donation.createdAt)],
+                    ['Status', donationStatusLabels[donation.status]],
+                  ].map(([label, value]) => (
+                    <View key={label} style={styles.row}>
+                      <ThemedText variant="body" color={colors.textMuted}>{label}</ThemedText>
+                      <ThemedText variant="body" color={colors.text} style={styles.rowValue}>
+                        {value}
+                      </ThemedText>
+                    </View>
+                  ))}
+
+                  <Button
+                    onPress={handleDownloadPdf}
+                    disabled={downloadingPdf}
+                    leftSlot={<Ionicons name="download-outline" size={20} color={colors.surface} />}>
+                    {downloadingPdf ? 'Baixando...' : 'Baixar PDF'}
+                  </Button>
+                </Pressable>
+              </Pressable>
+            </Modal>
           </>
         ) : null}
       </View>
