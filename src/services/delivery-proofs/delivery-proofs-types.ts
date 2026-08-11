@@ -11,15 +11,6 @@ export type DeliveryProof = {
   createdAt: string;
 };
 
-export type UploadedDeliveryProofAsset = {
-  contentType: string;
-  fileName: string;
-  key: string;
-  provider: 'local' | 's3';
-  size: number;
-  url: string;
-};
-
 export type CreateDeliveryProofRequest = {
   campaignId: string;
   contentType?: string;

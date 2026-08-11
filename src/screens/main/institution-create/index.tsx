@@ -10,10 +10,12 @@ import { Pressable, View } from 'react-native';
 import { Button, Card, DatePicker, Input, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/navigation/routes';
+import { API_BASE_URL } from '@/services/api';
 import { campaignsService, type Campaign } from '@/services/campaigns';
 import { deliveryProofsService } from '@/services/delivery-proofs';
 import { institutionStaffService, type InstitutionStaffRole } from '@/services/institution-staff';
 import { postsService, type PostVisibility } from '@/services/posts';
+import { uploadsService } from '@/services/uploads';
 import { useAppStore } from '@/store/app-store';
 import { theme } from '@/theme';
 
@@ -290,20 +292,8 @@ export function InstitutionCreateScreen() {
     setSaving(true);
 
     try {
-      const uploadedCover = cover
-        ? await campaignsService.uploadCampaignCover(
-            {
-              base64: cover.base64,
-              contentType: cover.contentType,
-              filename: cover.fileName,
-            },
-            authToken,
-          )
-        : null;
-
       const campaign = await campaignsService.createMyInstitutionCampaign(
         {
-          bannerUrl: uploadedCover?.url,
           description: description.trim(),
           endAt: toDateInputValue(endAt),
           goal: {
@@ -315,6 +305,32 @@ export function InstitutionCreateScreen() {
         },
         authToken,
       );
+
+      if (cover) {
+        const createdUpload = await uploadsService.createUpload(
+          {
+            base64: cover.base64,
+            category: 'CAMPAIGN_BANNER',
+            contentType: cover.contentType,
+            filename: cover.fileName,
+          },
+          authToken,
+        );
+
+        const confirmedUpload = await uploadsService.confirmUpload(
+          createdUpload.uploadId,
+          { campaignId: campaign.id, category: 'CAMPAIGN_BANNER', fileName: createdUpload.fileName },
+          authToken,
+        );
+
+        if (confirmedUpload.url) {
+          await campaignsService.updateMyInstitutionCampaignBanner(
+            campaign.id,
+            confirmedUpload.url,
+            authToken,
+          );
+        }
+      }
 
       showSuccess(
         canPublishCampaign ? 'Campanha publicada' : 'Campanha enviada',
@@ -434,22 +450,29 @@ export function InstitutionCreateScreen() {
     setSavingProof(true);
 
     try {
-      const uploadedFile = await deliveryProofsService.uploadDeliveryProofAsset(
+      const createdUpload = await uploadsService.createUpload(
         {
           base64: proofFile.base64,
+          category: 'DELIVERY_PROOF',
           contentType: proofFile.contentType,
           filename: proofFile.name,
         },
         authToken,
       );
 
+      const confirmedUpload = await uploadsService.confirmUpload(
+        createdUpload.uploadId,
+        { campaignId: accountabilityCampaignId, category: 'DELIVERY_PROOF', fileName: createdUpload.fileName },
+        authToken,
+      );
+
       await deliveryProofsService.createDeliveryProof(
         {
           campaignId: accountabilityCampaignId,
-          contentType: uploadedFile.contentType,
+          contentType: proofFile.contentType,
           description: accountabilityDescription.trim(),
           fileName: proofFile.name,
-          photoUrl: uploadedFile.url,
+          photoUrl: `${API_BASE_URL}/uploads/private?key=${encodeURIComponent(confirmedUpload.key)}`,
         },
         authToken,
       );

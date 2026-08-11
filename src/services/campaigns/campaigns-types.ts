@@ -54,15 +54,6 @@ export type CreateCampaignInput = {
   title: string;
 };
 
-export type UploadedCampaignAsset = {
-  contentType: string;
-  fileName: string;
-  key: string;
-  provider: 'local' | 's3';
-  size: number;
-  url: string;
-};
-
 export type Institution = {
   id: string;
   name: string;

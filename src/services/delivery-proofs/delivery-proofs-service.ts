@@ -1,21 +1,6 @@
 import { api } from '@/services/api';
 
-import type {
-  CreateDeliveryProofRequest,
-  DeliveryProof,
-  UploadedDeliveryProofAsset,
-} from './delivery-proofs-types';
-
-async function uploadDeliveryProofAsset(
-  input: {
-    base64: string;
-    contentType: string;
-    filename: string;
-  },
-  token: string | null,
-): Promise<UploadedDeliveryProofAsset> {
-  return api.post<UploadedDeliveryProofAsset>('/delivery-proofs/uploads', input, { token });
-}
+import type { CreateDeliveryProofRequest, DeliveryProof } from './delivery-proofs-types';
 
 async function createDeliveryProof(
   input: CreateDeliveryProofRequest,
@@ -26,5 +11,4 @@ async function createDeliveryProof(
 
 export const deliveryProofsService = {
   createDeliveryProof,
-  uploadDeliveryProofAsset,
 };

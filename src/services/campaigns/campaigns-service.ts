@@ -12,7 +12,6 @@ import type {
   InstitutionFilters,
   PendingInstitution,
   CreateCampaignInput,
-  UploadedCampaignAsset,
 } from './campaigns-types';
 
 function matchSearch(fields: string[], query: string) {
@@ -143,15 +142,12 @@ async function createMyInstitutionCampaign(
   );
 }
 
-async function uploadCampaignCover(
-  input: {
-    base64: string;
-    contentType: string;
-    filename: string;
-  },
+async function updateMyInstitutionCampaignBanner(
+  id: string,
+  bannerUrl: string,
   token: string | null,
-): Promise<UploadedCampaignAsset> {
-  return api.post<UploadedCampaignAsset>('/campaigns/uploads', input, { token });
+): Promise<CampaignDetail> {
+  return api.patch<CampaignDetail, { bannerUrl: string }>(`/campaigns/${id}`, { bannerUrl }, { token });
 }
 
 async function listPendingInstitutions(token: string | null): Promise<PendingInstitution[]> {
@@ -269,7 +265,7 @@ export const campaignsService = {
   getCampaignById,
   getInstitutionById,
   createMyInstitutionCampaign,
-  uploadCampaignCover,
+  updateMyInstitutionCampaignBanner,
   listPendingInstitutions,
   listAdminInstitutions,
   approveInstitution,
