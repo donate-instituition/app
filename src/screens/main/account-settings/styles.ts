@@ -74,6 +74,9 @@ export const styles = StyleSheet.create({
     paddingBottom: theme.spacing.lg,
     paddingTop: theme.spacing.md,
   },
+  avatarPressable: {
+    alignItems: 'center',
+  },
   avatarEdit: {
     alignItems: 'center',
     borderRadius: theme.radius.pill,

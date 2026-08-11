@@ -157,6 +157,10 @@ type UpdateNotificationSettingsRequest = {
   notifications: Partial<NotificationSettings>;
 };
 
+type UpdateProfilePhotoRequest = {
+  profilePhotoUrl: string;
+};
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const authService = {
@@ -210,6 +214,13 @@ export const authService = {
     api.patch<SessionUser, UpdateNotificationSettingsRequest>(
       '/auth/me/settings',
       { notifications },
+      { token: accessToken ?? null },
+    ),
+
+  updateProfilePhoto: (userId: string, profilePhotoUrl: string, accessToken?: string | null) =>
+    api.patch<{ profilePhotoUrl?: string }, UpdateProfilePhotoRequest>(
+      `/users/${userId}`,
+      { profilePhotoUrl },
       { token: accessToken ?? null },
     ),
 

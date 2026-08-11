@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -16,6 +17,7 @@ import { donationsService, type Donation } from '@/services/donations';
 import { followsService, type Follow } from '@/services/follows';
 import { institutionStaffService } from '@/services/institution-staff';
 import { postsService, type FeedPost } from '@/services/posts';
+import { uploadsService } from '@/services/uploads';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -68,12 +70,69 @@ export function ProfileScreen() {
   const router = useRouter();
   const user = useAppStore((state) => state.user);
   const authToken = useAppStore((state) => state.authToken);
+  const setProfilePhotoUrl = useAppStore((state) => state.setProfilePhotoUrl);
   const activeRole = useActiveRole();
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const [stripeAccountInput, setStripeAccountInput] = useState('');
   const [stripeStatusMessage, setStripeStatusMessage] = useState('');
   const [verifyingStripeAccount, setVerifyingStripeAccount] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  async function handlePickAvatar() {
+    if (!user) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (!asset.base64) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const createdUpload = await uploadsService.createUpload(
+        {
+          base64: asset.base64,
+          category: 'USER_AVATAR',
+          contentType: asset.mimeType ?? 'image/jpeg',
+          filename: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+        },
+        authToken,
+      );
+
+      const confirmedUpload = await uploadsService.confirmUpload(
+        createdUpload.uploadId,
+        { category: 'USER_AVATAR', fileName: createdUpload.fileName },
+        authToken,
+      );
+
+      if (confirmedUpload.url) {
+        await authService.updateProfilePhoto(user.id, confirmedUpload.url, authToken);
+        setProfilePhotoUrl(confirmedUpload.url);
+      }
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   const fetcher = useCallback(async (): Promise<ProfileData> => {
     if (activeRole === 'institution-staff') {
@@ -373,7 +432,20 @@ export function ProfileScreen() {
           </View>
 
           <View style={styles.identity}>
-            <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
+            <Pressable
+              accessibilityRole="button"
+              disabled={uploadingAvatar}
+              onPress={handlePickAvatar}
+              style={styles.avatarPressable}>
+              <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
+              <View style={[styles.avatarEdit, { backgroundColor: colors.primary }]}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color={colors.surface} />
+                ) : (
+                  <Ionicons name="pencil-outline" size={16} color={colors.surface} />
+                )}
+              </View>
+            </Pressable>
             <View style={styles.identityInfo}>
               <ThemedText variant="title" style={styles.name} numberOfLines={2}>
                 {user?.name ?? 'Perfil'}
@@ -486,6 +558,7 @@ export function SettingsMenuScreen() {
   const user = useAppStore((state) => state.user);
   const setActiveRole = useAppStore((state) => state.setActiveRole);
   const setPreferredRole = useAppStore((state) => state.setPreferredRole);
+  const setProfilePhotoUrl = useAppStore((state) => state.setProfilePhotoUrl);
   const router = useRouter();
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
@@ -494,6 +567,62 @@ export function SettingsMenuScreen() {
   const preferredRole = getPreferredInitialRole(user);
   const [savingPreferredRole, setSavingPreferredRole] = useState<UserRole | null>(null);
   const [settingsError, setSettingsError] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  async function handlePickAvatar() {
+    if (!user) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (!asset.base64) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const createdUpload = await uploadsService.createUpload(
+        {
+          base64: asset.base64,
+          category: 'USER_AVATAR',
+          contentType: asset.mimeType ?? 'image/jpeg',
+          filename: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+        },
+        authToken,
+      );
+
+      const confirmedUpload = await uploadsService.confirmUpload(
+        createdUpload.uploadId,
+        { category: 'USER_AVATAR', fileName: createdUpload.fileName },
+        authToken,
+      );
+
+      if (confirmedUpload.url) {
+        await authService.updateProfilePhoto(user.id, confirmedUpload.url, authToken);
+        setProfilePhotoUrl(confirmedUpload.url);
+      }
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
 
   async function handleLogout() {
     try {
@@ -548,7 +677,20 @@ export function SettingsMenuScreen() {
         {/* Identidade */}
         <Card style={styles.identityCard}>
           <View style={styles.identity}>
-            <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
+            <Pressable
+              accessibilityRole="button"
+              disabled={uploadingAvatar}
+              onPress={handlePickAvatar}
+              style={styles.avatarPressable}>
+              <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
+              <View style={[styles.avatarEdit, { backgroundColor: colors.primary }]}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color={colors.surface} />
+                ) : (
+                  <Ionicons name="pencil-outline" size={16} color={colors.surface} />
+                )}
+              </View>
+            </Pressable>
             <View style={styles.identityInfo}>
               <ThemedText variant="subtitle" style={styles.name} numberOfLines={2}>
                 {user?.name}

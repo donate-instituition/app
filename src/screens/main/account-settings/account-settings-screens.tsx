@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Pressable, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, Switch, View } from 'react-native';
 
 import { Avatar, Button, Card, Divider, EmptyState, Loading, ScreenContainer, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -15,6 +16,7 @@ import {
 import { authService } from '@/services/auth';
 import { chatService } from '@/services/chat';
 import { supportService } from '@/services/support';
+import { uploadsService } from '@/services/uploads';
 import { useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -125,11 +127,73 @@ function FieldPreview({ label, value }: { label: string; value?: string }) {
 
 export function MyDataScreen() {
   const user = useAppStore((state) => state.user);
+  const authToken = useAppStore((state) => state.authToken);
+  const setProfilePhotoUrl = useAppStore((state) => state.setProfilePhotoUrl);
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   function handleSave() {
     Alert.alert('Alterações salvas', 'Quando o endpoint de perfil estiver pronto, esses dados serão persistidos no backend.');
+  }
+
+  async function handlePickAvatar() {
+    if (!user) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Permissão necessária', 'Autorize o acesso às fotos para atualizar sua imagem de perfil.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (!asset.base64) {
+      Alert.alert('Não foi possível ler a imagem', 'Tente selecionar outra foto.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const createdUpload = await uploadsService.createUpload(
+        {
+          base64: asset.base64,
+          category: 'USER_AVATAR',
+          contentType: asset.mimeType ?? 'image/jpeg',
+          filename: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+        },
+        authToken,
+      );
+
+      const confirmedUpload = await uploadsService.confirmUpload(
+        createdUpload.uploadId,
+        { category: 'USER_AVATAR', fileName: createdUpload.fileName },
+        authToken,
+      );
+
+      if (confirmedUpload.url) {
+        await authService.updateProfilePhoto(user.id, confirmedUpload.url, authToken);
+        setProfilePhotoUrl(confirmedUpload.url);
+      }
+    } catch {
+      Alert.alert('Não foi possível atualizar a foto', 'Tente novamente em instantes.');
+    } finally {
+      setUploadingAvatar(false);
+    }
   }
 
   return (
@@ -139,10 +203,20 @@ export function MyDataScreen() {
 
         <Card style={styles.formCard}>
           <View style={styles.profileSummary}>
-            <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
-            <View style={[styles.avatarEdit, { backgroundColor: colors.primary }]}>
-              <Ionicons name="pencil-outline" size={16} color={colors.surface} />
-            </View>
+            <Pressable
+              accessibilityRole="button"
+              disabled={uploadingAvatar}
+              onPress={handlePickAvatar}
+              style={styles.avatarPressable}>
+              <Avatar name={user?.name} source={getAvatarSource(user)} size="lg" />
+              <View style={[styles.avatarEdit, { backgroundColor: colors.primary }]}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color={colors.surface} />
+                ) : (
+                  <Ionicons name="pencil-outline" size={16} color={colors.surface} />
+                )}
+              </View>
+            </Pressable>
             <ThemedText variant="subtitle" numberOfLines={2} style={{ textAlign: 'center' }}>
               {user?.name}
             </ThemedText>

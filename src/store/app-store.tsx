@@ -24,6 +24,7 @@ type AppStore = {
   setActiveRole: (role: UserRole) => void;
   setPreferredRole: (role: UserRole) => void;
   setNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  setProfilePhotoUrl: (profilePhotoUrl: string) => void;
   setTermsAccepted: (version: string, acceptedAt?: string) => void;
   logout: () => void;
   selectCampaign: (campaignId: string | null) => void;
@@ -82,6 +83,12 @@ export const useAppStore = create<AppStore>()(
               } as NotificationSettings,
             },
           };
+        }),
+      setProfilePhotoUrl: (profilePhotoUrl) =>
+        set((state) => {
+          if (!state.user) return state;
+
+          return { user: { ...state.user, profilePhotoUrl } };
         }),
       setTermsAccepted: (version, acceptedAt) =>
         set((state) => {

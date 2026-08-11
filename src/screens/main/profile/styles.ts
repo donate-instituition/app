@@ -39,6 +39,17 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.lg,
   },
+  avatarPressable: {
+    alignItems: 'center',
+  },
+  avatarEdit: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 44,
+    justifyContent: 'center',
+    marginTop: -28,
+    width: 44,
+  },
   institutionProfileIdentity: {
     alignItems: 'center',
     flexDirection: 'row',
