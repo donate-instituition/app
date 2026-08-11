@@ -6,6 +6,7 @@ import {
   getPreferredInitialRole,
   normalizeSessionUser,
   userCanUseRole,
+  type NotificationSettings,
   type SessionUser,
   type UserRole,
 } from '@/navigation/session';
@@ -22,6 +23,7 @@ type AppStore = {
   setTokens: (accessToken: string, refreshToken?: string | null) => void;
   setActiveRole: (role: UserRole) => void;
   setPreferredRole: (role: UserRole) => void;
+  setNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   setTermsAccepted: (version: string, acceptedAt?: string) => void;
   logout: () => void;
   selectCampaign: (campaignId: string | null) => void;
@@ -66,6 +68,20 @@ export const useAppStore = create<AppStore>()(
           }
 
           return { user: { ...state.user, preferredRole: role } };
+        }),
+      setNotificationSettings: (settings) =>
+        set((state) => {
+          if (!state.user) return state;
+
+          return {
+            user: {
+              ...state.user,
+              notificationSettings: {
+                ...state.user.notificationSettings,
+                ...settings,
+              } as NotificationSettings,
+            },
+          };
         }),
       setTermsAccepted: (version, acceptedAt) =>
         set((state) => {

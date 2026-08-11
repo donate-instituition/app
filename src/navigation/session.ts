@@ -12,6 +12,13 @@ export type UserRoleGrant = {
   };
 };
 
+export type NotificationSettings = {
+  donations: boolean;
+  campaigns: boolean;
+  conversations: boolean;
+  emailDigestEnabled: boolean;
+};
+
 export type SessionUser = {
   id: string;
   name: string;
@@ -20,10 +27,18 @@ export type SessionUser = {
   roles: UserRoleGrant[];
   preferredRole?: UserRole;
   institutionRole?: InstitutionStaffRole;
+  notificationSettings?: NotificationSettings;
   passwordChangeRequired?: boolean;
   termsAccepted?: boolean;
   acceptedTermsVersion?: string;
   termsAcceptedAt?: string;
+};
+
+export const defaultNotificationSettings: NotificationSettings = {
+  donations: true,
+  campaigns: true,
+  conversations: true,
+  emailDigestEnabled: false,
 };
 
 export const roleLabels: Record<UserRole, string> = {
