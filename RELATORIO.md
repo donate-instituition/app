@@ -25,6 +25,7 @@ inicial do projeto e nunca atualizada.
 | `chat` | `/conversations/me`, `/conversations/:id/messages`, marcar como lida |
 | `auth` | login, refresh, **Google Sign-In**, ativação, esqueci minha senha, `PATCH .../settings` (papel preferido + preferências de notificação) |
 | `follows`, `notifications`, `institution-staff`, `posts`, `admin`, `support`, `delivery-proofs`, `terms` | cada um com seu conjunto de rotas reais |
+| `uploads` | `POST /uploads` + `POST /uploads/:id/confirm` — upload genérico em duas etapas usado por avatar, capa de campanha e comprovante de prestação de contas (`campaigns`/`delivery-proofs` deixaram de ter rota de upload própria) |
 | `firebase` | não é uma API HTTP — integra `expo-notifications` + `@react-native-firebase/messaging`/`crashlytics`, delega o registro de token para o serviço de notificações |
 
 ## Navegação — layouts distintos por papel
@@ -63,21 +64,36 @@ login/registro/onboarding do Google, que a documentação antiga não cobre.
   verdade no backend — 4 categorias independentes (Doações, Campanhas,
   Conversas, Resumo por e-mail), cada switch salva otimisticamente e
   reverte com mensagem de erro se a chamada falhar.
+- Trocar a foto de perfil funciona de verdade em dois lugares (tela
+  "Perfil" e "Meus dados" em Configurações): `expo-image-picker` → upload
+  em duas etapas (`uploadsService`) → `PATCH users/:id`. Antes desta
+  sessão o ícone de lápis sobre o avatar não tinha nenhum `onPress`.
 
 ### Doações e pagamento
 - Stripe PaymentSheet real (`@stripe/stripe-react-native`) — doação única
   ou recorrente (assinatura mensal, com cancelamento pelo app).
 - O status exibido nunca é otimista: reflete o que o webhook do Stripe
   processado no backend determinou.
-- Recibo fiscal em PDF, gerado de forma assíncrona, com link de download
-  assinado.
+- Recibo fiscal em PDF, gerado de forma assíncrona. Na tela de detalhe da
+  doação, "Ver recibo" abre um resumo em modal dentro do próprio app (sem
+  chamada de rede — os campos já estão carregados); "PDF" baixa o arquivo
+  de verdade (`expo-file-system` + `expo-sharing`, abre o menu de
+  compartilhar/salvar do sistema) em vez de abrir um link no navegador —
+  o link do S3 nunca aparece em lugar nenhum visível ao usuário.
 
 ### Campanhas, instituições, rede social
 - Busca e listagem com filtro por categoria, detalhe de campanha
   (progresso, itens necessários), detalhe de instituição (verificação,
-  campanhas ativas), criação de campanha pela instituição.
+  campanhas ativas), criação de campanha pela instituição — upload de capa
+  migrado para o fluxo genérico de `uploads` (antes tinha rota própria em
+  `campaigns`).
 - Feed de posts com curtir/comentar/compartilhar; seguir
-  usuário/instituição/campanha.
+  usuário/instituição/campanha. Composer do doador (aba Início) ganhou
+  "Foto/Vídeo" de verdade (`expo-image-picker` → upload → confirma com o
+  `postId` já criado) e "Apoio" (vincula o post a uma campanha existente
+  via `campaignId`, com seletor em bottom sheet) — antes eram só ícones
+  decorativos sem `onPress`. O terceiro botão, "Evento", foi removido por
+  não existir nenhum domínio de evento no backend.
 
 ### Chat
 - Conversas em tempo real doador↔instituição via WebSocket (Socket.IO no
@@ -111,6 +127,15 @@ login/registro/onboarding do Google, que a documentação antiga não cobre.
    `setNotificationSettings`; a tela em
    `screens/main/account-settings/account-settings-screens.tsx` foi
    reescrita para ler/gravar de verdade em vez de só manter estado local.
+4. **Persistência real no S3** — serviço `uploadsService` novo
+   (`src/services/uploads/`), consumido em 4 pontos: avatar (telas
+   "Perfil" e "Meus dados"), capa de campanha e comprovante de prestação de
+   contas (migrados do upload dedicado antigo) e mídia de post no composer
+   do doador.
+5. **Recibo sem expor o link do S3** — "Ver recibo" virou um modal
+   in-app (sem rede); "PDF" passou a baixar o arquivo de verdade via
+   `expo-file-system`/`expo-sharing` em vez de abrir a URL num navegador,
+   evitando que o domínio do bucket S3 aparecesse na tela do usuário.
 
 ## Ressalva sobre a documentação já existente no repositório
 
