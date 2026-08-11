@@ -513,9 +513,47 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
   },
+  composerPreviewRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  composerPreviewThumbWrap: {
+    borderRadius: 14,
+    height: 64,
+    overflow: 'hidden',
+    width: 64,
+  },
+  composerPreviewThumb: {
+    height: '100%',
+    width: '100%',
+  },
+  composerPreviewRemove: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 20,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 4,
+    top: 4,
+    width: 20,
+  },
+  composerChip: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+  },
   homeFeedCard: {
     gap: theme.spacing.md,
     borderRadius: 20,
+  },
+  feedPostImage: {
+    borderRadius: 16,
+    height: 200,
+    width: '100%',
   },
   feedCampaignLink: {
     alignItems: 'center',

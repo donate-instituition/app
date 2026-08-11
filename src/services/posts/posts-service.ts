@@ -7,6 +7,7 @@ import type {
   FeedPost,
   PostComment,
   PostReaction,
+  UpdatePostRequest,
 } from './posts-types';
 
 async function listFeed(token: string | null): Promise<FeedPost[]> {
@@ -23,6 +24,14 @@ async function createPost(body: CreatePostRequest, token: string | null): Promis
 
 async function getPost(id: string, token: string | null): Promise<FeedPost> {
   return api.get<FeedPost>(`/posts/${id}`, { token });
+}
+
+async function updatePost(
+  id: string,
+  body: UpdatePostRequest,
+  token: string | null,
+): Promise<FeedPost> {
+  return api.patch<FeedPost, UpdatePostRequest>(`/posts/${id}`, body, { token });
 }
 
 async function listComments(postId: string, token: string | null): Promise<PostComment[]> {
@@ -64,4 +73,5 @@ export const postsService = {
   listComments,
   sharePost,
   unlikePost,
+  updatePost,
 };

@@ -36,6 +36,10 @@ export type CreatePostRequest = {
   visibility?: PostVisibility;
 };
 
+export type UpdatePostRequest = {
+  media?: PostMedia[];
+};
+
 export type PostComment = {
   id: string;
   postId: string;

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, View } from 'react-native';
 
 import {
   Avatar,
@@ -29,10 +30,18 @@ import {
 } from '@/services/donations';
 import { followsService, type Follow } from '@/services/follows';
 import { postsService, type FeedPost } from '@/services/posts';
+import { uploadsService } from '@/services/uploads';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
+
+type SelectedPostMedia = {
+  base64: string;
+  contentType: string;
+  fileName: string;
+  uri: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +97,9 @@ export function DashboardScreen() {
   const colors = theme.colors[scheme];
   const [postContent, setPostContent] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [postMedia, setPostMedia] = useState<SelectedPostMedia | null>(null);
+  const [postCampaignId, setPostCampaignId] = useState<string | null>(null);
+  const [campaignPickerOpen, setCampaignPickerOpen] = useState(false);
   const [institutionPeriod, setInstitutionPeriod] = useState<PeriodFilter>('30d');
   const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
 
@@ -207,14 +219,79 @@ export function DashboardScreen() {
     0,
   );
 
+  async function handlePickPostMedia() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (!asset.base64) {
+      return;
+    }
+
+    setPostMedia({
+      base64: asset.base64,
+      contentType: asset.mimeType ?? 'image/jpeg',
+      fileName: asset.fileName ?? `post-media-${Date.now()}.jpg`,
+      uri: asset.uri,
+    });
+  }
+
   async function handleCreatePost() {
     const content = postContent.trim();
     if (!content || publishing) return;
 
     setPublishing(true);
     try {
-      await postsService.createPost({ content, visibility: 'PUBLIC' }, authToken);
+      const post = await postsService.createPost(
+        { content, campaignId: postCampaignId ?? undefined, visibility: 'PUBLIC' },
+        authToken,
+      );
+
+      if (postMedia) {
+        const createdUpload = await uploadsService.createUpload(
+          {
+            base64: postMedia.base64,
+            category: 'POST_MEDIA',
+            contentType: postMedia.contentType,
+            filename: postMedia.fileName,
+          },
+          authToken,
+        );
+
+        const confirmedUpload = await uploadsService.confirmUpload(
+          createdUpload.uploadId,
+          { category: 'POST_MEDIA', fileName: createdUpload.fileName, postId: post.id },
+          authToken,
+        );
+
+        if (confirmedUpload.url) {
+          await postsService.updatePost(
+            post.id,
+            { media: [{ type: 'IMAGE', url: confirmedUpload.url }] },
+            authToken,
+          );
+        }
+      }
+
       setPostContent('');
+      setPostMedia(null);
+      setPostCampaignId(null);
       await refetch();
     } finally {
       setPublishing(false);
@@ -263,19 +340,41 @@ export function DashboardScreen() {
               onChangeText={setPostContent}
               style={styles.composerInput}
             />
+            {postMedia || postCampaignId ? (
+              <View style={styles.composerPreviewRow}>
+                {postMedia ? (
+                  <View style={styles.composerPreviewThumbWrap}>
+                    <Image source={{ uri: postMedia.uri }} style={styles.composerPreviewThumb} />
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setPostMedia(null)}
+                      style={[styles.composerPreviewRemove, { backgroundColor: 'rgba(16, 42, 36, 0.6)' }]}>
+                      <Ionicons name="close" size={12} color={colors.surface} />
+                    </Pressable>
+                  </View>
+                ) : null}
+                {postCampaignId ? (
+                  <View style={[styles.composerChip, { backgroundColor: colors.primarySoft }]}>
+                    <Ionicons name="megaphone-outline" size={16} color={colors.primary} />
+                    <ThemedText variant="caption" color={colors.primary} numberOfLines={1}>
+                      {institutionCampaigns.find((campaign) => campaign.id === postCampaignId)?.title ?? 'Campanha'}
+                    </ThemedText>
+                    <Pressable accessibilityRole="button" onPress={() => setPostCampaignId(null)}>
+                      <Ionicons name="close-circle" size={16} color={colors.primary} />
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
             <View style={styles.composerActions}>
               <View style={styles.composerQuickActions}>
-                <Pressable style={styles.quickAction}>
-                  <Ionicons name="image-outline" size={22} color={colors.icon} />
-                  <ThemedText variant="body" color={colors.textMuted}>Foto / Vídeo</ThemedText>
+                <Pressable accessibilityRole="button" onPress={handlePickPostMedia} style={styles.quickAction}>
+                  <Ionicons name="image-outline" size={22} color={postMedia ? colors.primary : colors.icon} />
+                  <ThemedText variant="body" color={postMedia ? colors.primary : colors.textMuted}>Foto / Vídeo</ThemedText>
                 </Pressable>
-                <Pressable style={styles.quickAction}>
-                  <Ionicons name="heart-outline" size={22} color={colors.icon} />
-                  <ThemedText variant="body" color={colors.textMuted}>Apoio</ThemedText>
-                </Pressable>
-                <Pressable style={styles.quickAction}>
-                  <Ionicons name="calendar-outline" size={22} color={colors.icon} />
-                  <ThemedText variant="body" color={colors.textMuted}>Evento</ThemedText>
+                <Pressable accessibilityRole="button" onPress={() => setCampaignPickerOpen(true)} style={styles.quickAction}>
+                  <Ionicons name="heart-outline" size={22} color={postCampaignId ? colors.primary : colors.icon} />
+                  <ThemedText variant="body" color={postCampaignId ? colors.primary : colors.textMuted}>Apoio</ThemedText>
                 </Pressable>
               </View>
               <Button
@@ -286,6 +385,59 @@ export function DashboardScreen() {
               </Button>
             </View>
           </Card>
+
+          <Modal
+            transparent
+            animationType="slide"
+            visible={campaignPickerOpen}
+            onRequestClose={() => setCampaignPickerOpen(false)}>
+            <Pressable style={styles.bottomSheetBackdrop} onPress={() => setCampaignPickerOpen(false)}>
+              <Pressable
+                style={[styles.bottomSheet, { backgroundColor: colors.surface }]}
+                onPress={(event) => event.stopPropagation()}>
+                <View style={[styles.bottomSheetHandle, { backgroundColor: colors.border }]} />
+                <ThemedText variant="subtitle">Apoiar uma campanha</ThemedText>
+                <View style={styles.bottomSheetOptions}>
+                  {institutionCampaigns.length === 0 ? (
+                    <ThemedText variant="body" color={colors.textMuted}>
+                      Nenhuma campanha disponível no momento.
+                    </ThemedText>
+                  ) : (
+                    institutionCampaigns.map((campaign) => {
+                      const selected = postCampaignId === campaign.id;
+
+                      return (
+                        <Pressable
+                          key={campaign.id}
+                          accessibilityRole="button"
+                          onPress={() => {
+                            setPostCampaignId(selected ? null : campaign.id);
+                            setCampaignPickerOpen(false);
+                          }}
+                          style={[
+                            styles.bottomSheetOption,
+                            {
+                              backgroundColor: selected ? colors.primarySoft : colors.surface,
+                              borderColor: selected ? colors.primary : colors.border,
+                            },
+                          ]}>
+                          <View style={styles.bottomSheetOptionText}>
+                            <ThemedText variant="body" color={selected ? colors.primary : colors.text} style={styles.bold} numberOfLines={1}>
+                              {campaign.title}
+                            </ThemedText>
+                            <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                              {campaign.institution}
+                            </ThemedText>
+                          </View>
+                          {selected ? <Ionicons name="checkmark-circle" size={22} color={colors.primary} /> : null}
+                        </Pressable>
+                      );
+                    })
+                  )}
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           {loading && <Loading label="Carregando início..." />}
 
@@ -334,6 +486,9 @@ export function DashboardScreen() {
                         <Ionicons name="ellipsis-horizontal" size={20} color={colors.icon} />
                       </View>
                       <ThemedText variant="body">{post.content}</ThemedText>
+                      {post.media?.[0]?.url ? (
+                        <Image source={{ uri: post.media[0].url }} style={styles.feedPostImage} />
+                      ) : null}
                       {post.campaignId ? (
                         <Pressable
                           style={[styles.feedCampaignLink, { backgroundColor: colors.primarySoft }]}
