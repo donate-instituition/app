@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -12,8 +13,11 @@ import { useAppStore } from '@/store';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { theme } from '@/theme';
 import { getPasswordPolicyError } from '@/services/auth/password-policy';
+import { logger } from '@/services/logger';
 
 import { styles } from './styles';
+
+const loginLogger = logger.child('GoogleLogin');
 
 // ─── Dev Helpers ──────────────────────────────────────────────────────────────
 // Removido em produção via __DEV__ do React Native.
@@ -84,6 +88,7 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [resendingActivation, setResendingActivation] = useState(false);
   const [devLoadingRole, setDevLoadingRole] = useState<UserRole | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [passwordChangeSession, setPasswordChangeSession] = useState<PasswordChangeSession | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
@@ -172,6 +177,57 @@ export function LoginScreen() {
       }
     } finally {
       setDevLoadingRole(null);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setApiError('');
+    setActivationSentMessage('');
+    setPendingActivationEmail('');
+    setGoogleLoading(true);
+
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+
+      if (signInResult.type === 'cancelled') {
+        return;
+      }
+
+      const idToken = signInResult.data.idToken;
+
+      if (!idToken) {
+        setApiError('Não foi possível obter as credenciais do Google.');
+        return;
+      }
+
+      const result = await authService.loginWithGoogle({ idToken });
+
+      if ('status' in result) {
+        router.push(
+          `${routes.authGoogleOnboarding}?onboardingToken=${encodeURIComponent(result.onboardingToken)}&name=${encodeURIComponent(result.name)}&email=${encodeURIComponent(result.email)}` as Href,
+        );
+        return;
+      }
+
+      finishLogin(result.accessToken, result.user, result.refreshToken, '');
+    } catch (error) {
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code?: string }).code
+          : undefined;
+
+      if (errorCode === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+
+      loginLogger.error('Google sign-in failed', {
+        code: errorCode,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      setApiError('Não foi possível entrar com o Google. Tente novamente.');
+    } finally {
+      setGoogleLoading(false);
     }
   }
 
@@ -392,7 +448,11 @@ export function LoginScreen() {
             </ThemedText>
           </Pressable>
 
-          <Button fullWidth disabled={Boolean(devLoadingRole)} loading={loading} onPress={handleSubmit}>
+          <Button
+            fullWidth
+            disabled={Boolean(devLoadingRole) || googleLoading}
+            loading={loading}
+            onPress={handleSubmit}>
             Entrar
           </Button>
 
@@ -407,8 +467,10 @@ export function LoginScreen() {
           <Button
             fullWidth
             variant="ghost"
+            disabled={loading || Boolean(devLoadingRole)}
+            loading={googleLoading}
             leftSlot={<Ionicons name="logo-google" size={18} color={colors.text} />}
-            onPress={() => setApiError('Login com Google ainda não está configurado neste ambiente.')}>
+            onPress={handleGoogleLogin}>
             Continuar com Google
           </Button>
         </View>
@@ -445,7 +507,7 @@ export function LoginScreen() {
                     key={entry.role}
                     variant={index === 0 ? 'primary' : 'secondary'}
                     size="sm"
-                    disabled={!configured || loading || Boolean(devLoadingRole)}
+                    disabled={!configured || loading || Boolean(devLoadingRole) || googleLoading}
                     loading={devLoadingRole === entry.role}
                     onPress={() => handleDevLogin(entry)}>
                     {entry.label}
