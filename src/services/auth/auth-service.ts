@@ -1,4 +1,4 @@
-import type { SessionUser, UserRole } from '@/navigation/session';
+import type { NotificationSettings, SessionUser, UserRole } from '@/navigation/session';
 import { api } from '@/services/api';
 
 // ─── Login ────────────────────────────────────────────────────────────────────
@@ -153,6 +153,10 @@ type UpdateMySettingsRequest = {
   preferredRole: 'PLATFORM_ADMIN' | 'DONOR' | 'INSTITUTION_STAFF';
 };
 
+type UpdateNotificationSettingsRequest = {
+  notifications: Partial<NotificationSettings>;
+};
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const authService = {
@@ -196,6 +200,16 @@ export const authService = {
     api.patch<SessionUser, UpdateMySettingsRequest>(
       '/auth/me/settings',
       { preferredRole: toApiRole(preferredRole) },
+      { token: accessToken ?? null },
+    ),
+
+  updateNotificationSettings: (
+    notifications: Partial<NotificationSettings>,
+    accessToken?: string | null,
+  ) =>
+    api.patch<SessionUser, UpdateNotificationSettingsRequest>(
+      '/auth/me/settings',
+      { notifications },
       { token: accessToken ?? null },
     ),
 
