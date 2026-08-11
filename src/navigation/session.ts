@@ -16,6 +16,7 @@ export type SessionUser = {
   id: string;
   name: string;
   email: string;
+  profilePhotoUrl?: string;
   roles: UserRoleGrant[];
   preferredRole?: UserRole;
   institutionRole?: InstitutionStaffRole;
@@ -36,6 +37,10 @@ export const roleHomeLabels: Record<UserRole, string> = {
   donor: 'Doar',
   'institution-staff': 'Dashboard instituicao',
 };
+
+export function getAvatarSource(user?: SessionUser | null) {
+  return user?.profilePhotoUrl ? { uri: user.profilePhotoUrl } : undefined;
+}
 
 export function getSessionRoles(user?: SessionUser | null): UserRole[] {
   if (!user) return [];
