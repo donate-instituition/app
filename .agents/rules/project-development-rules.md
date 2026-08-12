@@ -14,14 +14,14 @@ You are an expert React Native and Expo agent. Follow these strict technical arc
 * **TypeScript Strictness**: Type all component props, hooks, and API responses explicitly. Avoid using `any`.
 
 ## 2. UI, Styling & Layout
-* **NativeWind**: Use NativeWind (Tailwind CSS for React Native) for all styling. Never use inline `StyleSheet.create` unless explicitly requested.
-* **Safe Area Management**: Always wrap screen components in a `SafeAreaView` from `react-native-safe-area-context` to account for camera notches and device insets.
-* **Lists**: Replace the native `<FlatList>` with Shopify’s `<FlashList>` for long or dynamic feeds to ensure 5x rendering performance.
+* **StyleSheet + theme tokens**: This project does not use NativeWind/Tailwind. Style with `StyleSheet.create` in a component/screen's own `styles.ts`, sourcing colors, spacing, typography, borders and shadows from `src/theme` — never hardcode raw values. See `docs/DESIGN_SYSTEM.md` and `src/theme/README.md`.
+* **Safe Area Management**: Wrap screens with the shared `ScreenContainer` component (or `SafeAreaView` from `react-native-safe-area-context` directly when `ScreenContainer` doesn't fit) to account for camera notches and device insets.
+* **Lists**: Use the standard React Native `<FlatList>`. `@shopify/flash-list` is not a project dependency — don't add it without checking with the user first.
 
 ## 3. Performance & Storage
-* **Image Optimization**: Never use the default React Native `<Image />`. Use `expo-image` instead for native caching, preloading, and blurhash support.
-* **Animations**: Execute all animations at 60fps on the UI thread using `react-native-reanimated`. Avoid using the standard JS-bridge Animated API.
-* **Local Storage**: Use `react-native-mmkv` for fast, synchronous key-value storage instead of the slower, asynchronous AsyncStorage.
+* **Image Optimization**: Use `expo-image` instead of the default React Native `<Image />` for native caching, preloading, and blurhash support — it's already a dependency.
+* **Animations**: `react-native-reanimated` is not currently a project dependency. Prefer the standard `Animated` API or `LayoutAnimation` for now; don't add Reanimated without checking with the user first.
+* **Local Storage**: Use `@react-native-async-storage/async-storage` (already the storage adapter behind the Zustand `persist` middleware — see `src/services/storage`). `react-native-mmkv` is not a project dependency.
 * **Runtime**: Keep the Hermes engine enabled in `app.json` for rapid app startup times.
 
 ## 4. State & Network Management
