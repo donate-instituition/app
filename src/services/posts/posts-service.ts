@@ -64,9 +64,14 @@ async function sharePost(postId: string): Promise<{ postId: string; sharesCount:
   return api.post<{ postId: string; sharesCount: number }>(`/posts/${postId}/share`);
 }
 
+async function getMyLikedPostIds(token: string | null): Promise<string[]> {
+  return api.get<string[]>('/post-reactions/me', { token });
+}
+
 export const postsService = {
   createComment,
   createPost,
+  getMyLikedPostIds,
   getPost,
   likePost,
   listFeed,

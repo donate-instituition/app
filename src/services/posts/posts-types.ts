@@ -48,6 +48,7 @@ export type PostComment = {
     email?: string;
     fullName?: string;
     id: string;
+    profilePhotoUrl?: string;
   };
   parentCommentId?: string;
   content: string;

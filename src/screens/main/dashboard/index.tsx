@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Image, Modal, Pressable, ScrollView, Share, TextInput, View } from 'react-native';
 
 import {
   Avatar,
   Button,
   Card,
+  Divider,
   EmptyState,
   Input,
   Loading,
@@ -29,7 +30,7 @@ import {
   type Donation,
 } from '@/services/donations';
 import { followsService, type Follow } from '@/services/follows';
-import { postsService, type FeedPost } from '@/services/posts';
+import { postsService, type FeedPost, type PostComment } from '@/services/posts';
 import { uploadsService } from '@/services/uploads';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
@@ -73,11 +74,18 @@ function isToday(iso: string | undefined): boolean {
   );
 }
 
+type PostCommentTarget = { id: string; title: string };
+
+function getCommentAuthorName(comment: PostComment) {
+  return comment.author?.fullName?.trim() || comment.author?.email?.trim() || 'Usuário';
+}
+
 type DashboardData = {
   donations: Donation[];
   campaigns: Campaign[];
   conversations: Conversation[];
   follows: Follow[];
+  likedPostIds: string[];
   pendingInstitutions: PendingInstitution[];
   posts: FeedPost[];
   users: AdminUser[];
@@ -102,6 +110,13 @@ export function DashboardScreen() {
   const [campaignPickerOpen, setCampaignPickerOpen] = useState(false);
   const [institutionPeriod, setInstitutionPeriod] = useState<PeriodFilter>('30d');
   const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [commentTarget, setCommentTarget] = useState<PostCommentTarget | null>(null);
+  const [comments, setComments] = useState<PostComment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentsError, setCommentsError] = useState('');
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
 
   const fetcher = useCallback(async (): Promise<DashboardData> => {
     if (activeRole === 'platform-admin') {
@@ -117,6 +132,7 @@ export function DashboardScreen() {
         campaigns,
         conversations: [],
         follows: [],
+        likedPostIds: [],
         pendingInstitutions,
         posts: [],
         users,
@@ -135,6 +151,7 @@ export function DashboardScreen() {
         campaigns,
         conversations,
         follows: [],
+        likedPostIds: [],
         pendingInstitutions: [],
         posts: [],
         users: [],
@@ -142,17 +159,19 @@ export function DashboardScreen() {
       };
     }
 
-    const [donations, campaigns, follows, posts] = await Promise.all([
+    const [donations, campaigns, follows, posts, likedPostIds] = await Promise.all([
       donationsService.listMyDonations(authToken),
       campaignsService.listCampaigns(),
       followsService.listMyFollows(authToken),
       postsService.listFeed(authToken),
+      postsService.getMyLikedPostIds(authToken),
     ]);
     return {
       donations,
       campaigns,
       conversations: [],
       follows,
+      likedPostIds,
       pendingInstitutions: [],
       posts,
       users: [],
@@ -161,6 +180,12 @@ export function DashboardScreen() {
   }, [activeRole, authToken]);
 
   const { data, loading, error, refetch } = useFetch(fetcher);
+
+  useEffect(() => {
+    if (data?.likedPostIds) {
+      setLikedPosts(new Set(data.likedPostIds));
+    }
+  }, [data?.likedPostIds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -296,6 +321,73 @@ export function DashboardScreen() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  async function openPostComments(target: PostCommentTarget) {
+    setCommentTarget(target);
+    setCommentText('');
+    setComments([]);
+    setCommentsError('');
+    setCommentsLoading(true);
+
+    try {
+      const nextComments = await postsService.listComments(target.id, authToken);
+      setComments(nextComments);
+    } catch (error) {
+      setCommentsError(error instanceof Error ? error.message : 'Não foi possível carregar os comentários.');
+    } finally {
+      setCommentsLoading(false);
+    }
+  }
+
+  async function submitPostComment() {
+    if (!commentTarget || !commentText.trim()) return;
+
+    setCommentSubmitting(true);
+
+    try {
+      const createdComment = await postsService.createComment(
+        { postId: commentTarget.id, content: commentText },
+        authToken,
+      );
+      setComments((items) => [...items, createdComment]);
+      setCommentText('');
+      await refetch();
+    } catch (error) {
+      setCommentsError(error instanceof Error ? error.message : 'Não foi possível enviar o comentário.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
+
+  async function togglePostLike(post: FeedPost) {
+    const isLiked = likedPosts.has(post.id);
+
+    setLikedPosts((current) => {
+      const next = new Set(current);
+      if (isLiked) next.delete(post.id);
+      else next.add(post.id);
+      return next;
+    });
+
+    try {
+      if (isLiked) await postsService.unlikePost(post.id, authToken);
+      else await postsService.likePost({ postId: post.id }, authToken);
+      await refetch();
+    } catch {
+      setLikedPosts((current) => {
+        const next = new Set(current);
+        if (isLiked) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+    }
+  }
+
+  async function sharePost(post: FeedPost) {
+    await Share.share({ message: post.content });
+    await postsService.sharePost(post.id);
+    await refetch();
   }
 
   if (activeRole === 'donor') {
@@ -508,15 +600,21 @@ export function DashboardScreen() {
                         </ThemedText>
                       </View>
                       <View style={styles.feedActions}>
-                        <Pressable style={styles.feedAction}>
-                          <Ionicons name="heart-outline" size={22} color={colors.icon} />
-                          <ThemedText variant="body" color={colors.textMuted}>Curtir</ThemedText>
+                        <Pressable style={styles.feedAction} onPress={() => void togglePostLike(post)}>
+                          <Ionicons
+                            name={likedPosts.has(post.id) ? 'heart' : 'heart-outline'}
+                            size={22}
+                            color={likedPosts.has(post.id) ? colors.primary : colors.icon}
+                          />
+                          <ThemedText variant="body" color={likedPosts.has(post.id) ? colors.primary : colors.textMuted}>Curtir</ThemedText>
                         </Pressable>
-                        <Pressable style={styles.feedAction}>
+                        <Pressable
+                          style={styles.feedAction}
+                          onPress={() => void openPostComments({ id: post.id, title: 'Post' })}>
                           <Ionicons name="chatbubble-outline" size={22} color={colors.icon} />
                           <ThemedText variant="body" color={colors.textMuted}>Comentar</ThemedText>
                         </Pressable>
-                        <Pressable style={styles.feedAction}>
+                        <Pressable style={styles.feedAction} onPress={() => void sharePost(post)}>
                           <Ionicons name="paper-plane-outline" size={22} color={colors.icon} />
                           <ThemedText variant="body" color={colors.textMuted}>Compartilhar</ThemedText>
                         </Pressable>
@@ -528,6 +626,97 @@ export function DashboardScreen() {
             </View>
           ) : null}
         </View>
+
+        <Modal
+          animationType="slide"
+          transparent
+          visible={Boolean(commentTarget)}
+          onRequestClose={() => setCommentTarget(null)}>
+          <View style={styles.commentBackdrop}>
+            <View style={[styles.commentSheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.commentHandle, { backgroundColor: colors.border }]} />
+              <View style={styles.commentHeader}>
+                <View style={styles.headerText}>
+                  <ThemedText variant="subtitle">Comentários</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                    {commentTarget?.title}
+                  </ThemedText>
+                </View>
+                <Pressable style={styles.commentCloseButton} onPress={() => setCommentTarget(null)}>
+                  <Ionicons name="close" size={22} color={colors.icon} />
+                </Pressable>
+              </View>
+
+              {commentsLoading ? (
+                <Loading label="Carregando comentários..." />
+              ) : commentsError ? (
+                <View style={styles.commentEmpty}>
+                  <Ionicons name="warning-outline" size={36} color={colors.danger} />
+                  <ThemedText variant="body" style={styles.bold}>Não foi possível carregar</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    {commentsError}
+                  </ThemedText>
+                  {commentTarget ? (
+                    <Button size="sm" variant="secondary" onPress={() => void openPostComments(commentTarget)}>
+                      Tentar novamente
+                    </Button>
+                  ) : null}
+                </View>
+              ) : comments.length === 0 ? (
+                <View style={styles.commentEmpty}>
+                  <Ionicons name="chatbubble-outline" size={36} color={colors.border} />
+                  <ThemedText variant="body" style={styles.bold}>Nenhum comentário ainda</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Seja a primeira pessoa a comentar.
+                  </ThemedText>
+                </View>
+              ) : (
+                <ScrollView style={styles.commentList} showsVerticalScrollIndicator={false}>
+                  {comments.map((comment, index) => (
+                    <View key={comment.id}>
+                      <View style={styles.commentItem}>
+                        <Avatar
+                          name={getCommentAuthorName(comment)}
+                          source={comment.author?.profilePhotoUrl ? { uri: comment.author.profilePhotoUrl } : undefined}
+                          size="sm"
+                        />
+                        <View style={styles.commentBody}>
+                          <ThemedText variant="body" style={styles.bold}>
+                            {getCommentAuthorName(comment)}
+                          </ThemedText>
+                          <ThemedText variant="body">{comment.content}</ThemedText>
+                          <ThemedText variant="caption" color={colors.textMuted}>
+                            {formatDate(comment.createdAt)}
+                          </ThemedText>
+                        </View>
+                      </View>
+                      {index < comments.length - 1 ? <Divider /> : null}
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
+              <View style={[styles.commentInputRow, { borderColor: colors.border }]}>
+                <TextInput
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  placeholder="Escreva um comentário..."
+                  placeholderTextColor={colors.textMuted}
+                  style={[styles.commentInput, { color: colors.text }]}
+                />
+                <Pressable
+                  disabled={commentSubmitting || !commentText.trim()}
+                  onPress={() => void submitPostComment()}
+                  style={[
+                    styles.commentSendButton,
+                    { backgroundColor: commentText.trim() ? colors.primary : colors.surfaceMuted },
+                  ]}>
+                  <Ionicons name="send" size={18} color={commentText.trim() ? '#FFFFFF' : colors.icon} />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScreenContainer>
     );
   }
