@@ -4,14 +4,14 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, TextInput, View } from 'react-native';
 
-import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, Tag, ThemedText } from '@/components';
+import { Avatar, Button, Card, Divider, EmptyState, Input, Loading, ScreenContainer, SegmentedToggle, Tag, ThemedText } from '@/components';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFetch } from '@/hooks/use-fetch';
 import { routes } from '@/navigation/routes';
 import { adminService, type AdminUser, type AdminUsersPage } from '@/services/admin';
-import { campaignsService, type Campaign, type CampaignComment } from '@/services/campaigns';
+import { campaignsService, type Campaign, type CampaignCategory, type CampaignComment } from '@/services/campaigns';
 import { donationsService, donationStatusLabels, type Donation, type DonationStatus } from '@/services/donations';
-import { postsService, type FeedPost, type PostComment } from '@/services/posts';
+import { followsService, type Follow } from '@/services/follows';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -22,23 +22,24 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function getPostAuthorLabel(post: FeedPost): string {
-  if (post.authorType === 'INSTITUTION') return 'Instituição';
-  return 'Doador';
-}
-
 type DonorDonateData = {
   campaigns: Campaign[];
-  posts: FeedPost[];
+  follows: Follow[];
+  likedCampaignIds: string[];
 };
 
-type CommentTarget =
-  | { id: string; title: string; type: 'campaign' }
-  | { id: string; title: string; type: 'post' };
+const DONATE_CAMPAIGN_CATEGORIES: (CampaignCategory | 'Todos')[] = [
+  'Todos',
+  'Educação',
+  'Alimentação',
+  'Saúde',
+  'Moradia',
+  'Meio Ambiente',
+];
 
-type FeedComment = CampaignComment | PostComment;
+type CommentTarget = { id: string; title: string };
 
-function getCommentAuthorName(comment: FeedComment) {
+function getCommentAuthorName(comment: CampaignComment) {
   return comment.author?.fullName?.trim() || comment.author?.email?.trim() || 'Usuário';
 }
 
@@ -73,13 +74,17 @@ export function DonationsScreen() {
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [adminUserPage, setAdminUserPage] = useState(1);
   const [likedCampaigns, setLikedCampaigns] = useState<Set<string>>(new Set());
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [followingInstitutionIds, setFollowingInstitutionIds] = useState<Set<string>>(new Set());
+  const [followPendingInstitutionIds, setFollowPendingInstitutionIds] = useState<Set<string>>(new Set());
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
-  const [comments, setComments] = useState<FeedComment[]>([]);
+  const [comments, setComments] = useState<CampaignComment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [commentsError, setCommentsError] = useState('');
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<CampaignCategory | 'Todos'>('Todos');
+  const [donateFilterOpen, setDonateFilterOpen] = useState(false);
+  const activeDonateFiltersCount = activeCategory !== 'Todos' ? 1 : 0;
 
   useEffect(() => {
     setAdminUserPage(1);
@@ -87,13 +92,31 @@ export function DonationsScreen() {
 
   const feed = useFetch(
     useCallback(() => {
-      if (activeRole !== 'donor') return Promise.resolve({ campaigns: [], posts: [] });
+      if (activeRole !== 'donor') {
+        return Promise.resolve({ campaigns: [], follows: [], likedCampaignIds: [] });
+      }
       return Promise.all([
-        campaignsService.listCampaigns(),
-        postsService.listFeed(authToken),
-      ]).then(([campaigns, posts]) => ({ campaigns, posts }));
-    }, [activeRole, authToken])
+        campaignsService.listCampaigns({ category: activeCategory }),
+        followsService.listMyFollows(authToken),
+        campaignsService.getMyLikedCampaignIds(authToken),
+      ]).then(([campaigns, follows, likedCampaignIds]) => ({ campaigns, follows, likedCampaignIds }));
+    }, [activeRole, authToken, activeCategory])
   );
+
+  useEffect(() => {
+    if (feed.data?.likedCampaignIds) {
+      setLikedCampaigns(new Set(feed.data.likedCampaignIds));
+    }
+    if (feed.data?.follows) {
+      setFollowingInstitutionIds(
+        new Set(
+          feed.data.follows
+            .filter((follow) => follow.targetType === 'INSTITUTION')
+            .map((follow) => follow.targetId)
+        )
+      );
+    }
+  }, [feed.data]);
 
   const adminUsers = useFetch(
     useCallback(() => {
@@ -131,10 +154,7 @@ export function DonationsScreen() {
     setCommentsLoading(true);
 
     try {
-      const nextComments =
-        target.type === 'campaign'
-          ? await campaignsService.listCampaignComments(target.id, authToken)
-          : await postsService.listComments(target.id, authToken);
+      const nextComments = await campaignsService.listCampaignComments(target.id, authToken);
       setComments(nextComments);
     } catch (error) {
       setCommentsError(error instanceof Error ? error.message : 'Não foi possível carregar os comentários.');
@@ -149,10 +169,11 @@ export function DonationsScreen() {
     setCommentSubmitting(true);
 
     try {
-      const createdComment =
-        commentTarget.type === 'campaign'
-          ? await campaignsService.createCampaignComment(commentTarget.id, commentText, authToken)
-          : await postsService.createComment({ postId: commentTarget.id, content: commentText }, authToken);
+      const createdComment = await campaignsService.createCampaignComment(
+        commentTarget.id,
+        commentText,
+        authToken,
+      );
       setComments((items) => [...items, createdComment]);
       setCommentText('');
       await feed.refetch();
@@ -187,30 +208,6 @@ export function DonationsScreen() {
     }
   }
 
-  async function togglePostLike(post: FeedPost) {
-    const isLiked = likedPosts.has(post.id);
-
-    setLikedPosts((current) => {
-      const next = new Set(current);
-      if (isLiked) next.delete(post.id);
-      else next.add(post.id);
-      return next;
-    });
-
-    try {
-      if (isLiked) await postsService.unlikePost(post.id, authToken);
-      else await postsService.likePost({ postId: post.id }, authToken);
-      await feed.refetch();
-    } catch {
-      setLikedPosts((current) => {
-        const next = new Set(current);
-        if (isLiked) next.add(post.id);
-        else next.delete(post.id);
-        return next;
-      });
-    }
-  }
-
   async function shareCampaign(campaign: Campaign) {
     await Share.share({
       message: `Conheça a campanha ${campaign.title} da ${campaign.institution}.`,
@@ -219,10 +216,36 @@ export function DonationsScreen() {
     await feed.refetch();
   }
 
-  async function sharePost(post: FeedPost) {
-    await Share.share({ message: post.content });
-    await postsService.sharePost(post.id);
-    await feed.refetch();
+  async function toggleFollowInstitution(institutionId: string) {
+    const isFollowing = followingInstitutionIds.has(institutionId);
+    setFollowPendingInstitutionIds((current) => new Set(current).add(institutionId));
+    setFollowingInstitutionIds((current) => {
+      const next = new Set(current);
+      if (isFollowing) next.delete(institutionId);
+      else next.add(institutionId);
+      return next;
+    });
+
+    try {
+      if (isFollowing) {
+        await followsService.unfollow('INSTITUTION', institutionId, authToken);
+      } else {
+        await followsService.follow({ targetType: 'INSTITUTION', targetId: institutionId }, authToken);
+      }
+    } catch {
+      setFollowingInstitutionIds((current) => {
+        const next = new Set(current);
+        if (isFollowing) next.add(institutionId);
+        else next.delete(institutionId);
+        return next;
+      });
+    } finally {
+      setFollowPendingInstitutionIds((current) => {
+        const next = new Set(current);
+        next.delete(institutionId);
+        return next;
+      });
+    }
   }
 
   if (activeRole === 'platform-admin') {
@@ -527,9 +550,12 @@ export function DonationsScreen() {
     );
   }
 
-  const donorData = (feed.data ?? { campaigns: [], posts: [] }) as DonorDonateData;
-  const posts = donorData.posts;
-  const campaigns = donorData.campaigns.slice(0, 4);
+  const donorData = (feed.data ?? { campaigns: [], follows: [], likedCampaignIds: [] }) as DonorDonateData;
+  const campaigns = (
+    mode === 'following'
+      ? donorData.campaigns.filter((campaign) => followingInstitutionIds.has(campaign.institutionId))
+      : donorData.campaigns
+  ).slice(0, 4);
 
   return (
     <ScreenContainer scrollable>
@@ -551,46 +577,90 @@ export function DonationsScreen() {
           </View>
         </View>
 
-        <View style={[styles.modeToggle, { backgroundColor: colors.surfaceMuted }]}>
+        <View style={styles.donateFilterRow}>
+          <View style={styles.donateModeToggleFlex}>
+            <SegmentedToggle
+              value={mode}
+              onChange={setMode}
+              options={[
+                { key: 'following', label: 'Seguindo' },
+                { key: 'recommended', label: 'Para você' },
+              ]}
+            />
+          </View>
           <Pressable
-            style={[styles.modeButton, mode === 'following' && [styles.modeButtonActive, { backgroundColor: colors.surface }]]}
-            onPress={() => setMode('following')}>
-            <ThemedText variant="body" color={mode === 'following' ? colors.primary : colors.textMuted} style={styles.modeText}>
-              Seguindo
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            style={[styles.modeButton, mode === 'recommended' && [styles.modeButtonActive, { backgroundColor: colors.surface }]]}
-            onPress={() => setMode('recommended')}>
-            <ThemedText variant="body" color={mode === 'recommended' ? colors.primary : colors.textMuted} style={styles.modeText}>
-              Para você
-            </ThemedText>
+            accessibilityRole="button"
+            onPress={() => setDonateFilterOpen(true)}
+            style={[styles.filterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="options-outline" size={22} color={colors.primary} />
+            {activeDonateFiltersCount > 0 ? (
+              <View style={[styles.filterBadge, { backgroundColor: colors.primary }]}>
+                <ThemedText variant="caption" color={colors.surface} style={styles.bold}>
+                  {activeDonateFiltersCount}
+                </ThemedText>
+              </View>
+            ) : null}
           </Pressable>
         </View>
 
-        <View style={styles.chipRow}>
-          {[
-            ['alert-circle', 'Urgentes'],
-            ['book-outline', 'Educação'],
-            ['people-outline', 'Comunidade'],
-            ['leaf-outline', 'Meio ambiente'],
-          ].map(([icon, label], index) => (
-            <View
-              key={label}
-              style={[
-                styles.outlineChip,
-                {
-                  backgroundColor: index === 0 ? colors.primarySoft : colors.surface,
-                  borderColor: index === 0 ? colors.primary : colors.border,
-                },
-              ]}>
-              <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={18} color={index === 0 ? colors.primary : colors.primary} />
-              <ThemedText variant="body" color={index === 0 ? colors.primary : colors.textMuted}>
-                {label}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
+        <Modal
+          transparent
+          animationType="slide"
+          visible={donateFilterOpen}
+          onRequestClose={() => setDonateFilterOpen(false)}>
+          <Pressable style={styles.filterSheetBackdrop} onPress={() => setDonateFilterOpen(false)}>
+            <Pressable
+              style={[styles.filterSheet, { backgroundColor: colors.surface }]}
+              onPress={(event) => event.stopPropagation()}>
+              <View style={[styles.filterSheetHandle, { backgroundColor: colors.border }]} />
+
+              <View style={styles.filterSheetHeader}>
+                <View style={styles.headerText}>
+                  <ThemedText variant="subtitle">Filtros</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Refine as campanhas exibidas aqui.
+                  </ThemedText>
+                </View>
+                <Pressable accessibilityRole="button" onPress={() => setActiveCategory('Todos')}>
+                  <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                    Limpar
+                  </ThemedText>
+                </Pressable>
+              </View>
+
+              <View style={styles.filterSheetSection}>
+                <ThemedText variant="body" style={styles.bold}>Categoria</ThemedText>
+                <View style={styles.chipRow}>
+                  {DONATE_CAMPAIGN_CATEGORIES.map((cat) => {
+                    const selected = activeCategory === cat;
+
+                    return (
+                      <Pressable
+                        key={cat}
+                        accessibilityRole="button"
+                        onPress={() => setActiveCategory(cat)}
+                        style={[
+                          styles.outlineChip,
+                          {
+                            backgroundColor: selected ? colors.primarySoft : colors.surface,
+                            borderColor: selected ? colors.primary : colors.border,
+                          },
+                        ]}>
+                        <ThemedText variant="body" color={selected ? colors.primary : colors.textMuted}>
+                          {cat}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <Button onPress={() => setDonateFilterOpen(false)}>
+                Aplicar filtros
+              </Button>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {feed.loading && <Loading label="Carregando feed..." />}
 
@@ -603,44 +673,47 @@ export function DonationsScreen() {
           />
         )}
 
-        {!feed.loading && !feed.error && campaigns.length === 0 && posts.length === 0 ? (
+        {!feed.loading && !feed.error && campaigns.length === 0 ? (
           <EmptyState
-            title="Seu feed ainda está vazio"
-            description="Siga campanhas, instituições e pessoas para acompanhar publicações por aqui."
+            title="Nenhuma campanha por aqui ainda"
+            description="Siga campanhas e instituições para acompanhar novidades por aqui."
             illustration={<Ionicons name="heart-outline" size={56} color={colors.border} />}
             action={<Button size="sm" onPress={() => router.push(routes.donorCampaigns)}>Explorar causas</Button>}
           />
         ) : null}
 
-        {!feed.loading && !feed.error && (campaigns.length > 0 || posts.length > 0) ? (
+        {!feed.loading && !feed.error && campaigns.length > 0 ? (
           <View style={styles.list}>
             {campaigns.map((campaign, index) => (
               <Card key={campaign.id} style={styles.donateCampaignCard}>
                 <View style={styles.postHeader}>
-                  <Avatar name={campaign.institution} size="sm" />
-                  <View style={styles.donationInfo}>
-                    <View style={styles.verifiedLine}>
-                      <ThemedText variant="subtitle" style={styles.bold} numberOfLines={1}>
-                        {campaign.institution}
-                      </ThemedText>
-                      <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                  <View style={styles.avatarWithBadge}>
+                    <Avatar name={campaign.institution} size="sm" />
+                    <View style={[styles.verifiedBadge, { backgroundColor: colors.surface }]}>
+                      <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                     </View>
+                  </View>
+                  <View style={styles.donationInfo}>
+                    <ThemedText variant="subtitle" style={styles.bold} numberOfLines={1}>
+                      {campaign.institution}
+                    </ThemedText>
                     <ThemedText variant="caption" color={colors.textMuted}>
                       {index === 0 ? '2h' : '1d'} · Público
                     </ThemedText>
                   </View>
-                  {index > 0 && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      style={[
-                        styles.followSmall,
-                        { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft },
-                      ]}>
-                      Seguir
-                    </Button>
-                  )}
-                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.icon} />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={followPendingInstitutionIds.has(campaign.institutionId)}
+                    style={[
+                      styles.followSmall,
+                      followingInstitutionIds.has(campaign.institutionId)
+                        ? { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }
+                        : undefined,
+                    ]}
+                    onPress={() => void toggleFollowInstitution(campaign.institutionId)}>
+                    {followingInstitutionIds.has(campaign.institutionId) ? 'Seguindo' : 'Seguir'}
+                  </Button>
                 </View>
                 <ThemedText variant="body">
                   {campaign.title.toLowerCase().includes('inverno')
@@ -692,7 +765,7 @@ export function DonationsScreen() {
                   </Pressable>
                   <Pressable
                     style={styles.feedAction}
-                    onPress={() => void openComments({ id: campaign.id, title: campaign.title, type: 'campaign' })}>
+                    onPress={() => void openComments({ id: campaign.id, title: campaign.title })}>
                     <Ionicons name="chatbubble-outline" size={22} color={colors.icon} />
                     <ThemedText variant="body" color={colors.textMuted}>
                       {campaign.commentsCount ?? 0}
@@ -704,47 +777,6 @@ export function DonationsScreen() {
                       {campaign.sharesCount ?? 0}
                     </ThemedText>
                   </Pressable>
-                </View>
-              </Card>
-            ))}
-
-            {posts.map((post) => (
-              <Card key={post.id} style={styles.postCard}>
-                <View style={styles.postHeader}>
-                  <Avatar name={getPostAuthorLabel(post)} size="sm" />
-                  <View style={styles.donationInfo}>
-                    <ThemedText variant="body" style={styles.bold}>{getPostAuthorLabel(post)}</ThemedText>
-                    <ThemedText variant="caption" color={colors.textMuted}>{formatDate(post.createdAt)}</ThemedText>
-                  </View>
-                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.icon} />
-                </View>
-
-                <ThemedText variant="body">{post.content}</ThemedText>
-
-                <View style={styles.postActions}>
-                  <Pressable style={styles.postAction} onPress={() => void togglePostLike(post)}>
-                    <Ionicons
-                      name={likedPosts.has(post.id) ? 'heart' : 'heart-outline'}
-                      size={22}
-                      color={likedPosts.has(post.id) ? colors.primary : colors.icon}
-                    />
-                    <ThemedText variant="caption" color={colors.textMuted}>{post.stats.likesCount ?? 0}</ThemedText>
-                  </Pressable>
-                  <Pressable
-                    style={styles.postAction}
-                    onPress={() => void openComments({ id: post.id, title: 'Post', type: 'post' })}>
-                    <Ionicons name="chatbubble-outline" size={20} color={colors.icon} />
-                    <ThemedText variant="caption" color={colors.textMuted}>{post.stats.commentsCount ?? 0}</ThemedText>
-                  </Pressable>
-                  <Pressable style={styles.postAction} onPress={() => void sharePost(post)}>
-                    <Ionicons name="paper-plane-outline" size={20} color={colors.icon} />
-                    <ThemedText variant="caption" color={colors.textMuted}>{post.stats.sharesCount ?? 0}</ThemedText>
-                  </Pressable>
-                  {post.campaignId ? (
-                    <Button size="sm" style={styles.donateAction} onPress={() => router.push(routes.appDonate(post.campaignId!))}>
-                      Doar
-                    </Button>
-                  ) : null}
                 </View>
               </Card>
             ))}
@@ -799,7 +831,11 @@ export function DonationsScreen() {
                   {comments.map((comment, index) => (
                     <View key={comment.id}>
                       <View style={styles.commentItem}>
-                        <Avatar name={getCommentAuthorName(comment)} size="sm" />
+                        <Avatar
+                          name={getCommentAuthorName(comment)}
+                          source={comment.author?.profilePhotoUrl ? { uri: comment.author.profilePhotoUrl } : undefined}
+                          size="sm"
+                        />
                         <View style={styles.commentBody}>
                           <ThemedText variant="body" style={styles.bold}>
                             {getCommentAuthorName(comment)}

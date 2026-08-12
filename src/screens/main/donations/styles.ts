@@ -57,28 +57,6 @@ export const styles = StyleSheet.create({
     top: 6,
     width: 10,
   },
-  modeToggle: {
-    borderRadius: theme.radius.pill,
-    flexDirection: 'row',
-    minHeight: 58,
-    padding: 4,
-  },
-  modeButton: {
-    alignItems: 'center',
-    borderRadius: theme.radius.pill,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  modeButtonActive: {
-    shadowColor: '#102A24',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  modeText: {
-    fontWeight: '700',
-  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -253,15 +231,24 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: theme.spacing.sm,
+    overflow: 'hidden',
   },
-  verifiedLine: {
+  avatarWithBadge: {
+    flexShrink: 0,
+    position: 'relative',
+  },
+  verifiedBadge: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
-    minWidth: 0,
+    borderRadius: theme.radius.pill,
+    bottom: -2,
+    height: 16,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -2,
+    width: 16,
   },
   followSmall: {
-    minWidth: 86,
+    flexShrink: 0,
   },
   donateCampaignImage: {
     borderRadius: 16,
@@ -393,5 +380,53 @@ export const styles = StyleSheet.create({
     height: 42,
     justifyContent: 'center',
     width: 42,
+  },
+  donateFilterRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  donateModeToggleFlex: {
+    flex: 1,
+  },
+  filterBadge: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 18,
+    justifyContent: 'center',
+    minWidth: 18,
+    paddingHorizontal: 4,
+    position: 'absolute',
+    right: 6,
+    top: 6,
+  },
+  filterSheetBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  filterSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+  },
+  filterSheetHandle: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.pill,
+    height: 4,
+    marginBottom: theme.spacing.sm,
+    width: 44,
+  },
+  filterSheetHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  filterSheetSection: {
+    gap: theme.spacing.sm,
   },
 });
