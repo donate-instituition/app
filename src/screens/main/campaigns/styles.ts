@@ -266,78 +266,6 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Mode toggle (pill)
-  modeToggle: {
-    flexDirection: 'row',
-    borderRadius: theme.radius.pill,
-    minHeight: 58,
-    padding: 4,
-    gap: theme.spacing.xxs,
-  },
-  modeButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.radius.pill,
-  },
-  modeButtonActive: {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  modeButtonText: {
-    textAlign: 'center',
-  },
-  modeButtonTextActive: {
-    fontWeight: '600',
-  },
-  institutionTabs: {
-    borderRadius: 18,
-    borderWidth: theme.borderWidths.sm,
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
-    padding: theme.spacing.xs,
-  },
-  institutionTabButton: {
-    alignItems: 'center',
-    borderRadius: 14,
-    flex: 1,
-    minHeight: 54,
-    justifyContent: 'center',
-  },
-
-  // Category filter chips
-  categories: {
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.xs,
-    paddingRight: theme.spacing.xl,
-  },
-  filterBlock: {
-    gap: theme.spacing.xs,
-  },
-  nearbyChip: {
-    alignItems: 'center',
-    borderRadius: theme.radius.pill,
-    flexDirection: 'row',
-    gap: 5,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  moreChip: {
-    alignItems: 'center',
-    borderRadius: theme.radius.pill,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  nearbyChipLoading: {
-    opacity: 0.78,
-  },
   newCampaignCard: {
     gap: theme.spacing.md,
   },
@@ -638,6 +566,13 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 30,
   },
+  supporterAvatarImage: {
+    height: '100%',
+    width: '100%',
+  },
+  supportersLabel: {
+    marginLeft: theme.spacing.xs,
+  },
   featureDonateButton: {
     minWidth: 128,
   },
@@ -649,6 +584,116 @@ export const styles = StyleSheet.create({
   },
   followButton: {
     minWidth: 96,
+  },
+
+  // Post card (unified explore feed)
+  postAuthor: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  postAuthorText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  postStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  postImage: {
+    borderRadius: 16,
+    height: 200,
+    width: '100%',
+  },
+  feedActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.md,
+  },
+  feedAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  commentBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  commentSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: theme.spacing.md,
+    maxHeight: '82%',
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+  },
+  commentHandle: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.pill,
+    height: 4,
+    marginBottom: theme.spacing.sm,
+    width: 44,
+  },
+  commentHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  commentHeaderText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  commentCloseButton: {
+    alignItems: 'center',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  commentEmpty: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.xl,
+  },
+  commentList: {
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+  },
+  commentItem: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+  },
+  commentBody: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  commentInputRow: {
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    paddingTop: theme.spacing.md,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 16,
+    minHeight: 44,
+  },
+  commentSendButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
   },
 
   // compat

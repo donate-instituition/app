@@ -2,17 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, Share, TextInput, View } from 'react-native';
 
 import {
+  Avatar,
   Button,
   Card,
+  Divider,
   EmptyState,
   Input,
   Loading,
   ProgressBar,
   ScreenContainer,
+  SegmentedToggle,
   Tag,
   ThemedText,
 } from '@/components';
@@ -24,11 +27,14 @@ import {
   type Campaign,
   type CampaignCategory,
   type CampaignFilters,
+  type GeoLocation,
   type Institution,
   type PendingInstitution,
 } from '@/services/campaigns';
+import { followsService, type Follow } from '@/services/follows';
 import { institutionStaffService } from '@/services/institution-staff';
 import { logger } from '@/services/logger';
+import { postsService, type FeedPost, type PostComment } from '@/services/posts';
 import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
@@ -45,7 +51,6 @@ const CAMPAIGN_CATEGORIES: (CampaignCategory | 'Todos')[] = [
   'Meio Ambiente',
 ];
 
-type Mode = 'campaigns' | 'institutions';
 type AdminInstitutionStatusFilter = 'all' | 'approved' | 'pending' | 'rejected';
 type AdminInstitutionSort = 'recent' | 'activity' | 'name';
 type FeedbackToast = {
@@ -108,54 +113,90 @@ function getCampaignDescription(item: Campaign) {
   return `Apoie essa campanha de ${item.category.toLowerCase()} e acompanhe o impacto.`;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-type ModeToggleProps = {
-  mode: Mode;
-  onChange: (m: Mode) => void;
-};
-
-function ModeToggle({ mode, onChange }: ModeToggleProps) {
-  const scheme = useColorScheme() ?? 'light';
-  const colors = theme.colors[scheme];
-
-  return (
-    <View style={[styles.modeToggle, { backgroundColor: colors.surfaceMuted }]}>
-      {(['campaigns', 'institutions'] as Mode[]).map((m) => {
-        const active = mode === m;
-        return (
-          <Pressable
-            key={m}
-            style={[
-              styles.modeButton,
-              active && [
-                styles.modeButtonActive,
-                {
-                  backgroundColor: colors.surface,
-                  shadowColor: colors.primaryStrong,
-                },
-              ],
-            ]}
-            onPress={() => onChange(m)}>
-              <ThemedText
-                variant="caption"
-                style={[styles.modeButtonText, active && styles.modeButtonTextActive]}
-                color={active ? colors.primary : colors.textMuted}
-                numberOfLines={1}>
-              {m === 'campaigns' ? 'Campanhas' : 'Instituições'}
-            </ThemedText>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+function formatFeedDate(iso: string): string {
+  const date = new Date(iso);
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function getPostAuthorLabel(post: FeedPost): string {
+  return post.authorType === 'INSTITUTION' ? 'Instituição' : 'Doador';
+}
+
+type PostCommentTarget = { id: string; title: string };
+
+function getCommentAuthorName(comment: PostComment) {
+  return comment.author?.fullName?.trim() || comment.author?.email?.trim() || 'Usuário';
+}
+
+// A single vertical feed mixing campaigns, institutions and posts by
+// recency (or by distance, when "Perto de mim" is active) — Explorar is
+// meant to feel like one fluid stream to discover/connect with, not three
+// siloed lists behind a toggle.
+type ExploreFeedItem =
+  | { kind: 'campaign'; id: string; createdAt: string; location?: GeoLocation; data: Campaign }
+  | { kind: 'institution'; id: string; createdAt: string; location?: GeoLocation; data: Institution }
+  | { kind: 'post'; id: string; createdAt: string; location?: GeoLocation; data: FeedPost };
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function distanceInKm(from: GeoLocation, to: GeoLocation) {
+  const earthRadiusKm = 6371;
+  const deltaLatitude = toRadians(to.latitude - from.latitude);
+  const deltaLongitude = toRadians(to.longitude - from.longitude);
+  const originLatitude = toRadians(from.latitude);
+  const destinationLatitude = toRadians(to.latitude);
+
+  const haversine =
+    Math.sin(deltaLatitude / 2) ** 2 +
+    Math.cos(originLatitude) *
+      Math.cos(destinationLatitude) *
+      Math.sin(deltaLongitude / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function sortFeedByDistance(items: ExploreFeedItem[], nearMe?: GeoLocation) {
+  if (!nearMe) return items;
+
+  return [...items].sort((a, b) => {
+    if (!a.location && !b.location) return 0;
+    if (!a.location) return 1;
+    if (!b.location) return -1;
+
+    return distanceInKm(nearMe, a.location) - distanceInKm(nearMe, b.location);
+  });
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
 type CampaignCardProps = { item: Campaign; onPress: () => void };
+
+function getDonorInitials(name?: string) {
+  if (!name) return '?';
+
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
 
 function CampaignCard({ item, onPress }: CampaignCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
+
+  const donorsFetcher = useCallback(
+    () => campaignsService.getCampaignRecentDonors(item.id, 3),
+    [item.id],
+  );
+  const { data: recentDonors } = useFetch(donorsFetcher);
+  const shownDonors = recentDonors?.donors ?? [];
+  const donorsCount = recentDonors?.totalCount ?? 0;
+  const extraDonorsCount = Math.max(donorsCount - shownDonors.length, 0);
 
   return (
     <Pressable onPress={onPress}>
@@ -163,7 +204,7 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
         <View style={styles.featureCampaignCard}>
           <View style={[styles.featureCampaignThumb, { backgroundColor: colors.primarySoft }]}>
             <Image
-              source={getCampaignImage(item)}
+              source={item.bannerUrl || getCampaignImage(item)}
               style={styles.campaignImage}
               contentFit="cover"
               transition={150}
@@ -204,24 +245,44 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
             </View>
             <View style={styles.featureFooter}>
               <View style={styles.supportersRow}>
-                {[0, 1, 2].map((offset) => (
+                {shownDonors.map((donor, index) => (
                   <View
-                    key={offset}
+                    key={donor.id}
                     style={[
                       styles.supporterAvatar,
                       {
-                        backgroundColor: offset === 0 ? colors.primarySoft : colors.surfaceMuted,
+                        backgroundColor: colors.primarySoft,
                         borderColor: colors.surface,
-                        marginLeft: offset === 0 ? 0 : -8,
+                        marginLeft: index === 0 ? 0 : -8,
+                        overflow: 'hidden',
+                      },
+                    ]}>
+                    {donor.profilePhotoUrl ? (
+                      <Image source={{ uri: donor.profilePhotoUrl }} style={styles.supporterAvatarImage} />
+                    ) : (
+                      <ThemedText variant="caption" color={colors.primary} style={styles.bold}>
+                        {getDonorInitials(donor.name)}
+                      </ThemedText>
+                    )}
+                  </View>
+                ))}
+                {extraDonorsCount > 0 ? (
+                  <View
+                    style={[
+                      styles.supporterAvatar,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.surface,
+                        marginLeft: shownDonors.length > 0 ? -8 : 0,
                       },
                     ]}>
                     <ThemedText variant="caption" color={colors.primary} style={styles.bold}>
-                      {offset === 2 ? '+24' : ''}
+                      +{extraDonorsCount}
                     </ThemedText>
                   </View>
-                ))}
-                <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
-                  356 apoiadores
+                ) : null}
+                <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1} style={styles.supportersLabel}>
+                  {donorsCount === 1 ? '1 apoiador' : `${donorsCount} apoiadores`}
                 </ThemedText>
               </View>
               {item.active ? (
@@ -241,9 +302,15 @@ function CampaignCard({ item, onPress }: CampaignCardProps) {
   );
 }
 
-type InstitutionCardProps = { item: Institution; onPress: () => void };
+type InstitutionCardProps = {
+  item: Institution;
+  isFollowing: boolean;
+  followPending: boolean;
+  onPress: () => void;
+  onToggleFollow: () => void;
+};
 
-function InstitutionCard({ item, onPress }: InstitutionCardProps) {
+function InstitutionCard({ item, isFollowing, followPending, onPress, onToggleFollow }: InstitutionCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
 
@@ -269,16 +336,92 @@ function InstitutionCard({ item, onPress }: InstitutionCardProps) {
             <View style={styles.institutionMeta}>
               <Ionicons name="location-outline" size={15} color={colors.textMuted} />
               <ThemedText variant="body" color={colors.textMuted} numberOfLines={1}>
-                {item.city}, {item.state} · 1,2 km
+                {item.city}, {item.state}
               </ThemedText>
             </View>
           </View>
-          <Button size="sm" variant="ghost" style={styles.followButton}>
-            Seguir
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={followPending}
+            style={[
+              styles.followButton,
+              isFollowing ? { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft } : undefined,
+            ]}
+            onPress={onToggleFollow}>
+            {isFollowing ? 'Seguindo' : 'Seguir'}
           </Button>
         </View>
       </Card>
     </Pressable>
+  );
+}
+
+type PostCardProps = {
+  item: FeedPost;
+  liked: boolean;
+  onOpenComments: () => void;
+  onPressDonate: (campaignId: string) => void;
+  onShare: () => void;
+  onToggleLike: () => void;
+};
+
+function PostCard({ item, liked, onOpenComments, onPressDonate, onShare, onToggleLike }: PostCardProps) {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = theme.colors[scheme];
+  const mediaUrl = item.media?.[0]?.url;
+
+  return (
+    <Card variant="elevated" style={styles.exploreCard}>
+      <View style={styles.postAuthor}>
+        <Avatar name={getPostAuthorLabel(item)} size="sm" />
+        <View style={styles.postAuthorText}>
+          <ThemedText variant="body" style={styles.bold} numberOfLines={1}>
+            {getPostAuthorLabel(item)}
+          </ThemedText>
+          <ThemedText variant="caption" color={colors.textMuted}>
+            {formatFeedDate(item.createdAt)}
+          </ThemedText>
+        </View>
+        <Ionicons name="ellipsis-horizontal" size={18} color={colors.icon} />
+      </View>
+
+      <ThemedText variant="body">{item.content}</ThemedText>
+
+      {mediaUrl ? (
+        <Image source={{ uri: mediaUrl }} style={styles.postImage} contentFit="cover" transition={150} />
+      ) : null}
+
+      <View style={styles.postStats}>
+        <ThemedText variant="caption" color={colors.textMuted}>
+          {item.stats.likesCount ?? 0} curtidas
+        </ThemedText>
+        <ThemedText variant="caption" color={colors.textMuted}>
+          {item.stats.commentsCount ?? 0} comentários
+        </ThemedText>
+      </View>
+
+      <View style={styles.feedActions}>
+        <Pressable style={styles.feedAction} onPress={onToggleLike}>
+          <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? colors.primary : colors.icon} />
+          <ThemedText variant="body" color={liked ? colors.primary : colors.textMuted}>Curtir</ThemedText>
+        </Pressable>
+        <Pressable style={styles.feedAction} onPress={onOpenComments}>
+          <Ionicons name="chatbubble-outline" size={22} color={colors.icon} />
+          <ThemedText variant="body" color={colors.textMuted}>Comentar</ThemedText>
+        </Pressable>
+        <Pressable style={styles.feedAction} onPress={onShare}>
+          <Ionicons name="paper-plane-outline" size={22} color={colors.icon} />
+          <ThemedText variant="body" color={colors.textMuted}>Compartilhar</ThemedText>
+        </Pressable>
+        {item.campaignId ? (
+          <Pressable style={styles.feedAction} onPress={() => onPressDonate(item.campaignId!)}>
+            <Ionicons name="heart-circle-outline" size={22} color={colors.primary} />
+            <ThemedText variant="body" color={colors.primary}>Doar</ThemedText>
+          </Pressable>
+        ) : null}
+      </View>
+    </Card>
   );
 }
 
@@ -291,7 +434,6 @@ export function CampaignsScreen() {
   const activeRole = useActiveRole();
 
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>('campaigns');
   const [search, setSearch] = useState('');
   const [adminInstitutionStatus, setAdminInstitutionStatus] =
     useState<AdminInstitutionStatusFilter>('all');
@@ -308,6 +450,17 @@ export function CampaignsScreen() {
   const [updatingRecurring, setUpdatingRecurring] = useState(false);
   const [toast, setToast] = useState<FeedbackToast | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [followPendingIds, setFollowPendingIds] = useState<Set<string>>(new Set());
+  const [commentTarget, setCommentTarget] = useState<PostCommentTarget | null>(null);
+  const [comments, setComments] = useState<PostComment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentsError, setCommentsError] = useState('');
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [exploreFilterOpen, setExploreFilterOpen] = useState(false);
+  const activeExploreFiltersCount = (activeCategory !== 'Todos' ? 1 : 0) + (nearMeEnabled ? 1 : 0);
 
   useEffect(() => {
     return () => {
@@ -356,6 +509,85 @@ export function CampaignsScreen() {
 
   const campaigns = useFetch(campaignFetcher);
   const institutions = useFetch(institutionFetcher);
+
+  type ExploreExtras = { follows: Follow[]; likedPostIds: string[]; posts: FeedPost[] };
+  const exploreExtrasFetcher = useCallback<() => Promise<ExploreExtras>>(
+    () => {
+      if (activeRole !== 'donor') {
+        return Promise.resolve({ follows: [], likedPostIds: [], posts: [] });
+      }
+      return Promise.all([
+        followsService.listMyFollows(authToken),
+        postsService.getMyLikedPostIds(authToken),
+        postsService.listFeed(authToken),
+      ]).then(([follows, likedPostIds, posts]) => ({ follows, likedPostIds, posts }));
+    },
+    [activeRole, authToken]
+  );
+  const exploreExtras = useFetch(exploreExtrasFetcher);
+
+  useEffect(() => {
+    if (!exploreExtras.data) return;
+    setLikedPosts(new Set(exploreExtras.data.likedPostIds));
+    setFollowingIds(
+      new Set(
+        exploreExtras.data.follows
+          .filter((follow) => follow.targetType === 'INSTITUTION')
+          .map((follow) => follow.targetId)
+      )
+    );
+  }, [exploreExtras.data]);
+
+  const exploreItems = useMemo<ExploreFeedItem[]>(() => {
+    if (activeRole !== 'donor') return [];
+
+    const campaignItems: ExploreFeedItem[] = (campaigns.data ?? []).map((item) => ({
+      kind: 'campaign',
+      id: `campaign-${item.id}`,
+      createdAt: item.createdAt ?? new Date(0).toISOString(),
+      location: item.location,
+      data: item,
+    }));
+
+    const filteredInstitutions = (institutions.data ?? []).filter(
+      (item) => activeCategory === 'Todos' || item.category === activeCategory
+    );
+    const institutionItems: ExploreFeedItem[] = filteredInstitutions.map((item) => ({
+      kind: 'institution',
+      id: `institution-${item.id}`,
+      createdAt: item.createdAt ?? new Date(0).toISOString(),
+      location: item.location,
+      data: item,
+    }));
+
+    const query = search.trim().toLowerCase();
+    const posts = exploreExtras.data?.posts ?? [];
+    const filteredPosts = query ? posts.filter((post) => post.content.toLowerCase().includes(query)) : posts;
+    const postItems: ExploreFeedItem[] = filteredPosts.map((item) => ({
+      kind: 'post',
+      id: `post-${item.id}`,
+      createdAt: item.createdAt,
+      data: item,
+    }));
+
+    const merged = [...campaignItems, ...institutionItems, ...postItems];
+
+    if (nearMeEnabled && userLocation) {
+      return sortFeedByDistance(merged, userLocation);
+    }
+
+    return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [activeRole, campaigns.data, institutions.data, exploreExtras.data, activeCategory, search, nearMeEnabled, userLocation]);
+
+  const exploreLoading = campaigns.loading || institutions.loading || exploreExtras.loading;
+  const exploreError = campaigns.error || institutions.error || exploreExtras.error;
+
+  function refetchExplore() {
+    campaigns.refetch();
+    institutions.refetch();
+    exploreExtras.refetch();
+  }
+
   const adminInstitutions = useFetch(
     useCallback(() => {
       if (activeRole !== 'platform-admin') return Promise.resolve([]);
@@ -375,8 +607,6 @@ export function CampaignsScreen() {
       return campaignsService.getInstitutionById(currentInstitutionId);
     }, [currentInstitutionId]),
   );
-
-  const active = mode === 'campaigns' ? campaigns : institutions;
 
   async function handleNearMePress() {
     if (locationLoading) return;
@@ -438,6 +668,105 @@ export function CampaignsScreen() {
       });
     } finally {
       setLocationLoading(false);
+    }
+  }
+
+  async function togglePostLike(post: FeedPost) {
+    const isLiked = likedPosts.has(post.id);
+
+    setLikedPosts((current) => {
+      const next = new Set(current);
+      if (isLiked) next.delete(post.id);
+      else next.add(post.id);
+      return next;
+    });
+
+    try {
+      if (isLiked) await postsService.unlikePost(post.id, authToken);
+      else await postsService.likePost({ postId: post.id }, authToken);
+      await exploreExtras.refetch();
+    } catch {
+      setLikedPosts((current) => {
+        const next = new Set(current);
+        if (isLiked) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+    }
+  }
+
+  async function sharePost(post: FeedPost) {
+    await Share.share({ message: post.content });
+    await postsService.sharePost(post.id);
+    await exploreExtras.refetch();
+  }
+
+  async function openPostComments(target: PostCommentTarget) {
+    setCommentTarget(target);
+    setCommentText('');
+    setComments([]);
+    setCommentsError('');
+    setCommentsLoading(true);
+
+    try {
+      const nextComments = await postsService.listComments(target.id, authToken);
+      setComments(nextComments);
+    } catch (error) {
+      setCommentsError(error instanceof Error ? error.message : 'Não foi possível carregar os comentários.');
+    } finally {
+      setCommentsLoading(false);
+    }
+  }
+
+  async function submitPostComment() {
+    if (!commentTarget || !commentText.trim()) return;
+
+    setCommentSubmitting(true);
+
+    try {
+      const createdComment = await postsService.createComment(
+        { postId: commentTarget.id, content: commentText },
+        authToken,
+      );
+      setComments((items) => [...items, createdComment]);
+      setCommentText('');
+      await exploreExtras.refetch();
+    } catch (error) {
+      setCommentsError(error instanceof Error ? error.message : 'Não foi possível enviar o comentário.');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
+
+  async function toggleFollowInstitution(institution: Institution) {
+    const isFollowing = followingIds.has(institution.id);
+    setFollowPendingIds((current) => new Set(current).add(institution.id));
+    setFollowingIds((current) => {
+      const next = new Set(current);
+      if (isFollowing) next.delete(institution.id);
+      else next.add(institution.id);
+      return next;
+    });
+
+    try {
+      if (isFollowing) {
+        await followsService.unfollow('INSTITUTION', institution.id, authToken);
+      } else {
+        await followsService.follow({ targetType: 'INSTITUTION', targetId: institution.id }, authToken);
+      }
+    } catch {
+      setFollowingIds((current) => {
+        const next = new Set(current);
+        if (isFollowing) next.add(institution.id);
+        else next.delete(institution.id);
+        return next;
+      });
+    } finally {
+      setFollowPendingIds((current) => {
+        const next = new Set(current);
+        next.delete(institution.id);
+        return next;
+      });
     }
   }
 
@@ -515,21 +844,21 @@ export function CampaignsScreen() {
     );
   }
 
-  function renderContent() {
-    if (active.loading) {
+  function renderExploreFeed() {
+    if (exploreLoading) {
       return <Loading label="Carregando..." style={styles.centered} />;
     }
 
-    if (active.error) {
+    if (exploreError) {
       return (
         <EmptyState
           title="Não foi possível carregar"
-          description={active.error}
+          description={exploreError}
           illustration={
             <Ionicons name="cloud-offline-outline" size={56} color={colors.border} />
           }
           action={
-            <Button variant="secondary" size="sm" onPress={active.refetch}>
+            <Button variant="secondary" size="sm" onPress={refetchExplore}>
               Tentar novamente
             </Button>
           }
@@ -537,7 +866,7 @@ export function CampaignsScreen() {
       );
     }
 
-    if (!active.data || active.data.length === 0) {
+    if (exploreItems.length === 0) {
       return (
         <EmptyState
           title="Nenhum resultado encontrado"
@@ -555,21 +884,42 @@ export function CampaignsScreen() {
 
     return (
       <View style={styles.list}>
-        {mode === 'campaigns'
-          ? (active.data as Campaign[]).map((item) => (
+        {exploreItems.map((item) => {
+          if (item.kind === 'campaign') {
+            return (
               <CampaignCard
                 key={item.id}
-                item={item}
-                onPress={() => router.push(routes.appCampaignDetail(item.id))}
+                item={item.data}
+                onPress={() => router.push(routes.appCampaignDetail(item.data.id))}
               />
-            ))
-          : (active.data as Institution[]).map((item) => (
+            );
+          }
+
+          if (item.kind === 'institution') {
+            return (
               <InstitutionCard
                 key={item.id}
-                item={item}
-                onPress={() => router.push(routes.appInstitutionDetail(item.id))}
+                item={item.data}
+                isFollowing={followingIds.has(item.data.id)}
+                followPending={followPendingIds.has(item.data.id)}
+                onPress={() => router.push(routes.appInstitutionDetail(item.data.id))}
+                onToggleFollow={() => void toggleFollowInstitution(item.data)}
               />
-            ))}
+            );
+          }
+
+          return (
+            <PostCard
+              key={item.id}
+              item={item.data}
+              liked={likedPosts.has(item.data.id)}
+              onToggleLike={() => void togglePostLike(item.data)}
+              onOpenComments={() => void openPostComments({ id: item.data.id, title: 'Post' })}
+              onShare={() => void sharePost(item.data)}
+              onPressDonate={(campaignId) => router.push(routes.appDonate(campaignId))}
+            />
+          );
+        })}
       </View>
     );
   }
@@ -991,26 +1341,15 @@ export function CampaignsScreen() {
             </ThemedText>
           </View>
 
-          <View style={[styles.institutionTabs, { borderColor: colors.border }]}>
-            {[
-              ['active', 'Ativas'],
-              ['drafts', 'Rascunhos'],
-              ['ended', 'Encerradas'],
-            ].map(([key, label]) => {
-              const selected = institutionCampaignFilter === key;
-
-              return (
-                <Pressable
-                  key={key}
-                  style={[styles.institutionTabButton, { backgroundColor: selected ? colors.primarySoft : 'transparent' }]}
-                  onPress={() => setInstitutionCampaignFilter(key as typeof institutionCampaignFilter)}>
-                  <ThemedText variant="body" color={selected ? colors.primary : colors.textMuted} style={styles.bold}>
-                    {label}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SegmentedToggle
+            value={institutionCampaignFilter}
+            onChange={setInstitutionCampaignFilter}
+            options={[
+              { key: 'active', label: 'Ativas' },
+              { key: 'drafts', label: 'Rascunhos' },
+              { key: 'ended', label: 'Encerradas' },
+            ]}
+          />
 
           {campaigns.loading && <Loading label="Carregando campanhas..." />}
 
@@ -1223,117 +1562,239 @@ export function CampaignsScreen() {
           </Pressable>
         </View>
 
-        {/* Busca */}
-        <Input
-          value={search}
-          onChangeText={setSearch}
-          fieldStyle={styles.searchField}
-          placeholder={
-            mode === 'campaigns'
-              ? 'Buscar campanhas ou instituições...'
-              : 'Buscar instituições...'
-          }
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          leftSlot={
-            <View style={styles.searchIcon}>
-              <Ionicons name="search-outline" size={18} color={colors.icon} />
-            </View>
-          }
-        />
-
-        {/* Toggle de modo */}
-        <ModeToggle mode={mode} onChange={(m) => { setMode(m); setSearch(''); }} />
-
-        {/* Filtros de categoria — apenas em campanhas */}
-        {mode === 'campaigns' && (
-          <View style={styles.filterBlock}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categories}>
-              <Pressable onPress={handleNearMePress}>
-                <View
-                  style={[
-                    styles.nearbyChip,
-                    { backgroundColor: nearMeEnabled ? colors.primary : colors.surfaceMuted },
-                    locationLoading ? styles.nearbyChipLoading : undefined,
-                  ]}>
-                  <Ionicons
-                    name={locationLoading ? 'navigate-circle-outline' : 'location-outline'}
-                    size={14}
-                    color={nearMeEnabled ? colors.surface : colors.text}
-                  />
-                  <ThemedText
-                    variant="caption"
-                    color={nearMeEnabled ? colors.surface : colors.text}>
-                    {locationLoading ? 'Localizando' : 'Perto de mim'}
-                  </ThemedText>
+        {/* Busca + filtros */}
+        <View style={styles.adminSearchRow}>
+          <View style={styles.adminSearchInputWrap}>
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              fieldStyle={styles.searchField}
+              placeholder="Buscar posts, campanhas ou instituições..."
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              leftSlot={
+                <View style={styles.searchIcon}>
+                  <Ionicons name="search-outline" size={18} color={colors.icon} />
                 </View>
-              </Pressable>
-              {CAMPAIGN_CATEGORIES.map((cat) => (
-                cat === 'Todos' ? null : <Pressable key={cat} onPress={() => { setNearMeEnabled(false); setActiveCategory(cat); }}>
-                  <Tag
-                    label={cat}
-                    variant={activeCategory === cat ? 'success' : 'neutral'}
-                  />
-                </Pressable>
-              ))}
-              <View style={[styles.moreChip, { backgroundColor: colors.surfaceMuted }]}>
-                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-              </View>
-            </ScrollView>
-            {locationError ? (
-              <ThemedText variant="caption" color={colors.danger}>
-                {locationError}
-              </ThemedText>
-            ) : null}
+              }
+            />
           </View>
-        )}
-
-        {/* Contagem de resultados */}
-        {!active.loading && !active.error && (
-          <View style={styles.resultsHeader}>
-            <ThemedText variant="subtitle" style={styles.resultsTitle} numberOfLines={2}>
-              {mode === 'campaigns' ? 'Campanhas em destaque' : 'Instituições'}
-            </ThemedText>
-            <Pressable>
-              <ThemedText variant="body" color={colors.primary} style={styles.bold}>
-                Ver todas
-              </ThemedText>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Conteúdo principal */}
-        {renderContent()}
-
-        {mode === 'campaigns' && !institutions.loading && !institutions.error && institutions.data && institutions.data.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.resultsHeader}>
-              <ThemedText variant="subtitle" style={styles.resultsTitle}>
-                Instituições recomendadas
-              </ThemedText>
-              <Pressable onPress={() => setMode('institutions')}>
-                <ThemedText variant="body" color={colors.primary} style={styles.bold}>
-                  Ver todas
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setExploreFilterOpen(true)}
+            style={[styles.adminFilterButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="options-outline" size={22} color={colors.primary} />
+            {activeExploreFiltersCount > 0 ? (
+              <View style={[styles.adminFilterBadge, { backgroundColor: colors.primary }]}>
+                <ThemedText variant="caption" color={colors.surface} style={styles.bold}>
+                  {activeExploreFiltersCount}
                 </ThemedText>
-              </Pressable>
-            </View>
-            <View style={styles.list}>
-              {institutions.data.slice(0, 2).map((item) => (
-                <InstitutionCard
-                  key={item.id}
-                  item={item}
-                  onPress={() => router.push(routes.appInstitutionDetail(item.id))}
-                />
-              ))}
-            </View>
-          </View>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
+
+        {locationError ? (
+          <ThemedText variant="caption" color={colors.danger}>
+            {locationError}
+          </ThemedText>
         ) : null}
 
+        <Modal
+          transparent
+          animationType="slide"
+          visible={exploreFilterOpen}
+          onRequestClose={() => setExploreFilterOpen(false)}>
+          <Pressable style={styles.adminBottomSheetBackdrop} onPress={() => setExploreFilterOpen(false)}>
+            <Pressable
+              style={[styles.adminBottomSheet, { backgroundColor: colors.surface }]}
+              onPress={(event) => event.stopPropagation()}>
+              <View style={[styles.adminBottomSheetHandle, { backgroundColor: colors.border }]} />
+
+              <View style={styles.adminBottomSheetHeader}>
+                <View style={styles.headerText}>
+                  <ThemedText variant="subtitle">Filtros</ThemedText>
+                  <ThemedText variant="caption" color={colors.textMuted}>
+                    Refine o que aparece no seu feed.
+                  </ThemedText>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setActiveCategory('Todos');
+                    if (nearMeEnabled) void handleNearMePress();
+                  }}>
+                  <ThemedText variant="body" color={colors.primary} style={styles.bold}>
+                    Limpar
+                  </ThemedText>
+                </Pressable>
+              </View>
+
+              <View style={styles.adminBottomSheetSection}>
+                <ThemedText variant="body" style={styles.bold}>Categoria</ThemedText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.adminStateFilters}>
+                  {CAMPAIGN_CATEGORIES.map((cat) => {
+                    const selected = activeCategory === cat;
+
+                    return (
+                      <Pressable
+                        key={cat}
+                        accessibilityRole="button"
+                        onPress={() => setActiveCategory(cat)}
+                        style={[
+                          styles.adminStatusFilter,
+                          {
+                            backgroundColor: selected ? colors.primarySoft : colors.surface,
+                            borderColor: selected ? colors.primary : colors.border,
+                          },
+                        ]}>
+                        <ThemedText
+                          variant="caption"
+                          color={selected ? colors.primary : colors.textMuted}
+                          style={selected ? styles.bold : undefined}>
+                          {cat}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={styles.adminBottomSheetSection}>
+                <ThemedText variant="body" style={styles.bold}>Localização</ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleNearMePress}
+                  style={[
+                    styles.adminSortOption,
+                    {
+                      backgroundColor: nearMeEnabled ? colors.primarySoft : colors.surface,
+                      borderColor: nearMeEnabled ? colors.primary : colors.border,
+                    },
+                  ]}>
+                  <View style={styles.headerText}>
+                    <ThemedText
+                      variant="body"
+                      color={nearMeEnabled ? colors.primary : colors.text}
+                      style={styles.bold}>
+                      {locationLoading ? 'Localizando...' : 'Perto de mim'}
+                    </ThemedText>
+                    <ThemedText variant="caption" color={colors.textMuted}>
+                      Ordena o feed pela sua localização atual.
+                    </ThemedText>
+                  </View>
+                  {nearMeEnabled ? (
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                  ) : null}
+                </Pressable>
+              </View>
+
+              <Button onPress={() => setExploreFilterOpen(false)}>
+                Aplicar filtros
+              </Button>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Feed unificado — posts, campanhas e instituições */}
+        {renderExploreFeed()}
+
       </View>
+
+      <Modal
+        animationType="slide"
+        transparent
+        visible={Boolean(commentTarget)}
+        onRequestClose={() => setCommentTarget(null)}>
+        <View style={styles.commentBackdrop}>
+          <View style={[styles.commentSheet, { backgroundColor: colors.surface }]}>
+            <View style={[styles.commentHandle, { backgroundColor: colors.border }]} />
+            <View style={styles.commentHeader}>
+              <View style={styles.commentHeaderText}>
+                <ThemedText variant="subtitle">Comentários</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                  {commentTarget?.title}
+                </ThemedText>
+              </View>
+              <Pressable style={styles.commentCloseButton} onPress={() => setCommentTarget(null)}>
+                <Ionicons name="close" size={22} color={colors.icon} />
+              </Pressable>
+            </View>
+
+            {commentsLoading ? (
+              <Loading label="Carregando comentários..." />
+            ) : commentsError ? (
+              <View style={styles.commentEmpty}>
+                <Ionicons name="warning-outline" size={36} color={colors.danger} />
+                <ThemedText variant="body" style={styles.bold}>Não foi possível carregar</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  {commentsError}
+                </ThemedText>
+                {commentTarget ? (
+                  <Button size="sm" variant="secondary" onPress={() => void openPostComments(commentTarget)}>
+                    Tentar novamente
+                  </Button>
+                ) : null}
+              </View>
+            ) : comments.length === 0 ? (
+              <View style={styles.commentEmpty}>
+                <Ionicons name="chatbubble-outline" size={36} color={colors.border} />
+                <ThemedText variant="body" style={styles.bold}>Nenhum comentário ainda</ThemedText>
+                <ThemedText variant="caption" color={colors.textMuted}>
+                  Seja a primeira pessoa a comentar.
+                </ThemedText>
+              </View>
+            ) : (
+              <ScrollView style={styles.commentList} showsVerticalScrollIndicator={false}>
+                {comments.map((comment, index) => (
+                  <View key={comment.id}>
+                    <View style={styles.commentItem}>
+                      <Avatar
+                        name={getCommentAuthorName(comment)}
+                        source={comment.author?.profilePhotoUrl ? { uri: comment.author.profilePhotoUrl } : undefined}
+                        size="sm"
+                      />
+                      <View style={styles.commentBody}>
+                        <ThemedText variant="body" style={styles.bold}>
+                          {getCommentAuthorName(comment)}
+                        </ThemedText>
+                        <ThemedText variant="body">{comment.content}</ThemedText>
+                        <ThemedText variant="caption" color={colors.textMuted}>
+                          {formatFeedDate(comment.createdAt)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    {index < comments.length - 1 ? <Divider /> : null}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            <View style={[styles.commentInputRow, { borderColor: colors.border }]}>
+              <TextInput
+                value={commentText}
+                onChangeText={setCommentText}
+                placeholder="Escreva um comentário..."
+                placeholderTextColor={colors.textMuted}
+                style={[styles.commentInput, { color: colors.text }]}
+              />
+              <Pressable
+                disabled={commentSubmitting || !commentText.trim()}
+                onPress={() => void submitPostComment()}
+                style={[
+                  styles.commentSendButton,
+                  { backgroundColor: commentText.trim() ? colors.primary : colors.surfaceMuted },
+                ]}>
+                <Ionicons name="send" size={18} color={commentText.trim() ? '#FFFFFF' : colors.icon} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
