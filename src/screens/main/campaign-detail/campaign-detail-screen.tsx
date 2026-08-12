@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -91,7 +92,16 @@ export function CampaignDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <View style={[styles.cover, { backgroundColor: colors.primarySoft }]}>
-          <Ionicons name="image-outline" size={36} color={colors.primary} />
+          {campaign.bannerUrl ? (
+            <Image
+              source={campaign.bannerUrl}
+              style={styles.coverImage}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : (
+            <Ionicons name="image-outline" size={36} color={colors.primary} />
+          )}
         </View>
 
         <View style={styles.section}>

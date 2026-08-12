@@ -37,6 +37,11 @@ export const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     borderRadius: theme.radius.lg,
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  coverImage: {
+    height: '100%',
+    width: '100%',
   },
   tagsRow: {
     flexDirection: 'row',
