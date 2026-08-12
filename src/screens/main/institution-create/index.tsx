@@ -11,7 +11,7 @@ import { Button, Card, DatePicker, Input, ScreenContainer, Tag, ThemedText } fro
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { routes } from '@/navigation/routes';
 import { API_BASE_URL } from '@/services/api';
-import { campaignsService, type Campaign } from '@/services/campaigns';
+import { campaignsService, type Campaign, type CampaignCategory } from '@/services/campaigns';
 import { deliveryProofsService } from '@/services/delivery-proofs';
 import { institutionStaffService, type InstitutionStaffRole } from '@/services/institution-staff';
 import { postsService, type PostVisibility } from '@/services/posts';
@@ -30,6 +30,14 @@ type FeedbackToast = {
 };
 
 const CAMPAIGN_TAGS = ['Crianças', 'Inverno', 'Urgente', 'Educação', 'Alimentação', 'Saúde'];
+const CAMPAIGN_CATEGORIES: CampaignCategory[] = [
+  'Educação',
+  'Alimentação',
+  'Saúde',
+  'Moradia',
+  'Meio Ambiente',
+  'Outros',
+];
 const CAMPAIGN_PUBLISHER_ROLES: InstitutionStaffRole[] = ['OWNER', 'ADMIN', 'MANAGER'];
 
 type SelectedCover = {
@@ -84,6 +92,7 @@ export function InstitutionCreateScreen() {
   const [accountabilityDescription, setAccountabilityDescription] = useState('');
   const [proofFile, setProofFile] = useState<SelectedProofFile | null>(null);
   const [savingProof, setSavingProof] = useState(false);
+  const [category, setCategory] = useState<CampaignCategory>('Outros');
   const [cover, setCover] = useState<SelectedCover | null>(null);
   const [description, setDescription] = useState('');
   const [endAt, setEndAt] = useState<Date | null>(new Date('2026-09-30T12:00:00.000Z'));
@@ -294,6 +303,7 @@ export function InstitutionCreateScreen() {
     try {
       const campaign = await campaignsService.createMyInstitutionCampaign(
         {
+          category,
           description: description.trim(),
           endAt: toDateInputValue(endAt),
           goal: {
@@ -685,6 +695,19 @@ export function InstitutionCreateScreen() {
                   value={description}
                 />
 
+                <ThemedText variant="caption" color={colors.textMuted}>Categoria</ThemedText>
+                <View style={styles.tagsRow}>
+                  {CAMPAIGN_CATEGORIES.map((label) => (
+                    <Pressable
+                      key={label}
+                      accessibilityRole="button"
+                      onPress={() => setCategory(label)}
+                      style={styles.tagButton}>
+                      <Tag label={label} variant={category === label ? 'success' : 'neutral'} />
+                    </Pressable>
+                  ))}
+                </View>
+
                 <View style={styles.tagsRow}>
                   {CAMPAIGN_TAGS.map((label) => (
                     <Pressable
@@ -739,6 +762,10 @@ export function InstitutionCreateScreen() {
                     <ThemedText variant="body">
                       {endAt ? new Intl.DateTimeFormat('pt-BR').format(endAt) : 'Sem prazo'}
                     </ThemedText>
+                  </View>
+                  <View style={styles.reviewRow}>
+                    <ThemedText variant="caption" color={colors.textMuted}>Categoria</ThemedText>
+                    <ThemedText variant="body">{category}</ThemedText>
                   </View>
                 </View>
                 <View style={styles.tagsRow}>
