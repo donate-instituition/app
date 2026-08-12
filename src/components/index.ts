@@ -12,6 +12,7 @@ export * from './loading';
 export * from './progress-bar';
 export * from './radio-group';
 export * from './screen-container';
+export * from './segmented-toggle';
 export * from './select';
 export * from './tag';
 export * from './themed-text';
