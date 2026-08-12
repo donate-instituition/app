@@ -6,6 +6,7 @@ import type {
   CampaignComment,
   CampaignDetail,
   CampaignFilters,
+  CampaignRecentDonors,
   GeoLocation,
   Institution,
   InstitutionDetail,
@@ -142,6 +143,15 @@ async function createMyInstitutionCampaign(
   );
 }
 
+async function getCampaignRecentDonors(
+  id: string,
+  limit = 3,
+): Promise<CampaignRecentDonors> {
+  return api.get<CampaignRecentDonors>(`/campaigns/${id}/donors`, {
+    query: { limit },
+  });
+}
+
 async function updateMyInstitutionCampaignBanner(
   id: string,
   bannerUrl: string,
@@ -182,6 +192,18 @@ async function updateInstitutionRecurringDonations(
   return api.patch<InstitutionDetail>(
     `/institutions/${id}`,
     { acceptsRecurringDonations },
+    { token },
+  );
+}
+
+async function updateInstitutionPhotos(
+  id: string,
+  photos: { coverPhotoUrl?: string; logoUrl?: string },
+  token: string | null,
+): Promise<InstitutionDetail> {
+  return api.patch<InstitutionDetail, { coverPhotoUrl?: string; logoUrl?: string }>(
+    `/institutions/${id}`,
+    photos,
     { token },
   );
 }
@@ -238,6 +260,10 @@ async function unlikeCampaign(
   );
 }
 
+async function getMyLikedCampaignIds(token: string | null): Promise<string[]> {
+  return api.get<string[]>('/campaigns/me/likes', { token });
+}
+
 async function shareCampaign(id: string): Promise<{ campaignId: string; sharesCount: number }> {
   return api.post<{ campaignId: string; sharesCount: number }>(
     `/campaigns/${id}/share`,
@@ -265,14 +291,17 @@ export const campaignsService = {
   getCampaignById,
   getInstitutionById,
   createMyInstitutionCampaign,
+  getCampaignRecentDonors,
   updateMyInstitutionCampaignBanner,
   listPendingInstitutions,
   listAdminInstitutions,
   approveInstitution,
   rejectInstitution,
   updateInstitutionRecurringDonations,
+  updateInstitutionPhotos,
   verifyInstitutionStripeConnectAccount,
   createCampaignComment,
+  getMyLikedCampaignIds,
   likeCampaign,
   listCampaignComments,
   shareCampaign,

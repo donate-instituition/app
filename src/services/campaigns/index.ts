@@ -5,6 +5,8 @@ export type {
   CampaignComment,
   CampaignDetail,
   CampaignFilters,
+  CampaignRecentDonors,
+  GeoLocation,
   Institution,
   InstitutionDetail,
   InstitutionFilters,

@@ -32,6 +32,7 @@ export type Campaign = {
   active: boolean;
   acceptsRecurringDonations?: boolean;
   bannerUrl?: string;
+  createdAt?: string; // ISO date string
   endsAt?: string; // ISO date string
   location?: GeoLocation;
 };
@@ -44,6 +45,7 @@ export type CampaignDetail = Campaign & {
 
 export type CreateCampaignInput = {
   bannerUrl?: string;
+  category?: CampaignCategory;
   description?: string;
   endAt?: string;
   goal: {
@@ -54,6 +56,17 @@ export type CreateCampaignInput = {
   title: string;
 };
 
+export type CampaignDonor = {
+  id: string;
+  name?: string;
+  profilePhotoUrl?: string;
+};
+
+export type CampaignRecentDonors = {
+  donors: CampaignDonor[];
+  totalCount: number;
+};
+
 export type Institution = {
   id: string;
   name: string;
@@ -61,12 +74,15 @@ export type Institution = {
   city: string;
   state: string;
   activeCampaigns: number;
+  createdAt?: string; // ISO date string
   followersCount?: number;
   postsCount?: number;
   receivedDonationsCount?: number;
   receivedAmount?: number;
   verified: boolean;
   acceptsRecurringDonations?: boolean;
+  logoUrl?: string;
+  coverPhotoUrl?: string;
   stripeConnect?: {
     accountId?: string;
     chargesEnabled?: boolean;
@@ -122,6 +138,7 @@ export type CampaignComment = {
     email?: string;
     fullName?: string;
     id: string;
+    profilePhotoUrl?: string;
   };
   content: string;
   createdAt: string;

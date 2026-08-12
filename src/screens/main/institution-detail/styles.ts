@@ -40,6 +40,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     height: 148,
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  coverImage: {
+    height: '100%',
+    width: '100%',
   },
   identityAvatar: {
     borderWidth: 4,

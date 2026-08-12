@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, View } from 'react-native';
@@ -181,10 +182,15 @@ export function InstitutionDetailScreen() {
         {/* Identidade */}
         <View style={styles.identity}>
           <View style={[styles.cover, { backgroundColor: colors.primarySoft }]}>
-            <Ionicons name="image-outline" size={32} color={colors.primary} />
+            {institution.coverPhotoUrl ? (
+              <Image source={{ uri: institution.coverPhotoUrl }} style={styles.coverImage} contentFit="cover" />
+            ) : (
+              <Ionicons name="image-outline" size={32} color={colors.primary} />
+            )}
           </View>
           <Avatar
             name={institution.name}
+            source={institution.logoUrl ? { uri: institution.logoUrl } : undefined}
             size="lg"
             style={[styles.identityAvatar, { borderColor: colors.surface }]}
           />

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -14,10 +15,12 @@ import {
   type NotificationSettings,
 } from '@/navigation/session';
 import { authService } from '@/services/auth';
+import { campaignsService } from '@/services/campaigns';
 import { chatService } from '@/services/chat';
+import { institutionStaffService } from '@/services/institution-staff';
 import { supportService } from '@/services/support';
 import { uploadsService } from '@/services/uploads';
-import { useAppStore } from '@/store';
+import { useActiveRole, useAppStore } from '@/store';
 import { theme } from '@/theme';
 
 import { styles } from './styles';
@@ -129,12 +132,95 @@ export function MyDataScreen() {
   const user = useAppStore((state) => state.user);
   const authToken = useAppStore((state) => state.authToken);
   const setProfilePhotoUrl = useAppStore((state) => state.setProfilePhotoUrl);
+  const activeRole = useActiveRole();
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  const staffMemberships = useFetch(
+    useCallback(() => {
+      if (activeRole !== 'institution-staff') return Promise.resolve([]);
+      return institutionStaffService.listMyMemberships(authToken);
+    }, [activeRole, authToken]),
+  );
+  const institutionId = staffMemberships.data?.[0]?.institutionId;
+  const institution = useFetch(
+    useCallback(() => {
+      if (!institutionId) return Promise.resolve(null);
+      return campaignsService.getInstitutionById(institutionId);
+    }, [institutionId]),
+  );
 
   function handleSave() {
     Alert.alert('Alterações salvas', 'Quando o endpoint de perfil estiver pronto, esses dados serão persistidos no backend.');
+  }
+
+  async function handlePickInstitutionPhoto(kind: 'logo' | 'cover') {
+    if (!institutionId) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Permissão necessária', 'Autorize o acesso às fotos para atualizar a imagem da instituição.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: kind === 'logo' ? [1, 1] : [16, 9],
+      base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (!asset.base64) {
+      Alert.alert('Não foi possível ler a imagem', 'Tente selecionar outra foto.');
+      return;
+    }
+
+    const category = kind === 'logo' ? 'INSTITUTION_LOGO' : 'INSTITUTION_COVER';
+    const setUploading = kind === 'logo' ? setUploadingLogo : setUploadingCover;
+
+    setUploading(true);
+
+    try {
+      const createdUpload = await uploadsService.createUpload(
+        {
+          base64: asset.base64,
+          category,
+          contentType: asset.mimeType ?? 'image/jpeg',
+          filename: asset.fileName ?? `institution-${kind}-${Date.now()}.jpg`,
+        },
+        authToken,
+      );
+
+      const confirmedUpload = await uploadsService.confirmUpload(
+        createdUpload.uploadId,
+        { category, fileName: createdUpload.fileName, institutionId },
+        authToken,
+      );
+
+      if (confirmedUpload.url) {
+        await campaignsService.updateInstitutionPhotos(
+          institutionId,
+          kind === 'logo' ? { logoUrl: confirmedUpload.url } : { coverPhotoUrl: confirmedUpload.url },
+          authToken,
+        );
+        await institution.refetch();
+      }
+    } catch {
+      Alert.alert('Não foi possível atualizar a foto', 'Tente novamente em instantes.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handlePickAvatar() {
@@ -194,6 +280,69 @@ export function MyDataScreen() {
     } finally {
       setUploadingAvatar(false);
     }
+  }
+
+  if (activeRole === 'institution-staff') {
+    const institutionName = institution.data?.name ?? staffMemberships.data?.[0]?.institution?.name ?? 'Instituição';
+
+    return (
+      <ScreenContainer scrollable>
+        <View style={styles.container}>
+          <Header title="Meus dados" description="Gerencie a identidade visual e os dados da instituição." />
+
+          <Card style={styles.formCard}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={uploadingCover || !institutionId}
+              onPress={() => handlePickInstitutionPhoto('cover')}
+              style={[styles.institutionCover, { backgroundColor: colors.primarySoft }]}>
+              {institution.data?.coverPhotoUrl ? (
+                <Image source={{ uri: institution.data.coverPhotoUrl }} style={styles.institutionCoverImage} contentFit="cover" />
+              ) : (
+                <Ionicons name="image-outline" size={32} color={colors.primary} />
+              )}
+              <View style={[styles.institutionCoverEdit, { backgroundColor: colors.primary }]}>
+                {uploadingCover ? (
+                  <ActivityIndicator size="small" color={colors.surface} />
+                ) : (
+                  <Ionicons name="pencil-outline" size={14} color={colors.surface} />
+                )}
+              </View>
+            </Pressable>
+
+            <View style={styles.profileSummary}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={uploadingLogo || !institutionId}
+                onPress={() => handlePickInstitutionPhoto('logo')}
+                style={[styles.avatarPressable, styles.institutionLogoPressable]}>
+                <Avatar
+                  name={institutionName}
+                  source={institution.data?.logoUrl ? { uri: institution.data.logoUrl } : undefined}
+                  size="lg"
+                  style={{ borderColor: colors.surface, borderWidth: 4 }}
+                />
+                <View style={[styles.avatarEdit, { backgroundColor: colors.primary }]}>
+                  {uploadingLogo ? (
+                    <ActivityIndicator size="small" color={colors.surface} />
+                  ) : (
+                    <Ionicons name="pencil-outline" size={16} color={colors.surface} />
+                  )}
+                </View>
+              </Pressable>
+              <ThemedText variant="subtitle" numberOfLines={2} style={{ textAlign: 'center' }}>
+                {institutionName}
+              </ThemedText>
+              <ThemedText variant="caption" color={colors.textMuted} numberOfLines={1}>
+                {institution.data?.email}
+              </ThemedText>
+            </View>
+            <FieldPreview label="Nome da instituição" value={institutionName} />
+            <FieldPreview label="E-mail" value={institution.data?.email} />
+          </Card>
+        </View>
+      </ScreenContainer>
+    );
   }
 
   return (

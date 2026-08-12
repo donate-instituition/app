@@ -74,6 +74,30 @@ export const styles = StyleSheet.create({
     paddingBottom: theme.spacing.lg,
     paddingTop: theme.spacing.md,
   },
+  institutionCover: {
+    alignItems: 'center',
+    borderRadius: 16,
+    height: 140,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  institutionCoverImage: {
+    height: '100%',
+    width: '100%',
+  },
+  institutionCoverEdit: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 36,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: theme.spacing.md,
+    top: theme.spacing.md,
+    width: 36,
+  },
+  institutionLogoPressable: {
+    marginTop: -36,
+  },
   avatarPressable: {
     alignItems: 'center',
   },
