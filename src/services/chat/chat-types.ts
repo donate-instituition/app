@@ -17,5 +17,6 @@ export type Conversation = {
   institutionName: string;
   lastMessage: string;
   lastMessageAt: string; // ISO 8601
+  photoUrl?: string;
   unreadCount: number;
 };

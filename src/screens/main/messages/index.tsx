@@ -369,7 +369,11 @@ export function MessagesScreen() {
                 key={item.id}
                 onPress={() => router.push(routes.appChat(item.id))}>
                 <View style={styles.conversationItem}>
-                  <Avatar name={item.displayName ?? item.counterpartName ?? item.institutionName} size="md" />
+                  <Avatar
+                    name={item.displayName ?? item.counterpartName ?? item.institutionName}
+                    source={item.photoUrl ? { uri: item.photoUrl } : undefined}
+                    size="md"
+                  />
                   <View style={styles.conversationContent}>
                     <View style={styles.conversationHeader}>
                       <ThemedText variant="body" style={styles.bold}>
