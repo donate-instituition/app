@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 export enum Environment {
@@ -10,13 +11,16 @@ export enum Environment {
 // expo start, etc). Builds do EAS com profile preview/production ignoram isso — ver
 // forceEnvironmentFromEasProfile() abaixo, para nunca subir um build de loja apontando
 // pro ambiente errado por esquecimento.
-const CURRENT_ENVIRONMENT: Environment = Environment.PROD;
+const CURRENT_ENVIRONMENT: Environment = Environment.LOCAL;
 
-// 10.0.2.2 é o alias do emulador Android pro localhost da máquina host — não funciona
-// em simulador iOS, web nem celular físico, então LOCAL precisa variar por plataforma
-// (diferente de HOMOLOGA/PROD, que são a mesma API hospedada pra todo mundo).
+// No Android, 'localhost' aponta pro próprio device/emulador, não pra máquina rodando o
+// backend — então reaproveitamos o host que o Metro já usa pra servir o bundle
+// (Constants.expoConfig.hostUri), que funciona tanto em emulador quanto em device físico.
+// Cai pra 10.0.2.2 (alias do emulador Android pro host) só se o hostUri não estiver disponível.
+const metroHost = Constants.expoConfig?.hostUri?.split(':')[0];
+
 const LOCAL_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:3000',
+  android: `http://${metroHost ?? '10.0.2.2'}:3000`,
   default: 'http://localhost:3000',
 });
 
