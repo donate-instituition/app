@@ -51,7 +51,11 @@ export function Button({
       {...props}>
       <View style={styles.content}>
         {loading ? <ActivityIndicator color={buttonColors.loaderColor} /> : leftSlot}
-        <ThemedText variant="body" color={buttonColors.textColor}>
+        <ThemedText
+          variant="body"
+          color={buttonColors.textColor}
+          numberOfLines={1}
+          style={styles.label}>
           {children}
         </ThemedText>
         {rightSlot}

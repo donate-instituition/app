@@ -3,9 +3,250 @@ import { StyleSheet } from 'react-native';
 import { theme } from '@/theme';
 
 export const styles = StyleSheet.create({
-  header: {
+  container: {
+    gap: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+  },
+  greeting: {
     gap: theme.spacing.sm,
   },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  greetingText: {
+    gap: theme.spacing.xxs,
+    flex: 1,
+    minWidth: 0,
+  },
+  banner: {
+    borderRadius: theme.radius.lg,
+  },
+  bannerContent: {
+    gap: theme.spacing.sm,
+  },
+  bannerProgress: {
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+  },
+  section: {
+    gap: theme.spacing.md,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  sectionTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionAction: {
+    flexShrink: 0,
+  },
+  institutionPanelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  institutionHero: {
+    gap: theme.spacing.lg,
+  },
+  periodChip: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  bottomSheetBackdrop: {
+    backgroundColor: 'rgba(16, 42, 36, 0.32)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: theme.spacing.lg,
+    padding: theme.spacing.xl,
+    paddingBottom: theme.spacing['2xl'],
+  },
+  bottomSheetHandle: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.pill,
+    height: 4,
+    width: 44,
+  },
+  bottomSheetOptions: {
+    gap: theme.spacing.sm,
+  },
+  bottomSheetOption: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+    minHeight: 72,
+    padding: theme.spacing.md,
+  },
+  bottomSheetOptionText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  list: {
+    gap: theme.spacing.sm,
+  },
+  donationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  donationIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.light.secondarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donationInfo: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  donationMeta: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  donationStatus: {
+    maxWidth: 96,
+  },
+  campaignCard: {
+    gap: theme.spacing.sm,
+  },
+  campaignHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  campaignInfo: {
+    gap: theme.spacing.xxs,
+    flex: 1,
+    minWidth: 0,
+  },
+  campaignMeta: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    flexWrap: 'wrap',
+  },
+  adminInstitution: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  adminInstitutionInfo: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  adminActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'flex-end',
+  },
+  adminDashboard: {
+    gap: theme.spacing.xl,
+  },
+  adminEmptyReviewCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    minHeight: 170,
+    justifyContent: 'center',
+  },
+  adminEmptyIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 62,
+    justifyContent: 'center',
+    width: 62,
+  },
+  adminEmptyDescription: {
+    maxWidth: 230,
+    textAlign: 'center',
+  },
+  adminPendingCard: {
+    gap: theme.spacing.md,
+  },
+  adminSeeAll: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  adminMetricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.md,
+  },
+  adminMetricPressable: {
+    flexBasis: '47%',
+    flexGrow: 1,
+  },
+  adminMetricCard: {
+    gap: theme.spacing.xs,
+    minHeight: 144,
+  },
+  adminMetricIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  adminQuickActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    paddingRight: theme.spacing.lg,
+  },
+  adminQuickAction: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    justifyContent: 'center',
+    minHeight: 58,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    width: 164,
+  },
+  adminQuickIcon: {
+    alignItems: 'center',
+    borderRadius: theme.radius.md,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  adminQuickText: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
+  },
+  bold: {
+    fontWeight: '600',
+  },
+  // kept for grid usage
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -15,15 +256,395 @@ export const styles = StyleSheet.create({
     flexBasis: '47%',
     gap: theme.spacing.xs,
   },
-  section: {
+  institutionMetricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.md,
   },
-  actions: {
+  institutionMetricPressable: {
+    flexBasis: '47%',
+    flexGrow: 1,
+  },
+  institutionMetricCard: {
+    gap: theme.spacing.sm,
+    minHeight: 168,
+  },
+  metricIconCircle: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  metricFooter: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    marginTop: 'auto',
+  },
+  chartCard: {
+    gap: theme.spacing.lg,
+  },
+  periodChipSmall: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    flexShrink: 0,
+    minHeight: 30,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  campaignChart: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    minHeight: 172,
+  },
+  chartColumn: {
+    alignItems: 'center',
+    flex: 1,
+    gap: theme.spacing.xs,
+    justifyContent: 'flex-end',
+  },
+  chartLabel: {
+    minHeight: 32,
+    textAlign: 'center',
+  },
+  chartBars: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    height: 112,
+  },
+  chartBar: {
+    borderTopLeftRadius: theme.radius.md,
+    borderTopRightRadius: theme.radius.md,
+    width: '72%',
+  },
+  reportLink: {
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    justifyContent: 'center',
+    paddingTop: theme.spacing.md,
+  },
+  quickActionsCard: {
+    gap: theme.spacing.md,
+  },
+  quickActionsHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  carouselHint: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  carouselHintDot: {
+    borderRadius: theme.radius.pill,
+    height: 6,
+    width: 6,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  quickActionsCarouselWrap: {
+    marginRight: -theme.spacing.md,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  quickActionsCarousel: {
+    gap: theme.spacing.sm,
+    paddingRight: theme.spacing['3xl'],
+  },
+  carouselPeek: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    elevation: 3,
+    height: 34,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: theme.spacing.sm,
+    shadowColor: '#102A24',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    top: 29,
+    width: 34,
+  },
+  quickActionTile: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: theme.borderWidths.sm,
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+    minHeight: 92,
+    padding: theme.spacing.sm,
+    width: 104,
+  },
+  quickActionLabel: {
+    textAlign: 'center',
+  },
+  accountabilityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.md,
+  },
+  header: {
+    gap: theme.spacing.sm,
+  },
+  homeHeaderRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  homeHeaderActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  homeIconButton: {
+    alignItems: 'center',
+    height: 42,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 42,
+  },
+  homeDot: {
+    borderRadius: theme.radius.pill,
+    height: 10,
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 10,
+  },
+  profileHeader: {
+    gap: theme.spacing.lg,
+  },
+  profileTopRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  settingsButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    borderWidth: theme.borderWidths.sm,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  profileIdentity: {
+    gap: theme.spacing.xs,
+  },
+  socialStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
+  },
+  socialStat: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  profileAction: {
+    flex: 1,
+  },
+  emptyPostCard: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  postCard: {
+    gap: theme.spacing.md,
+  },
+  postAuthor: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  postAuthorText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  postStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  composerCard: {
+    gap: theme.spacing.md,
+    borderRadius: 20,
+  },
+  composerInput: {
+    minHeight: 78,
+    textAlignVertical: 'top',
+  },
+  composerActions: {
+    gap: theme.spacing.md,
+  },
+  composerQuickActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.md,
+  },
+  quickAction: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  composerPreviewRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
-  carouselCard: {
-    marginRight: theme.spacing.md,
+  composerPreviewThumbWrap: {
+    borderRadius: 14,
+    height: 64,
+    overflow: 'hidden',
+    width: 64,
+  },
+  composerPreviewThumb: {
+    height: '100%',
+    width: '100%',
+  },
+  composerPreviewRemove: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 20,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 4,
+    top: 4,
+    width: 20,
+  },
+  composerChip: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+  },
+  homeFeedCard: {
+    gap: theme.spacing.md,
+    borderRadius: 20,
+  },
+  feedPostImage: {
+    borderRadius: 16,
+    height: 200,
+    width: '100%',
+  },
+  feedCampaignLink: {
+    alignItems: 'center',
+    borderRadius: 16,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    minHeight: 56,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  feedActions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.light.border,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.md,
+  },
+  feedAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  commentBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  commentSheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: theme.spacing.md,
+    maxHeight: '82%',
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+  },
+  commentHandle: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.pill,
+    height: 4,
+    marginBottom: theme.spacing.sm,
+    width: 44,
+  },
+  commentHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+  },
+  commentCloseButton: {
+    alignItems: 'center',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  commentEmpty: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.xl,
+  },
+  commentList: {
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+  },
+  commentItem: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+  },
+  commentBody: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 0,
+  },
+  commentInputRow: {
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    paddingTop: theme.spacing.md,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 16,
+    minHeight: 44,
+  },
+  commentSendButton: {
+    alignItems: 'center',
+    borderRadius: theme.radius.pill,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
   },
 });

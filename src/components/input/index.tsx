@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { TextInput, type TextInputProps, View } from 'react-native';
+import { TextInput, type StyleProp, type TextInputProps, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -11,35 +10,36 @@ type InputProps = TextInputProps & {
   label?: string;
   helperText?: string;
   error?: string;
-  success?: boolean;
-  successText?: string;
+  fieldStyle?: StyleProp<ViewStyle>;
   variant?: InputVariant;
   leftSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
 };
 
+type WebTextInputStyle = {
+  caretColor?: string;
+  outlineColor?: string;
+};
+
 export function Input({
   editable = true,
   error,
+  fieldStyle,
   helperText,
   label,
   leftSlot,
   rightSlot,
   style,
-  success,
-  successText,
   variant = 'outline',
   ...props
 }: InputProps) {
-  const [focused, setFocused] = useState(false);
   const scheme = useColorScheme() ?? 'light';
   const colors = theme.colors[scheme];
-  const inputColors = getInputColors(colors, variant, {
-    focused,
-    hasError: Boolean(error),
-    success,
-  });
-  const supportText = error ?? successText ?? helperText;
+  const inputColors = getInputColors(colors, variant, Boolean(error));
+  const webInputStyle: WebTextInputStyle = {
+    caretColor: inputColors.textColor,
+    outlineColor: 'transparent',
+  };
 
   return (
     <View style={[styles.root, editable ? undefined : styles.disabled]}>
@@ -52,6 +52,7 @@ export function Input({
       <View
         style={[
           styles.field,
+          fieldStyle,
           {
             backgroundColor: inputColors.backgroundColor,
             borderColor: inputColors.borderColor,
@@ -59,25 +60,27 @@ export function Input({
         ]}>
         {leftSlot}
         <TextInput
+          allowFontScaling={false}
           editable={editable}
-          onBlur={(event) => {
-            setFocused(false);
-            props.onBlur?.(event);
-          }}
-          onFocus={(event) => {
-            setFocused(true);
-            props.onFocus?.(event);
-          }}
           placeholderTextColor={inputColors.placeholderColor}
-          style={[styles.input, { color: inputColors.textColor }, style]}
+          selectionColor={colors.primary}
+          style={[
+            styles.input,
+            {
+              backgroundColor: inputColors.backgroundColor,
+              color: inputColors.textColor,
+            },
+            webInputStyle,
+            style,
+          ]}
           {...props}
         />
         {rightSlot}
       </View>
 
-      {supportText ? (
+      {error || helperText ? (
         <ThemedText variant="caption" color={inputColors.helperColor}>
-          {supportText}
+          {error ?? helperText}
         </ThemedText>
       ) : null}
     </View>

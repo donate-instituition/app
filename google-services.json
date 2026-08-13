@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "936285638132",
+    "project_id": "elodoar-1595f",
+    "storage_bucket": "elodoar-1595f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:936285638132:android:ede6a79150de03a231fda1",
+        "android_client_info": {
+          "package_name": "com.vortely.elodoar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQSh9Y6Yd9_5V5vYuxEURQVeqSe_xVv-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

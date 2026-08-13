@@ -1,0 +1,5 @@
+build: false
+
+profile: development
+
+platform: android

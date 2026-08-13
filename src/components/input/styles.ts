@@ -5,32 +5,12 @@ import { theme } from '@/theme';
 
 export type InputVariant = 'outline' | 'filled';
 
-export function getInputColors(
-  colors: AppColors,
-  variant: InputVariant,
-  state: { focused?: boolean; hasError?: boolean; success?: boolean }
-) {
-  const borderColor = (() => {
-    if (state.hasError) {
-      return colors.danger;
-    }
-
-    if (state.success) {
-      return colors.success;
-    }
-
-    if (state.focused) {
-      return colors.primary;
-    }
-
-    return colors.border;
-  })();
-
+export function getInputColors(colors: AppColors, variant: InputVariant, hasError?: boolean) {
   return {
     backgroundColor: variant === 'filled' ? colors.surfaceMuted : colors.surface,
-    borderColor,
-    labelColor: state.focused ? colors.primary : colors.text,
-    helperColor: state.hasError ? colors.danger : state.success ? colors.success : colors.textMuted,
+    borderColor: hasError ? colors.danger : colors.border,
+    labelColor: colors.text,
+    helperColor: hasError ? colors.danger : colors.textMuted,
     placeholderColor: colors.textMuted,
     textColor: colors.text,
   };
@@ -46,12 +26,16 @@ export const styles = StyleSheet.create({
     borderWidth: theme.borderWidths.sm,
     flexDirection: 'row',
     minHeight: 48,
+    minWidth: 0,
     paddingHorizontal: theme.spacing.md,
   },
   input: {
     flex: 1,
+    fontFamily: theme.typography.font.inter.regular,
     fontSize: theme.typography.size.md,
+    includeFontPadding: false,
     lineHeight: theme.typography.lineHeight.md,
+    minWidth: 0,
     paddingVertical: theme.spacing.sm,
   },
   disabled: {

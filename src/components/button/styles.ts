@@ -53,6 +53,7 @@ export const styles = StyleSheet.create({
     borderWidth: theme.borderWidths.sm,
     flexDirection: 'row',
     justifyContent: 'center',
+    minWidth: 0,
   },
   fullWidth: {
     width: '100%',
@@ -73,6 +74,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: theme.spacing.sm,
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  label: {
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: 'center',
   },
   pressed: {
     opacity: 0.88,

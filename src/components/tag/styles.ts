@@ -41,5 +41,6 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     minHeight: 28,
     paddingHorizontal: theme.spacing.md,
+    flexShrink: 0,
   },
 });

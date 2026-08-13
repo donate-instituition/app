@@ -213,7 +213,7 @@ await api.post<void, CreateDonationBody>('/donations', {
 });
 ```
 
-A URL base vem de `EXPO_PUBLIC_API_URL`. Quando a variavel nao estiver definida, o fallback local e `http://localhost:3000`.
+A URL base vem de `environments.returnBaseUrl()`, em `src/config/environments.ts`. O ambiente ativo (`LOCAL`, `HOMOLOGA` ou `PROD`) e escolhido no codigo, trocando a constante `CURRENT_ENVIRONMENT` nesse arquivo — nao ha deteccao automatica por variavel de ambiente.
 
 Erros de HTTP sao convertidos para `ApiError`, com `status` e `payload`:
 

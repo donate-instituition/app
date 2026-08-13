@@ -9,6 +9,8 @@ type ProgressBarProps = ViewProps & {
   value: number;
   max?: number;
   variant?: 'primary' | 'success' | 'warning' | 'danger';
+  trackColor?: string;
+  fillColor?: string;
 };
 
 function clampProgress(value: number, max: number) {
@@ -20,8 +22,10 @@ function clampProgress(value: number, max: number) {
 }
 
 export function ProgressBar({
+  fillColor,
   max = 100,
   style,
+  trackColor,
   value,
   variant = 'primary',
   ...props
@@ -40,9 +44,15 @@ export function ProgressBar({
     <View
       accessibilityRole="progressbar"
       accessibilityValue={{ max, min: 0, now: value }}
-      style={[styles.root, { backgroundColor: colors.surfaceMuted }, style]}
+      style={[styles.root, { backgroundColor: trackColor ?? colors.surfaceMuted }, style]}
       {...props}>
-      <View style={[styles.fill, { backgroundColor: fillColors[variant], width: `${progress * 100}%` }]} />
+      <View
+        style={[
+          styles.fill,
+          { backgroundColor: fillColor ?? fillColors[variant], width: `${progress * 100}%` },
+        ]}
+      />
     </View>
   );
 }
+

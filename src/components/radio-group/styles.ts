@@ -8,9 +8,17 @@ export const styles = StyleSheet.create({
   },
   option: {
     alignItems: 'center',
+    borderRadius: theme.radius.lg,
+    borderWidth: theme.borderWidths.sm,
     flexDirection: 'row',
     gap: theme.spacing.sm,
-    minHeight: 36,
+    minHeight: 88,
+    minWidth: 0,
+    padding: theme.spacing.lg,
+  },
+  optionContent: {
+    flex: 1,
+    minWidth: 0,
   },
   indicator: {
     alignItems: 'center',

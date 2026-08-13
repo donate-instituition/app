@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Modal, Pressable, View, type ViewProps } from 'react-native';
 
@@ -61,9 +62,20 @@ export function Select({
             borderColor: error ? colors.danger : colors.border,
           },
         ]}>
-        <ThemedText variant="body" color={selectedOption ? colors.text : colors.textMuted}>
-          {selectedOption?.label ?? placeholder}
-        </ThemedText>
+        <View style={styles.triggerContent}>
+          <ThemedText
+            variant="body"
+            color={selectedOption ? colors.text : colors.textMuted}
+            numberOfLines={1}
+            style={styles.triggerLabel}>
+            {selectedOption?.label ?? placeholder}
+          </ThemedText>
+          <Ionicons
+            name={open ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={18}
+            color={colors.icon}
+          />
+        </View>
       </Pressable>
 
       {error || helperText ? (

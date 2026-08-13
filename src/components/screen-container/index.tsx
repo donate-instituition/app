@@ -1,4 +1,11 @@
-import { ScrollView, View, type ScrollViewProps, type ViewProps } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+  type ScrollViewProps,
+  type ViewProps,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -32,19 +39,27 @@ export function ScreenContainer({
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor }, style]} {...props}>
-      {scrollable ? (
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            paddingStyles[padding],
-            scrollViewProps?.contentContainerStyle,
-          ]}
-          {...scrollViewProps}>
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[styles.root, paddingStyles[padding]]}>{children}</View>
-      )}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+        style={styles.root}>
+        {scrollable ? (
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={[
+              styles.content,
+              paddingStyles[padding],
+              styles.keyboardPadding,
+              scrollViewProps?.contentContainerStyle,
+            ]}
+            {...scrollViewProps}>
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[styles.root, paddingStyles[padding]]}>{children}</View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

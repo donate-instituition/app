@@ -48,14 +48,16 @@ export function Checkbox({
         ]}>
         {checked ? <View style={[styles.checkedDot, { backgroundColor: colors.surface }]} /> : null}
       </View>
-      <View>
-        {label ? <ThemedText variant="body">{label}</ThemedText> : null}
-        {helperText ? (
-          <ThemedText variant="caption" color={colors.textMuted}>
-            {helperText}
-          </ThemedText>
-        ) : null}
-      </View>
+      {label || helperText ? (
+        <View style={styles.content}>
+          {label ? <ThemedText variant="body">{label}</ThemedText> : null}
+          {helperText ? (
+            <ThemedText variant="caption" color={colors.textMuted}>
+              {helperText}
+            </ThemedText>
+          ) : null}
+        </View>
+      ) : null}
     </Pressable>
   );
 }

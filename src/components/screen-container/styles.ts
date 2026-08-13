@@ -11,6 +11,9 @@ export const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
   },
+  keyboardPadding: {
+    paddingBottom: 116,
+  },
   paddingNone: {
     padding: theme.spacing.none,
   },

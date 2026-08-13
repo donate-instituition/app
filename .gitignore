@@ -34,7 +34,9 @@ yarn-error.*
 .codex
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -44,3 +46,12 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Firebase Admin / FCM private service accounts
+*firebase-adminsdk*.json
+firebase-service-account.json
+
+# Local build artifacts
+*.apk
+*.aab
+*.ipa

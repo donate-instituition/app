@@ -1,4 +1,4 @@
-import { Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { theme } from '@/theme';
@@ -14,11 +14,35 @@ type ThemedTextProps = TextProps & {
 
 export function ThemedText({ color, style, variant = 'body', ...props }: ThemedTextProps) {
   const scheme = useColorScheme() ?? 'light';
+  const flattenedStyle = StyleSheet.flatten([styles[variant], style]) as TextStyle;
+  const fontFamily = getFontFamilyForWeight(flattenedStyle?.fontWeight);
 
   return (
     <Text
-      style={[{ color: color ?? theme.colors[scheme].text }, styles[variant], style]}
+      allowFontScaling={false}
+      style={[
+        { color: color ?? theme.colors[scheme].text, includeFontPadding: false },
+        styles[variant],
+        style,
+        { fontFamily },
+      ]}
       {...props}
     />
   );
+}
+
+function getFontFamilyForWeight(fontWeight: TextStyle['fontWeight']) {
+  if (fontWeight === '700' || fontWeight === 'bold') {
+    return theme.typography.font.inter.bold;
+  }
+
+  if (fontWeight === '600') {
+    return theme.typography.font.inter.semibold;
+  }
+
+  if (fontWeight === '500') {
+    return theme.typography.font.inter.medium;
+  }
+
+  return theme.typography.font.inter.regular;
 }

@@ -4,28 +4,19 @@ import { theme } from '@/theme';
 
 export const styles = StyleSheet.create({
   body: {
-    fontSize: theme.typography.size.md,
-    lineHeight: theme.typography.lineHeight.md,
-    fontWeight: theme.typography.weight.regular,
+    ...theme.typography.style.body,
   },
   title: {
-    fontSize: theme.typography.size['3xl'],
-    lineHeight: theme.typography.lineHeight['3xl'],
-    fontWeight: theme.typography.weight.bold,
+    ...theme.typography.style.title1,
   },
   subtitle: {
-    fontSize: theme.typography.size.xl,
-    lineHeight: theme.typography.lineHeight.xl,
-    fontWeight: theme.typography.weight.semibold,
+    ...theme.typography.style.section,
   },
   caption: {
-    fontSize: theme.typography.size.sm,
-    lineHeight: theme.typography.lineHeight.sm,
-    fontWeight: theme.typography.weight.regular,
+    ...theme.typography.style.caption,
   },
   link: {
-    fontSize: theme.typography.size.md,
-    lineHeight: theme.typography.lineHeight.md,
+    ...theme.typography.style.body,
     fontWeight: theme.typography.weight.semibold,
   },
 });
